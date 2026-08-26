@@ -12,7 +12,8 @@ import { DateFilters } from '@/components/filters/date-filters'
 import { AddVehicleDialog } from '@/components/dialogs/add-vehicle-dialog'
 import { AddInspectionDialog } from '@/components/dialogs/add-inspection-dialog'
 import { useSearchFilter } from '@/hooks/use-search-filter'
-import { formatPLN } from '@/lib/utils/format-currency'
+import { sumKnown } from '@/lib/fleet/costs'
+import { formatPLNOrDash } from '@/lib/utils/format-currency'
 import type { FleetRowT } from '@/types/fleet'
 
 export function FleetDataTable({ data }: { data: FleetRowT[] }) {
@@ -52,7 +53,7 @@ export function FleetDataTable({ data }: { data: FleetRowT[] }) {
                 </td>
               )}
               <td className="text-right font-bold tabular-nums">
-                {formatPLN(filteredData.reduce((sum, row) => sum + (row.totalCosts ?? 0), 0))}
+                {formatPLNOrDash(sumKnown(filteredData.map((row) => row.totalCosts)))}
               </td>
               {visibleColumnIds.slice(costsIndex + 1).map((id) => (
                 <td key={id} />

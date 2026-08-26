@@ -1,10 +1,10 @@
 ---
 change_id: fleet-costs-window
 title: Per-vehicle date window on karta pojazdu, plus an Opony column on the listing
-status: implemented
+status: archived
 created: 2026-08-26
 updated: 2026-08-26
-archived_at: null
+archived_at: 2026-08-26T08:57:02Z
 branch: staging # same call as fleet-sheet-parity: no branch switch for this change
 worktree: null
 ---

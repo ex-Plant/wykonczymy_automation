@@ -31,16 +31,17 @@ export function MaterialsBreakdownTable({
   // spend, which must never read as part of the investor's wydatki.
   caption?: string
 }) {
-  const shown = rows.filter((row) => row.net !== 0)
-  if (shown.length === 0) return null
+  // No filter here: it would make the table disagree with the `rows.length` its callers gate on,
+  // which is how the tab once rendered blank. The builders drop the zeros.
+  if (rows.length === 0) return null
 
   const showNet = netRate != null
   const cols = showNet
     ? `${SUMMARY_LABEL_COL} ${SUMMARY_VALUE_COL} ${SUMMARY_VALUE_COL} ${SUMMARY_VALUE_COL}`
     : `${SUMMARY_LABEL_COL} ${SUMMARY_VALUE_COL}`
   const pairOf = (row: MaterialsBreakdownRowT) => breakdownRowPair(row, netRate)
-  const totalGross = shown.reduce((sum, row) => sum + pairOf(row).gross, 0)
-  const totalNet = shown.reduce((sum, row) => sum + pairOf(row).net, 0)
+  const totalGross = rows.reduce((sum, row) => sum + pairOf(row).gross, 0)
+  const totalNet = rows.reduce((sum, row) => sum + pairOf(row).net, 0)
 
   return (
     <SummaryTable cols={cols} className="w-fit">
@@ -53,7 +54,7 @@ export function MaterialsBreakdownTable({
             one plane, and naming it invites the reader to look for a netto twin that isn't there. */}
       <SummaryHeaderCell>{showNet ? 'Brutto' : 'Kwota'}</SummaryHeaderCell>
       {showNet && <SummaryHeaderCell>Różnica</SummaryHeaderCell>}
-      {shown.map((row) => {
+      {rows.map((row) => {
         const pair = pairOf(row)
         return (
           <Fragment key={`${row.origin}-${row.id ?? 'correction'}`}>

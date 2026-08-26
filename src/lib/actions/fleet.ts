@@ -12,14 +12,14 @@ import {
 import { warsawToday } from '@/lib/fleet/days'
 import { activeFlags, nextFlags, parseVehicleFlags } from '@/lib/fleet/flags'
 import {
-  FLAGGABLE_INSPECTION_TYPES,
-  type FlaggableInspectionTypeT,
+  PERFORMED_INSPECTION_TYPES,
+  type PerformedInspectionTypeT,
 } from '@/lib/fleet/inspection-types'
 import { toInspectionEvent } from '@/lib/fleet/map-inspection'
 import { assertCompletePage } from '@/lib/queries/assert-complete-page'
 import { validateAction, protectedAction } from './run-action'
 
-const flagsSchema = z.array(z.enum(FLAGGABLE_INSPECTION_TYPES))
+const flagsSchema = z.array(z.enum(PERFORMED_INSPECTION_TYPES))
 
 export async function createVehicleAction(data: VehicleFormDataT) {
   return protectedAction(
@@ -73,7 +73,7 @@ export async function createInspectionAction(data: InspectionFormDataT) {
  * Persist the „do wymiany" marks ticked on a vehicle. The events are read first because `nextFlags`
  * needs to know which marks the history has already answered — see its own note for why.
  */
-export async function setVehicleFlagsAction(vehicleId: number, types: FlaggableInspectionTypeT[]) {
+export async function setVehicleFlagsAction(vehicleId: number, types: PerformedInspectionTypeT[]) {
   return protectedAction(
     'setVehicleFlagsAction',
     async ({ payload }) => {

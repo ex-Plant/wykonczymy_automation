@@ -42,7 +42,11 @@ export type ParsedLaborTabT = {
 const text = (cell: unknown): string =>
   typeof cell === 'string' ? cell.trim() : cell == null ? '' : String(cell).trim()
 
-const number = (cell: unknown): number => (typeof cell === 'number' ? cell : Number(cell) || 0)
+// Sheets returns the cell's own IEEE double and `planned_qty` is an unconstrained `numeric`, so
+// 161.39000000000001 both persists and renders — the editor's cell is an input, so `decimalText`
+// is `String(value)` by design.
+const number = (cell: unknown): number =>
+  round6(typeof cell === 'number' ? cell : Number(cell) || 0)
 
 // Where the summary block begins, found by walking up from the bottom rather than down from the top.
 // Downwards, the footer is indistinguishable from a blank spacer row mid-sheet — both are marked and
@@ -81,7 +85,7 @@ function readMeasuredQty(
   if (cell == null) return null
   if (typeof cell === 'string' && cell.trim() === '') return null
   const value = typeof cell === 'number' ? cell : Number(cell)
-  return Number.isFinite(value) ? value : null
+  return Number.isFinite(value) ? round6(value) : null
 }
 
 // Every etap column the owner has NOT renamed carries the sheet's own caption — „1 etap ilość", the

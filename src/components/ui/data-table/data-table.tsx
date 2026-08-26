@@ -138,6 +138,11 @@ export function DataTable<TData>({
   const visibleLeafColumns = table.getVisibleLeafColumns()
   const visibleColCount = visibleLeafColumns.length
   const visibleColumnIdList = visibleLeafColumns.map((column) => column.id)
+  // Part of every row's key. React Compiler caches a <DataTableRow> whose props are unchanged, and a
+  // hiding/reordering toggle changes neither `row` nor the callbacks — so without this the body keeps
+  // rendering the cells it rendered before while the header drops them, and every remaining figure
+  // lands under its neighbour's heading.
+  const visibleColumnKey = visibleColumnIdList.join('_')
 
   return (
     <div className={cn('space-y-2', className)}>
@@ -175,7 +180,7 @@ export function DataTable<TData>({
               ) : (
                 rows.map((row) => (
                   <DataTableRow
-                    key={row.id}
+                    key={`${row.id}:${visibleColumnKey}`}
                     row={row}
                     getRowHref={getRowHref}
                     getRowClassName={getRowClassName}

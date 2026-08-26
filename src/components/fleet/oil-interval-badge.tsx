@@ -6,8 +6,8 @@ import { formatKm } from '@/lib/utils/format-distance'
  * The oil is past its interval. Renders nothing otherwise, so it can sit inline anywhere a vehicle
  * appears — the alarm is the presence of the badge, not a state it has to spell out.
  *
- * It prints the overrun, not the distance since the change: next to the full figure on the detail
- * page that would just say the same number twice, and in the table there is no figure to compare to.
+ * It prints the distance since the change, the same figure the vehicle page shows, so the two
+ * surfaces never state two different numbers for one oil change.
  */
 export function OilIntervalBadge({
   kmSinceOilChange,
@@ -21,9 +21,9 @@ export function OilIntervalBadge({
   return (
     <AlertBadge
       className={className}
-      title={`Od ostatniej wymiany oleju minęło ${formatKm(kmSinceOilChange)}`}
+      title={`Interwał wymiany to ${formatKm(OIL_CHANGE_INTERVAL_KM)}`}
     >
-      Olej +{formatKm(kmSinceOilChange - OIL_CHANGE_INTERVAL_KM)}
+      Olej {formatKm(kmSinceOilChange)}
     </AlertBadge>
   )
 }

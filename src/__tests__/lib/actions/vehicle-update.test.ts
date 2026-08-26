@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import type { Payload } from 'payload'
+import { parseVehicleExemptions } from '@/lib/fleet/exemptions'
 import { parseVehicleFlags } from '@/lib/fleet/flags'
 import type { VehicleFormDataT } from '@/components/forms/vehicle-form/vehicle-schema'
 
@@ -97,6 +98,17 @@ describe.skipIf(!ENV_READY)('updateVehicleAction (DB)', () => {
     expect(result.success).toBe(true)
 
     expect((await stored()).year).toBeNull()
+  })
+
+  // „bezterminowo" is the one field whose whole job is to SILENCE something — the weekly digest and
+  // the listing both branch on it — so a round-trip that quietly dropped it would surface as a
+  // reminder nobody can turn off, not as an error.
+  it('round-trips the „nie dotyczy" exemptions, including back to none', async () => {
+    await updateVehicleAction(vehicleId, edit({ exemptions: ['TECHNICAL'] }))
+    expect(parseVehicleExemptions((await stored()).exemptions)).toEqual(['TECHNICAL'])
+
+    await updateVehicleAction(vehicleId, edit({ exemptions: [] }))
+    expect(parseVehicleExemptions((await stored()).exemptions)).toEqual([])
   })
 
   it('writes nothing when the payload fails validation', async () => {

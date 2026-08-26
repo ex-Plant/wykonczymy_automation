@@ -1,11 +1,10 @@
-import { isMonday, toWarsawDay, daysBetween, type DayT } from '@/lib/fleet/days'
+import { toWarsawDay, daysBetween, type DayT } from '@/lib/fleet/days'
 import { isExempt } from '@/lib/fleet/exemptions'
 import { latestByType, latestOdometerReading } from '@/lib/fleet/deadlines'
 import {
   SCHEDULED_INSPECTION_TYPES,
   type ScheduledInspectionTypeT,
 } from '@/lib/fleet/inspection-types'
-import { findMissingInspections, type MissingInspectionT } from '@/lib/fleet/missing-data'
 import { oilTarget, shouldNotify } from '@/lib/fleet/should-notify'
 import { OVERDUE } from '@/lib/fleet/thresholds'
 import type { VehicleHistoryT } from '@/lib/fleet/types'
@@ -13,6 +12,8 @@ import type { VehicleHistoryT } from '@/lib/fleet/types'
 export type DigestEntryT = {
   inspectionId: number
   registration: string
+  make: string
+  model: string
   type: ScheduledInspectionTypeT
   nextDueAt: DayT
   daysLeft: number
@@ -21,11 +22,15 @@ export type DigestEntryT = {
 export type OdometerEntryT = {
   inspectionId: number
   registration: string
+  make: string
+  model: string
   /** The reading the oil is due at — the typed target, or the interval from the last change. */
   targetOdometer: number
   latestOdometer: number
   /** Negative once the target is behind us. */
   kmRemaining: number
+  /** Distance covered since the change, the figure the digest announces. `null` when it had no reading. */
+  kmSinceChange: number | null
 }
 
 /**
@@ -42,18 +47,12 @@ export type StampT = {
 export type FleetDigestT = {
   overdue: DigestEntryT[]
   within7: DigestEntryT[]
-  within30: DigestEntryT[]
   odometer: OdometerEntryT[]
-  missing: MissingInspectionT[]
   stamps: StampT[]
 }
 
 export const isEmptyDigest = (digest: FleetDigestT): boolean =>
-  digest.overdue.length === 0 &&
-  digest.within7.length === 0 &&
-  digest.within30.length === 0 &&
-  digest.odometer.length === 0 &&
-  digest.missing.length === 0
+  digest.overdue.length === 0 && digest.within7.length === 0 && digest.odometer.length === 0
 
 /**
  * Today's digest, decided purely from the loaded histories — no clock, no DB, no send.
@@ -69,9 +68,7 @@ export const buildFleetDigest = (
   const digest: FleetDigestT = {
     overdue: [],
     within7: [],
-    within30: [],
     odometer: [],
-    missing: isMonday(today) ? findMissingInspections(histories) : [],
     stamps: [],
   }
 
@@ -82,8 +79,8 @@ export const buildFleetDigest = (
     const latestOdometer = latestOdometerReading(events)
 
     for (const type of SCHEDULED_INSPECTION_TYPES) {
-      // Same rule as `findMissingInspections`: a type that does not apply is not urgent. Without it
-      // the mail would report PO TERMINIE on the very row the listing renders as „bezterminowo".
+      // A type that does not apply is not urgent: without this the mail would report PO TERMINIE on
+      // the very row the listing renders as „bezterminowo".
       if (isExempt(vehicle.exemptions, type)) continue
 
       const row = latest[type]
@@ -97,13 +94,14 @@ export const buildFleetDigest = (
         const entry: DigestEntryT = {
           inspectionId: row.id,
           registration: vehicle.registration,
+          make: vehicle.make,
+          model: vehicle.model,
           type,
           nextDueAt: dueDay,
           daysLeft: daysBetween(today, dueDay),
         }
 
         if (decision.bucket === OVERDUE) digest.overdue.push(entry)
-        else if (decision.bucket === 30) digest.within30.push(entry)
         else digest.within7.push(entry)
       }
 
@@ -112,9 +110,12 @@ export const buildFleetDigest = (
         digest.odometer.push({
           inspectionId: row.id,
           registration: vehicle.registration,
+          make: vehicle.make,
+          model: vehicle.model,
           targetOdometer: target,
           latestOdometer,
           kmRemaining: target - latestOdometer,
+          kmSinceChange: row.odometer != null ? latestOdometer - row.odometer : null,
         })
       }
 

@@ -89,6 +89,31 @@ describe('buildMaterialsBreakdown', () => {
     expect(remainder).toMatchObject({ id: null, net: -100 })
   })
 
+  // The „Materiały" tab gates on `rows.length`, so a placeholder per empty category made the count
+  // lie and the tab rendered blank — empty-state message and all.
+  it('drops categories with no spend instead of emitting a 0 zł placeholder', () => {
+    const financials = {
+      ...base,
+      categoryCosts: [{ categoryId: 2, total: 300 }],
+      totalMaterialCosts: 300,
+    }
+
+    expect(buildMaterialsBreakdown(financials, cats).map((r) => r.id)).toEqual([2])
+    expect(buildMaterialsBreakdown({ ...base, totalMaterialCosts: 0 }, cats)).toEqual([])
+  })
+
+  it('drops a category billed wholly netto from the brutto plane, keeping its netto row', () => {
+    const financials = {
+      ...base,
+      categoryCosts: [{ categoryId: 1, total: 1000 }],
+      totalMaterialCosts: 1000,
+    }
+
+    expect(buildMaterialsBreakdown(financials, cats, [{ categoryId: 1, total: 1000 }])).toEqual([
+      { id: 1, label: 'Materiały budowlane netto', net: 1000, origin: 'netBilled' },
+    ])
+  })
+
   it('every category row carries a stable, distinct id even when names collide', () => {
     // Two categories share a display name — the row id must stay unique so React keys never clash.
     const dupNames = [

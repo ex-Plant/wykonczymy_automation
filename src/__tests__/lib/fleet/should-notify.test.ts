@@ -17,22 +17,33 @@ describe('shouldNotify — date leg', () => {
   })
 
   it('fires the first time a bucket is entered', () => {
-    const row = event('TECHNICAL', '2025-08-01', { nextDueAt: '2026-09-10' })
+    const row = event('TECHNICAL', '2025-08-01', { nextDueAt: '2026-08-24' })
 
     const decision = shouldNotify({ row, today: TODAY, latestOdometer: null })
 
-    expect(decision.bucket).toBe(30)
+    expect(decision.bucket).toBe(7)
     expect(decision.date).toBe(true)
   })
 
   it('stays silent on the next run in the same bucket', () => {
     const row = event('TECHNICAL', '2025-08-01', {
-      nextDueAt: '2026-09-10',
-      notifiedThreshold: 30,
+      nextDueAt: '2026-08-24',
+      notifiedThreshold: 7,
       notifiedAt: '2026-08-17T05:00:00.000Z',
     })
 
     expect(shouldNotify({ row, today: TODAY, latestOdometer: null }).date).toBe(false)
+  })
+
+  // The 30-day bucket colours the listing and feeds the „Flota" badge, but never mails.
+  it('stays silent a month out, then fires when the deadline reaches a week', () => {
+    const row = event('TECHNICAL', '2025-08-01', { nextDueAt: '2026-09-10' })
+
+    const far = shouldNotify({ row, today: TODAY, latestOdometer: null })
+
+    expect(far.bucket).toBe(30)
+    expect(far.date).toBe(false)
+    expect(shouldNotify({ row, today: '2026-09-05', latestOdometer: null }).date).toBe(true)
   })
 
   it('fires again once the deadline escalates into a tighter bucket', () => {
@@ -81,12 +92,12 @@ describe('shouldNotify — kilometre leg', () => {
       ...overrides,
     })
 
-  it('fires at exactly the warning distance', () => {
-    expect(shouldNotify({ row: oil(), today: TODAY, latestOdometer: 129_000 }).odometer).toBe(true)
+  it('stays silent right up to the target', () => {
+    expect(shouldNotify({ row: oil(), today: TODAY, latestOdometer: 130_000 }).odometer).toBe(false)
   })
 
-  it('stays silent while the target is further off than the warning distance', () => {
-    expect(shouldNotify({ row: oil(), today: TODAY, latestOdometer: 128_999 }).odometer).toBe(false)
+  it('fires on the first kilometre past the target', () => {
+    expect(shouldNotify({ row: oil(), today: TODAY, latestOdometer: 130_001 }).odometer).toBe(true)
   })
 
   it('fires when the target is already passed', () => {
@@ -112,7 +123,7 @@ describe('shouldNotify — kilometre leg', () => {
   // The two legs are independent on purpose: an oil change can be a year away by date and 200 km away
   // by mileage, and sharing one bookkeeping column would let either silence the other.
   it('fires on mileage while the date leg is silent', () => {
-    const decision = shouldNotify({ row: oil(), today: TODAY, latestOdometer: 129_500 })
+    const decision = shouldNotify({ row: oil(), today: TODAY, latestOdometer: 141_000 })
 
     expect(decision).toEqual({ bucket: null, date: false, odometer: true })
   })

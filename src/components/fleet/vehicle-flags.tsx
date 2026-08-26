@@ -1,10 +1,10 @@
 'use client'
 
 import { startTransition, useOptimistic } from 'react'
-import { Checkbox } from '@/components/ui/checkbox'
+import { InspectionTypeCheckboxes } from '@/components/fleet/inspection-type-checkboxes'
 import { setVehicleFlagsAction } from '@/lib/actions/fleet'
-import { FLAGGABLE_INSPECTION_TYPES, INSPECTION_TYPE_LABELS } from '@/lib/fleet/inspection-types'
-import type { FlaggableInspectionTypeT } from '@/lib/fleet/inspection-types'
+import { PERFORMED_INSPECTION_TYPES } from '@/lib/fleet/inspection-types'
+import type { PerformedInspectionTypeT } from '@/lib/fleet/inspection-types'
 import { toastMessage } from '@/lib/utils/toast'
 
 /**
@@ -22,15 +22,11 @@ export function VehicleFlags({
   active,
 }: {
   vehicleId: number
-  active: FlaggableInspectionTypeT[]
+  active: PerformedInspectionTypeT[]
 }) {
   const [selected, setSelected] = useOptimistic(active)
 
-  function toggle(type: FlaggableInspectionTypeT) {
-    const next = selected.includes(type)
-      ? selected.filter((candidate) => candidate !== type)
-      : [...selected, type]
-
+  function commit(next: PerformedInspectionTypeT[]) {
     startTransition(async () => {
       setSelected(next)
 
@@ -47,13 +43,10 @@ export function VehicleFlags({
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      {FLAGGABLE_INSPECTION_TYPES.map((type) => (
-        <label key={type} className="flex cursor-pointer items-center gap-2 text-sm">
-          <Checkbox checked={selected.includes(type)} onCheckedChange={() => toggle(type)} />
-          {INSPECTION_TYPE_LABELS[type].pl}
-        </label>
-      ))}
-    </div>
+    <InspectionTypeCheckboxes
+      types={PERFORMED_INSPECTION_TYPES}
+      selected={selected}
+      onChange={commit}
+    />
   )
 }

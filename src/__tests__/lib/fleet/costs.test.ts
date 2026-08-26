@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { summariseCosts, totalCost } from '@/lib/fleet/costs'
+import { sumKnown, summariseCosts, totalCost } from '@/lib/fleet/costs'
 import { INSPECTION_TYPES, type InspectionTypeT } from '@/lib/fleet/inspection-types'
 import { ALL_TIME } from '@/lib/utils/date-range'
 import type { InspectionHistoryEntryT } from '@/types/fleet'
@@ -100,6 +100,21 @@ describe('summariseCosts', () => {
     expect(costs.total).toBeNull()
   })
 
+  // A meter reading is not work anybody was billed for. Left in, it opens a „Odczyt licznika | 1 | —"
+  // bucket and inflates the „Razem" entry count with something that never had a price to begin with.
+  it('leaves odometer readings out of the cost surface entirely', () => {
+    const costs = summariseCosts(
+      history({
+        TECHNICAL: [entry('2026-01-01', 200)],
+        ODOMETER: [entry('2026-03-01', null), entry('2026-04-01', null)],
+      }),
+    )
+
+    expect(costs.byType).toEqual([{ type: 'TECHNICAL', count: 1, total: 200 }])
+    expect(costs.entries).toHaveLength(1)
+    expect(costs.total).toBe(200)
+  })
+
   it('is empty when the car has no history', () => {
     expect(summariseCosts(history({}))).toEqual({ byType: [], total: 0, entries: [] })
   })
@@ -169,5 +184,27 @@ describe('totalCost', () => {
   it('is zero when nothing falls inside', () => {
     expect(totalCost(july, { from: '2027-01-01' })).toBe(0)
     expect(totalCost([], ALL_TIME)).toBe(0)
+  })
+})
+
+describe('sumKnown', () => {
+  // The fleet listing's „Razem" footer sums the rows it is rendering. Reducing with `?? 0` printed
+  // „0,00 zł" under nine „—" cells the moment the sheet import landed, since not one imported event
+  // carries a price.
+  it('is unknown when nothing in the set carries a price', () => {
+    expect(sumKnown([null, null])).toBeNull()
+  })
+
+  it('adds up the known ones and ignores the rest', () => {
+    expect(sumKnown([null, 250, null, 100])).toBe(350)
+  })
+
+  // Nothing to add up at all is a true zero — an empty listing owes „0,00 zł", not „—".
+  it('is zero for an empty set', () => {
+    expect(sumKnown([])).toBe(0)
+  })
+
+  it('keeps a zero somebody actually typed', () => {
+    expect(sumKnown([0])).toBe(0)
   })
 })

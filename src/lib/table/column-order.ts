@@ -4,6 +4,8 @@ export type ColumnRanksT = Record<string, number>
 
 // Sparse by design (same argument as useHiddenColumns): a key with no entry ranks at its position in
 // the assembled list, so a column added later lands where the code declares it instead of at the end.
+// A dense persisted `string[]` cannot do that — TanStack appends ids missing from it to the tail
+// (`ColumnOrdering.ts`), so storing one freezes today's column set for anyone who ever dragged.
 function effectiveRank(key: string, assembleIndex: number, ranks: ColumnRanksT): number {
   return ranks[key] ?? assembleIndex
 }

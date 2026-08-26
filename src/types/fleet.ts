@@ -1,4 +1,4 @@
-import type { FlaggableInspectionTypeT, InspectionTypeT } from '@/lib/fleet/inspection-types'
+import type { PerformedInspectionTypeT, InspectionTypeT } from '@/lib/fleet/inspection-types'
 import type { DeadlineBucketT } from '@/lib/fleet/thresholds'
 import type { VehicleRecordT } from '@/lib/fleet/types'
 
@@ -19,7 +19,7 @@ export type FleetDeadlineT = {
 export type FleetRowT = VehicleRecordT & {
   deadlines: Record<InspectionTypeT, FleetDeadlineT>
   /** The stored „do wymiany" marks minus whatever the history has already answered. */
-  activeFlags: FlaggableInspectionTypeT[]
+  activeFlags: PerformedInspectionTypeT[]
   /** Newest reading known for the car, from an inspection of any type. */
   latestOdometer: number | null
   /** Distance since the last oil change; `null` when either reading is missing. */

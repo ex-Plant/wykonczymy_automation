@@ -1,3 +1,4 @@
+import { APIError } from 'payload'
 import type { CollectionBeforeDeleteHook, CollectionSlug, Where } from 'payload'
 
 type DeleteProbeT = {
@@ -42,6 +43,8 @@ export function makePreventDelete({
       )
     ).filter((entry) => entry !== null)
 
-    if (blockers.length > 0) throw new Error(message(blockers))
+    // APIError, not Error: routeError swaps the message of anything it can't prove public for
+    // „Something went wrong.", and a status other than 500 is what proves it.
+    if (blockers.length > 0) throw new APIError(message(blockers), 400)
   }
 }

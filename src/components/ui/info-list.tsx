@@ -25,7 +25,9 @@ export function InfoList({ items, layout = 'inline', className }: InfoListPropsT
       {items.map((item) => (
         <div key={item.label} className={stacked ? 'space-y-1' : 'contents'}>
           <dt className="text-muted-foreground font-medium">{item.label}</dt>
-          <dd className="text-foreground">{item.value}</dd>
+          {/* A blank <dd> reads as a rendering bug rather than as „nothing recorded", so an empty
+              value falls back here instead of at every call site. */}
+          <dd className="text-foreground">{item.value || '—'}</dd>
         </div>
       ))}
     </dl>

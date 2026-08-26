@@ -35,7 +35,8 @@ export default async function FleetPage({ searchParams }: PagePropsT) {
       <FleetDataTable data={fleet} />
       <RecipientListCard
         list="fleetDigest"
-        title="Powiadomienia o terminach"
+        title="Powiadomienia"
+        description="E-mail wysyłany na podane adresy na 7 i 1 dzień przed datą przeglądu i co tydzień, dopóki nie zostanie odnowiony. Limit kilometrów wymiany oleju aktualizujemy przy każdej aktualizacji licznika."
         emails={recipients.fleetDigest}
         canEdit={isAdminOrOwnerRole(session.user.role)}
       />

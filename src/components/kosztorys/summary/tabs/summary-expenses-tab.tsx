@@ -70,14 +70,8 @@ export function SummaryExpensesTab({
   const listedTransactions = preview
     ? clientVisibleExpenseRows(materialTransactions)
     : materialTransactions
-  // Reads the array the two blocks it gates actually render, so the gate cannot disagree with them.
-  // Deliberately NOT the transaction rows: `materialTransactions` is optional and the investment
-  // page's panel never supplies it, so a row-sourced gate blanks the breakdown table on a host whose
-  // figures are fully populated. Σ rows === `totalMaterialCosts` (`buildMaterialsBreakdown`), so this
-  // is the aggregate gate reading its own data instead of a second query's.
-  // Rows, not their Σ: a CORRECTION that exactly cancels a category nets the breakdown to zero while
-  // the table below still has rows to draw, and a Σ-based gate would print „Brak wydatków" on top of
-  // them.
+  // Not the transaction rows: the investment page's panel never supplies `materialTransactions`, so
+  // a row-sourced gate would blank the breakdown on a host whose figures are fully populated.
   const hasBilledMaterials = materialsBreakdown.length > 0
   // Suppressed only by a block that actually renders below: „Lista wydatków" is itself gated on
   // showTransactions, so counting its rows on a host that hides the list would leave the tab blank.

@@ -37,13 +37,18 @@ export function buildMaterialsBreakdown(
   expenseCategories: { id: number; name: string }[],
   netCategoryCosts: CategoryCostT[] = [],
 ): MaterialsBreakdownRowT[] {
-  const grossRows: MaterialsBreakdownRowT[] = expenseCategories.map((cat) => ({
-    id: cat.id,
-    label: cat.name,
-    net:
-      costForCategory(financials.categoryCosts, cat.id) - costForCategory(netCategoryCosts, cat.id),
-    origin: 'gross',
-  }))
+  // Zeros dropped, like `buildSettledBreakdown` below: consumers gate on `rows.length` to decide
+  // whether the „Materiały" tab has any content, so a placeholder per empty category blanked the tab.
+  const grossRows: MaterialsBreakdownRowT[] = expenseCategories
+    .map((cat) => ({
+      id: cat.id,
+      label: cat.name,
+      net:
+        costForCategory(financials.categoryCosts, cat.id) -
+        costForCategory(netCategoryCosts, cat.id),
+      origin: 'gross' as const,
+    }))
+    .filter((row) => row.net !== 0)
   const uncategorised = uncategorisedRemainder(financials)
   if (uncategorised !== 0)
     grossRows.push({ id: null, label: CORRECTION_LABEL, net: uncategorised, origin: 'gross' })

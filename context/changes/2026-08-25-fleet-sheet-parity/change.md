@@ -5,7 +5,7 @@ status: implemented
 created: 2026-08-25
 updated: 2026-08-26
 archived_at: null
-branch: null
+branch: staging # user asked not to switch branches for this change
 worktree: null
 ---
 
@@ -30,6 +30,15 @@ Five gaps found by comparing the sheet's columns against `vehicles` / `vehicle-i
 5. **aktualny przebieg** — a plain meter reading with no event behind it. `latestOdometer` is
    derived from inspections, so recording one today means inventing a fake inspection.
 
+**Follow-up (owner, 2026-08-26): the weekly missing-data section is gone.** `findMissingInspections`
+and its Monday-only digest section were removed outright — a permanent list of blind spots in a mail
+about deadlines was noise, and „bezterminowo" (gap 2) covers the only case that had a real answer.
+The exemption itself stays: it still silences the deadline columns and the urgency colouring.
+
+**Follow-up (owner, 2026-08-26): the mail no longer fires at 30 days** — only 7, 1 and overdue
+(`MAILED_BUCKET_MAX` in `thresholds.ts`). The 30-day bucket is untouched everywhere else: it still
+colours the listing amber and is the whole window the „Flota" badge counts.
+
 Sheet data quality (checked against the raw XML, 2026-08-25):
 
 - The sheet is **clean** — an earlier "shifted columns" reading was an artifact of a broken dump
@@ -51,6 +60,13 @@ said 20, which was an arithmetic slip in the criterion, not in the data. The tab
 against the XML yields 8 TECHNICAL (the przyczepa is exempt) + 9 INSURANCE + 7 OIL_CHANGE
 (no oil history for the T4 or the przyczepa) + 1 ODOMETER.
 
-`src/scripts/import-fleet-sheet.ts` stays until a human has run it against prod (after
-`pnpm db:migrate:prod`); deleting it now would strand that step. Its removal is the last box in the
-manual-checks section.
+Prod import ran 2026-08-26 against `DB_POSTGRES_URL_PROD`, the migration having already been
+applied. The prod fleet was empty beforehand (0 vehicles, 0 events, no registration collisions), so
+the run created 9 vehicles and 25 events with nothing updated or skipped — the same 8/9/7/1 split by
+type, verified by a separate read rather than by the script's own tally.
+`src/scripts/import-fleet-sheet.ts` is therefore deleted, as the decision to leave no permanent
+bridge to the sheet required.
+
+Still open: the browser pass over the imported prod rows, and the cache lag — the script writes with
+`skipRevalidation` and a CLI process cannot revalidate a deployed Next.js cache, so `/flota` serves
+the pre-import dataset until the `staging` → `main` deploy comes up on a cold cache.

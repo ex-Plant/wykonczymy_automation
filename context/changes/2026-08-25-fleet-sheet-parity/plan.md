@@ -126,9 +126,9 @@ and keeps `min: 0`.
 
 **Contract**: `ALTER TYPE "enum_vehicle_inspections_type" ADD VALUE IF NOT EXISTS 'ODOMETER'`;
 `vehicles` gains `tyres text`, `note text`, `exemptions jsonb`; `vehicle_inspections` gains
-`insurer text`, `policy_number text` and does `ALTER COLUMN "cost" DROP NOT NULL`. `down` drops the
-columns and restores the NOT NULL; the enum value stays (Postgres cannot remove one) — say so in a
-comment, as the precedent migration does.
+`insurer text`, `policy_number text` and does `ALTER COLUMN "cost" DROP NOT NULL`. `down` throws:
+Postgres cannot remove the enum value, and restoring the NOT NULL means writing „0 zł" over every
+unknown price — the lie this migration exists to remove. Roll back from the dump instead.
 
 ### Success Criteria:
 
@@ -482,5 +482,5 @@ Existing rows: `cost` keeps its values (only the constraint drops), `exemptions`
 
 #### Automated
 
-- [x] 5.1 Dry run lists 9 vehicles and 20 events with no writes
-- [x] 5.2 Fleet specs still pass after the real local run
+- [x] 5.1 Dry run lists 9 vehicles and 20 events with no writes — 713fd350 (real count 25; the plan's 20 was an arithmetic slip, see change.md)
+- [x] 5.2 Fleet specs still pass after the real local run — 713fd350

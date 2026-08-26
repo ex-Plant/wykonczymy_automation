@@ -6,7 +6,10 @@ import { daysLabel } from '@/lib/fleet/deadline-label'
 import { INSPECTION_TYPE_LABELS } from '@/lib/fleet/inspection-types'
 import { formatKm } from '@/lib/utils/format-distance'
 import type { DigestEntryT, FleetDigestT, OdometerEntryT } from '@/lib/fleet/reminder-sweep'
-import type { MissingInspectionT } from '@/lib/fleet/missing-data'
+
+/** Plate alone identifies a car to nobody but its keeper, so every line names the car too. */
+const vehicleLabel = (entry: { registration: string; make: string; model: string }): string =>
+  `${entry.registration} ${entry.make} ${entry.model}`.trim()
 
 /** Empty in, empty out — an absent section prints nothing rather than an empty heading. */
 const section = <T>(
@@ -14,12 +17,11 @@ const section = <T>(
   entries: readonly T[],
   tag: 'table' | 'ul',
   row: (entry: T) => string,
-  lead = '',
 ): string =>
   entries.length === 0
     ? ''
     : `
-    <h3>${escapeHtml(title)}</h3>${lead}
+    <h3>${escapeHtml(title)}</h3>
     <${tag}>
       ${entries.map(row).join('\n      ')}
     </${tag}>`
@@ -30,42 +32,32 @@ const deadlineTable = (title: string, entries: DigestEntryT[]): string =>
     entries,
     'table',
     (entry) => `<tr>
-        <td><strong>${escapeHtml(entry.registration)}</strong></td>
+        <td><strong>${escapeHtml(vehicleLabel(entry))}</strong></td>
         <td>${escapeHtml(INSPECTION_TYPE_LABELS[entry.type].pl)}</td>
         <td>${escapeHtml(entry.nextDueAt)}</td>
         <td>${escapeHtml(daysLabel(entry.daysLeft))}</td>
       </tr>`,
   )
 
-const remainingLabel = (kmRemaining: number): string =>
-  kmRemaining < 0
-    ? `przekroczono o ${formatKm(Math.abs(kmRemaining))}`
-    : `pozostało ${formatKm(kmRemaining)}`
+/**
+ * Nobody tracks a target odometer against their dashboard, so announcing one („wymiana przy 170 000")
+ * asks the reader to do the arithmetic the sweep already did. The line states the distance since the
+ * change and nothing else — the same figure the fleet table and the vehicle page show, so one oil
+ * change never carries three numbers across three surfaces.
+ */
+const oilLabel = (entry: OdometerEntryT): string =>
+  entry.kmSinceChange != null
+    ? `przekroczony interwał wymiany oleju — ${formatKm(entry.kmSinceChange)} od ostatniej wymiany`
+    : `przekroczony interwał wymiany oleju o ${formatKm(Math.abs(entry.kmRemaining))}`
 
-// The mileage alarm is judged against a reading taken at some past inspection, not against the car's
-// current odometer. Printing both is what stops it reading as a bug the day it arrives.
 const odometerSection = (entries: OdometerEntryT[]): string =>
   section(
     'Wymiana oleju — limit kilometrów',
     entries,
     'ul',
     (entry) => `<li>
-        <strong>${escapeHtml(entry.registration)}</strong> — wymiana oleju przy
-        ${escapeHtml(formatKm(entry.targetOdometer))}, ostatni odczyt
-        ${escapeHtml(formatKm(entry.latestOdometer))} (${escapeHtml(remainingLabel(entry.kmRemaining))}).
+        <strong>${escapeHtml(vehicleLabel(entry))}</strong> — ${escapeHtml(oilLabel(entry))}.
       </li>`,
-  )
-
-const missingSection = (entries: MissingInspectionT[]): string =>
-  section(
-    'Brak danych (podsumowanie tygodniowe)',
-    entries,
-    'ul',
-    (entry) =>
-      `<li><strong>${escapeHtml(entry.registration)}</strong> — ${escapeHtml(
-        INSPECTION_TYPE_LABELS[entry.type].pl,
-      )}</li>`,
-    '\n    <p>Dla tych pozycji nie ma żadnego wpisu, więc żaden termin nie może się o nie upomnieć.</p>',
   )
 
 const subjectFor = (digest: FleetDigestT): string => {
@@ -86,9 +78,7 @@ export async function notifyFleetDigest(payload: Payload, digest: FleetDigestT):
     <h2>Terminy floty</h2>
     ${deadlineTable('Po terminie', digest.overdue)}
     ${deadlineTable('W ciągu 7 dni', digest.within7)}
-    ${deadlineTable('W ciągu 30 dni', digest.within30)}
     ${odometerSection(digest.odometer)}
-    ${missingSection(digest.missing)}
     <p><a href="${FRONTEND_URL}/flota">Otwórz flotę</a></p>
   `
 

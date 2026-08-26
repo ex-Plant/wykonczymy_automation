@@ -206,7 +206,7 @@ describe.skipIf(!ENV_READY)('kosztorys import actions — persisted state (DB)',
 
     expect(preview).toMatchObject({ success: true })
     if (!preview.success) return
-    expect(preview.data.report.counts).toMatchObject({ sections: 2, items: 3, stages: 10 })
+    expect(preview.data.report.counts).toMatchObject({ sections: 2, items: 3, stages: 3 })
     expect(preview.data).not.toHaveProperty('tree')
   })
 })

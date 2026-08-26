@@ -44,6 +44,10 @@ type InspectionFormPropsT = {
 const optionalNumber = (value: string): number | undefined =>
   value.trim() === '' ? undefined : Number(value)
 
+// Same rule, different empty: `cost` is `.nullable()` in the schema — an unknown price is a recorded
+// „nobody knows", not an absent field — and `undefined` does not satisfy it.
+const nullableNumber = (value: string): number | null => optionalNumber(value) ?? null
+
 export function InspectionForm({
   formId,
   defaultValues,
@@ -67,8 +71,8 @@ export function InspectionForm({
     successMessage,
     onSubmitSuccess,
     onReset: resetFiles,
-    // A draft saved before today restores yesterday's date, and an older one restores the empty
-    // string the form used to default to — neither is what "data przeglądu = dziś" promises.
+    // A restored draft carries whatever date it was saved with — yesterday's, or none at all —
+    // and neither is what „data przeglądu = dziś" promises when the dialog reopens.
     mergeStored: (stored) => ({
       ...stored,
       ...(lockedVehicleId && { vehicle: String(lockedVehicleId) }),
@@ -91,7 +95,7 @@ export function InspectionForm({
       nextDueAt: value.nextDueAt || undefined,
       odometer: optionalNumber(value.odometer),
       nextDueOdometer: optionalNumber(value.nextDueOdometer),
-      cost: value.cost.trim() === '' ? null : Number(value.cost),
+      cost: nullableNumber(value.cost),
       insurer: value.insurer,
       policyNumber: value.policyNumber,
       note: value.note,
