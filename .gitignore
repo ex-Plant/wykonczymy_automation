@@ -97,3 +97,6 @@ tmp-lessons/
 # Root-only scratch file. Anchored: an unanchored `test.js` would ignore any file of that name at
 # any depth, for every contributor, and a later legitimate fixture would vanish from `git status`.
 /test.js
+
+# QA screenshots, written next to the cwd. Anchored for the reason above.
+/*.png
