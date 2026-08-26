@@ -259,15 +259,15 @@ duplicated into `## Progress`.
 
 #### Automated
 
-- [x] 1.1 `pnpm typecheck` passes with `DateFilters` rebuilt over `DateRangePicker`
-- [x] 1.2 Both existing call sites compile unchanged (`fleet-data-table.tsx`, `transfer-filters.tsx`)
+- [x] 1.1 `pnpm typecheck` passes with `DateFilters` rebuilt over `DateRangePicker` — c6a56921
+- [x] 1.2 Both existing call sites compile unchanged (`fleet-data-table.tsx`, `transfer-filters.tsx`) — c6a56921
 
 ### Phase 2: The window on karta pojazdu
 
 #### Automated
 
-- [ ] 2.1 `history-window.test.ts` passes, incl. the `kmSincePrevious` survival case
-- [ ] 2.2 `pnpm typecheck` passes with both tabs taking `hasWindow`
+- [x] 2.1 `history-window.test.ts` passes, incl. the `kmSincePrevious` survival case — PENDING_SHA
+- [x] 2.2 `pnpm typecheck` passes with both tabs taking `hasWindow` — PENDING_SHA
 
 ### Phase 3: Opony column on the fleet listing
 

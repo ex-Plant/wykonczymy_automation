@@ -11,7 +11,7 @@ import {
 import { INSPECTION_TYPE_LABELS, INSPECTION_TYPES } from '@/lib/fleet/inspection-types'
 import { formatPLNOrDash } from '@/lib/utils/format-currency'
 import { formatPLDate } from '@/lib/utils/format-date'
-import { formatKm } from '@/lib/utils/format-distance'
+import { formatKm, formatKmOrDash } from '@/lib/utils/format-distance'
 import type { InspectionHistoryEntryT, VehicleDetailT } from '@/types/fleet'
 
 // Same CSS-grid table as the kosztorys summary blocks (SummaryTable + Label/Value cells), so the two
@@ -75,9 +75,7 @@ function HistoryTable({ entries }: { entries: InspectionHistoryEntryT[] }) {
             {entry.nextDueAt ? formatPLDate(entry.nextDueAt) : EMPTY}
           </SummaryValueCell>
 
-          <SummaryValueCell>
-            {entry.odometer !== null ? formatKm(entry.odometer) : EMPTY}
-          </SummaryValueCell>
+          <SummaryValueCell>{formatKmOrDash(entry.odometer)}</SummaryValueCell>
 
           <SummaryValueCell>
             {entry.kmSincePrevious !== null ? `+${formatKm(entry.kmSincePrevious)}` : EMPTY}
@@ -90,9 +88,7 @@ function HistoryTable({ entries }: { entries: InspectionHistoryEntryT[] }) {
           {shown.policyNumber && <SummaryValueCell>{entry.policyNumber || EMPTY}</SummaryValueCell>}
 
           {shown.oilTarget && (
-            <SummaryValueCell>
-              {entry.nextDueOdometer !== null ? formatKm(entry.nextDueOdometer) : EMPTY}
-            </SummaryValueCell>
+            <SummaryValueCell>{formatKmOrDash(entry.nextDueOdometer)}</SummaryValueCell>
           )}
 
           {shown.attachments && (
@@ -113,7 +109,15 @@ function HistoryTable({ entries }: { entries: InspectionHistoryEntryT[] }) {
   )
 }
 
-export function InspectionHistory({ historyByType }: Pick<VehicleDetailT, 'historyByType'>) {
+/**
+ * `hasWindow` says a date window is set, which is a different claim from an empty section: a car with
+ * no OC at all must keep saying so even while a window is active, or the user reads „nothing in July"
+ * and stops looking.
+ */
+export function InspectionHistory({
+  historyByType,
+  hasWindow,
+}: Pick<VehicleDetailT, 'historyByType'> & { hasWindow: boolean }) {
   return (
     <div className="flex flex-col gap-6">
       {INSPECTION_TYPES.map((type) => (
@@ -121,7 +125,9 @@ export function InspectionHistory({ historyByType }: Pick<VehicleDetailT, 'histo
           <h2 className="mb-2 text-sm font-semibold">{INSPECTION_TYPE_LABELS[type].pl}</h2>
 
           {historyByType[type].length === 0 ? (
-            <p className="text-muted-foreground text-xs">Brak wpisów</p>
+            <p className="text-muted-foreground text-xs">
+              {hasWindow ? 'Brak wpisów w wybranym okresie' : 'Brak wpisów'}
+            </p>
           ) : (
             <HistoryTable entries={historyByType[type]} />
           )}

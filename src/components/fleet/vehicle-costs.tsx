@@ -18,13 +18,19 @@ const COLS = `${SUMMARY_LABEL_COL} ${SUMMARY_VALUE_COL} ${SUMMARY_VALUE_COL}`
 
 export function VehicleCosts({
   historyByType,
+  hasWindow,
 }: {
   historyByType: Record<InspectionTypeT, InspectionHistoryEntryT[]>
+  hasWindow: boolean
 }) {
   const { byType, total, entries } = summariseCosts(historyByType)
 
   if (entries.length === 0) {
-    return <p className="text-muted-foreground text-xs">Brak przeglądów</p>
+    return (
+      <p className="text-muted-foreground text-xs">
+        {hasWindow ? 'Brak przeglądów w wybranym okresie' : 'Brak przeglądów'}
+      </p>
+    )
   }
 
   return (
