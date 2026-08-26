@@ -40,15 +40,11 @@ const deadlineTable = (title: string, entries: DigestEntryT[]): string =>
   )
 
 /**
- * Nobody tracks a target odometer against their dashboard, so announcing one („wymiana przy 170 000")
- * asks the reader to do the arithmetic the sweep already did. The line states the distance since the
- * change and nothing else — the same figure the fleet table and the vehicle page show, so one oil
- * change never carries three numbers across three surfaces.
+ * Distance since the change and nothing else — the same figure the fleet table and the vehicle page
+ * show, so one oil change never carries three numbers across three surfaces.
  */
 const oilLabel = (entry: OdometerEntryT): string =>
-  entry.kmSinceChange != null
-    ? `przekroczony interwał wymiany oleju — ${formatKm(entry.kmSinceChange)} od ostatniej wymiany`
-    : `przekroczony interwał wymiany oleju o ${formatKm(Math.abs(entry.kmRemaining))}`
+  `przekroczony interwał wymiany oleju — ${formatKm(entry.kmSinceChange)} od ostatniej wymiany`
 
 const odometerSection = (entries: OdometerEntryT[]): string =>
   section(

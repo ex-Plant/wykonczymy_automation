@@ -12,7 +12,6 @@ const entry = (performedAt: string, cost: number | null): InspectionHistoryEntry
   performedAt,
   nextDueAt: null,
   odometer: null,
-  nextDueOdometer: null,
   cost,
   insurer: '',
   policyNumber: '',

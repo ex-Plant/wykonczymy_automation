@@ -78,16 +78,6 @@ export const VehicleInspections: CollectionConfig = {
       label: { en: 'Odometer (km)', pl: 'Przebieg (km)' },
     },
     {
-      // The oil change is the one type that genuinely runs on mileage, so it carries a kilometre
-      // target alongside its date. Every other type would have nothing to compare it against.
-      name: 'nextDueOdometer',
-      type: 'number',
-      label: { en: 'Next due at (km)', pl: 'Następna wymiana przy (km)' },
-      admin: {
-        condition: (data) => data?.type === 'OIL_CHANGE',
-      },
-    },
-    {
       // Both belong to the event, not to the car: each polisa brings its own insurer and number, and
       // only the history keeps that honest. Independently optional — the przyczepa's polisa has a
       // number but no insurer recorded.

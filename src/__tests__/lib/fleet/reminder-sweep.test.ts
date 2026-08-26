@@ -90,7 +90,6 @@ describe('buildFleetDigest', () => {
           event('OIL_CHANGE', '2026-01-01T00:00:00.000Z', {
             nextDueAt: '2027-01-01T00:00:00.000Z',
             odometer: 100_000,
-            nextDueOdometer: 115_000,
           }),
           event('TECHNICAL', '2026-08-01T00:00:00.000Z', {
             nextDueAt: '2027-08-01T00:00:00.000Z',
@@ -107,9 +106,6 @@ describe('buildFleetDigest', () => {
         registration: 'WX 00001',
         make: 'Ford',
         model: 'Transit',
-        targetOdometer: 115_000,
-        latestOdometer: 116_000,
-        kmRemaining: -1_000,
         kmSinceChange: 16_000,
       },
     ])
@@ -120,18 +116,17 @@ describe('buildFleetDigest', () => {
     expect(digest.overdue.concat(digest.within7)).toEqual([])
   })
 
-  it('stays silent while a typed kilometre target is still ahead', () => {
+  it('stays silent while the interval is still ahead', () => {
     const digest = buildFleetDigest(
       [
         history([
           event('OIL_CHANGE', '2026-01-01T00:00:00.000Z', {
             nextDueAt: '2027-01-01T00:00:00.000Z',
             odometer: 100_000,
-            nextDueOdometer: 115_000,
           }),
           event('TECHNICAL', '2026-08-01T00:00:00.000Z', {
             nextDueAt: '2027-08-01T00:00:00.000Z',
-            odometer: 114_500,
+            odometer: 109_500,
           }),
         ]),
       ],
@@ -162,8 +157,8 @@ describe('buildFleetDigest', () => {
   })
 })
 
-describe('buildFleetDigest — oil interval without a typed target', () => {
-  it('derives the target from the interval so an untargeted oil change is still watched', () => {
+describe('buildFleetDigest — the oil interval', () => {
+  it('watches an oil change whose own reading is years old', () => {
     const digest = buildFleetDigest(
       [
         history([
@@ -180,9 +175,6 @@ describe('buildFleetDigest — oil interval without a typed target', () => {
         registration: 'WX 00001',
         make: 'Ford',
         model: 'Transit',
-        targetOdometer: 110_000,
-        latestOdometer: 115_000,
-        kmRemaining: -5_000,
         kmSinceChange: 15_000,
       },
     ])

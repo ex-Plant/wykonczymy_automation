@@ -78,7 +78,6 @@ export const historyOfType = (
       performedAt: toWarsawDay(event.performedAt),
       nextDueAt: event.nextDueAt ? toWarsawDay(event.nextDueAt) : null,
       odometer: event.odometer,
-      nextDueOdometer: event.nextDueOdometer,
       cost: event.cost,
       insurer: event.insurer,
       policyNumber: event.policyNumber,

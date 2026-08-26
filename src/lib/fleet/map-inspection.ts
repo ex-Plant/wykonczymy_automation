@@ -17,7 +17,6 @@ export const toInspectionEvent = (row: VehicleInspection): InspectionRecordT => 
   performedAt: row.performedAt,
   nextDueAt: row.nextDueAt ?? null,
   odometer: row.odometer ?? null,
-  nextDueOdometer: row.nextDueOdometer ?? null,
   notifiedThreshold: row.notifiedThreshold ?? null,
   notifiedAt: row.notifiedAt ?? null,
   odometerNotifiedAt: row.odometerNotifiedAt ?? null,

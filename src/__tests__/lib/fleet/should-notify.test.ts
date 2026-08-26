@@ -85,22 +85,16 @@ describe('shouldNotify — date leg', () => {
 })
 
 describe('shouldNotify — kilometre leg', () => {
+  // Where the line falls is asserted in oil.test.ts, against the app's own verdict. Here: the leg's
+  // mechanics — what silences it, and that it never leans on the date leg.
   const oil = (overrides = {}) =>
     event('OIL_CHANGE', '2026-01-10', {
       nextDueAt: '2027-01-10',
-      nextDueOdometer: 130_000,
+      odometer: 100_000,
       ...overrides,
     })
 
-  it('stays silent right up to the target', () => {
-    expect(shouldNotify({ row: oil(), today: TODAY, latestOdometer: 130_000 }).odometer).toBe(false)
-  })
-
-  it('fires on the first kilometre past the target', () => {
-    expect(shouldNotify({ row: oil(), today: TODAY, latestOdometer: 130_001 }).odometer).toBe(true)
-  })
-
-  it('fires when the target is already passed', () => {
+  it('fires once the interval since the change is behind us', () => {
     expect(shouldNotify({ row: oil(), today: TODAY, latestOdometer: 141_000 }).odometer).toBe(true)
   })
 
@@ -114,8 +108,14 @@ describe('shouldNotify — kilometre leg', () => {
     expect(shouldNotify({ row: oil(), today: TODAY, latestOdometer: null }).odometer).toBe(false)
   })
 
-  it('is an oil-change concept only — no other type has a kilometre target', () => {
-    const row = event('TECHNICAL', '2026-01-10', { nextDueOdometer: 130_000 })
+  it('stays silent for a change entered without a reading of its own', () => {
+    const row = oil({ odometer: null })
+
+    expect(shouldNotify({ row, today: TODAY, latestOdometer: 141_000 }).odometer).toBe(false)
+  })
+
+  it('is an oil-change concept only — no other type runs on mileage', () => {
+    const row = event('TECHNICAL', '2026-01-10', { odometer: 100_000 })
 
     expect(shouldNotify({ row, today: TODAY, latestOdometer: 141_000 }).odometer).toBe(false)
   })
@@ -126,40 +126,5 @@ describe('shouldNotify — kilometre leg', () => {
     const decision = shouldNotify({ row: oil(), today: TODAY, latestOdometer: 141_000 })
 
     expect(decision).toEqual({ bucket: null, date: false, odometer: true })
-  })
-})
-
-describe('shouldNotify — kilometre leg without a typed target', () => {
-  const TODAY = '2026-08-18'
-
-  it('fires once the interval since the oil change is exceeded', () => {
-    const row = event('OIL_CHANGE', '2026-01-10', { odometer: 100_000 })
-
-    expect(shouldNotify({ row, today: TODAY, latestOdometer: 110_001 }).odometer).toBe(true)
-  })
-
-  it('stays quiet inside the interval', () => {
-    const row = event('OIL_CHANGE', '2026-01-10', { odometer: 100_000 })
-
-    expect(shouldNotify({ row, today: TODAY, latestOdometer: 110_000 }).odometer).toBe(false)
-  })
-
-  // A typed target is the owner's own interval; the fallback must not second-guess it.
-  it('does not fall back to the interval when a target was typed', () => {
-    const row = event('OIL_CHANGE', '2026-01-10', {
-      odometer: 100_000,
-      nextDueOdometer: 130_000,
-    })
-
-    expect(shouldNotify({ row, today: TODAY, latestOdometer: 115_000 }).odometer).toBe(false)
-  })
-
-  it('stays quiet once already announced', () => {
-    const row = event('OIL_CHANGE', '2026-01-10', {
-      odometer: 100_000,
-      odometerNotifiedAt: '2026-08-01T00:00:00.000Z',
-    })
-
-    expect(shouldNotify({ row, today: TODAY, latestOdometer: 130_000 }).odometer).toBe(false)
   })
 })
