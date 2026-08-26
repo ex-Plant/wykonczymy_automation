@@ -157,10 +157,33 @@ Pass ran clean — **no bugs found**, all five Phase-2 boxes ticked. No open fin
 
 ### Phase 1: Materiały as brutto through the waterfall + formula hint
 
-- [ ] Podsumowanie in **Netto** axis: „Materiały", each category row, Łącznie, and Do zapłaty all show `brutto/(1+VAT)`; in **Brutto** axis they show the raw amount; the two columns differ by the VAT.
-- [ ] The formula hint appears on materiały rows and reads correctly (VAT subtracted).
-- [ ] Robocizna („Suma prac wykonanych") figures are unchanged; udział percentages still sum sensibly.
-- [ ] Share/preview render (`preview`) renders the same derived figures without owner-only links/screams.
+- [x] Podsumowanie in **Netto** axis: „Materiały", each category row, Łącznie, and Do zapłaty all show `brutto/(1+VAT)`; in **Brutto** axis they show the raw amount; the two columns differ by the VAT.
+      _Verified: inw. 135 (staging, kosztorys_v2), vat_rate=0.08 (SQL). Set „Sposób rozliczenia
+      materiałów"=Netto (persists `materials_net_rate`=0.08, SQL-confirmed). Materiały tab table:
+      „Materiały budowlane" Netto 92,59 / Brutto 100,00 / Różnica -7,41 (100/1.08=92,5926 ✓,
+      diff=VAT ✓). Top „Podsumowanie" tab, axis=Netto: Robocizna 5000,00, Materiały 92,59,
+      Łącznie 5092,59, Wpłaty -3277,78, Pozostało do zapłaty 1814,81. Switched „Rozliczenie
+      robocizny"→Brutto (via „Opcje rozliczenia" popover + confirm dialog, settlement_mode SQL-
+      confirmed GROSS): Robocizna 5400,00 (5000×1.08 ✓), Materiały 100,00 (raw ✓), Łącznie
+      5500,00, Wpłaty -2460,00 (only the GROSS/przelew deposit counts, not the 1000 zł cash one —
+      warned explicitly in the panel copy), Pozostało do zapłaty 3040,00. All arithmetic checks out._
+- [x] The formula hint appears on materiały rows and reads correctly (VAT subtracted).
+      _Verified: „Więcej o: Sposób rozliczenia materiałów" tooltip (role=tooltip in DOM) reads
+      „Wydatki inwestycyjne rozliczane po kwocie netto z faktury. Stawkę vat ustawiasz poniżej.
+      Kwota brutto zostanie pomniejszona o vat." — correct description of the netto derivation._
+- [x] Robocizna („Suma prac wykonanych") figures are unchanged; udział percentages still sum sensibly.
+      _Verified: „Robocizna" sub-tab always renders both Netto/Brutto columns per etap
+      (Etap 1 3000,00/3240,00; Etap 2 2000,00/2160,00; Razem 5000,00/5400,00) — identical
+      before and after flipping `settlement_mode` GROSS→NET, i.e. this table doesn't depend on
+      the panel axis at all. Udział: Netto axis „Robocizna 98,2% / Materiały 1,8%"; Brutto axis
+      „Robocizna 98,0% / Materiały 2,0%" — both pairs sum to 100%._
+- [x] Share/preview render (`preview`) renders the same derived figures without owner-only links/screams.
+      \_Verified: `/podglad-inwestora/135` (investor preview, axis was NET at the time) shows the
+      identical Podsumowanie figures (Robocizna 5000,00 / Materiały 92,59 / Łącznie 5092,59 /
+      Wpłaty -3277,78 / Pozostało do zapłaty 1814,81, udział 98,2%/1,8%) with only
+      Podsumowanie/Materiały/Robocizna tabs — no „Podwykonawcy"/„Marża" tabs and no „Opcje
+      rozliczenia" button (owner-only controls correctly absent). One pre-existing console 400 on
+      `/` (an unrelated background beacon, present on every route all session) — not a regression.
 
 ## kosztorys-tryb-mieszany — cash-settlement view w Podsumowaniu (slice B)
 
@@ -763,7 +786,7 @@ came with EX-588.
       `/inwestycje?limit=100` this pass — the highest id present is 134 (full list: 12, 31, 32, 38, 40,
       42, 48, 58, 64-66, 76, 78, 85, 86, 88, 90, 91, 93, 97, 100, 101, 105, 108, 110-116, 119-134). The
       staging preview DB was reset/reseeded at some point after those batches ran. Every `- [x] _Verified:
-  inw. 135…_` line above them stays valid (it was true when driven), but a **new** attempt to reuse
+inw. 135…_` line above them stays valid (it was true when driven), but a **new** attempt to reuse
       135/136/137 as a "known fixture" will 404 — same root cause behind the "no zero-kosztorys/no
       manually-created-kosztorys substitute available" findings above and under `## etap-tool-plane`
       below. Used inw. 31 as this pass's stand-in where a fresh fixture was needed.
@@ -2720,13 +2743,21 @@ Setup: baza testowa 5435 (`DB_POSTGRES_URL_TEST`) z rozpisanym kosztorysem
 z zaksięgowanymi wpłatami od inwestora **obu form** (gotówka i przelew) oraz możliwość przestawienia
 jej trybu rozliczenia.
 
-- [ ] Na `/inwestycje` bilans v2 inwestycji z wpłatami równa się „Pozostało do zapłaty" z panelu Podsumowania tej samej inwestycji, ze znakiem przeciwnym
-- [ ] Inwestycja rozliczana netto pokazuje „nie dotyczy" w kolumnie bilansu brutto i odwrotnie; mieszana pokazuje netto
-- [ ] Dialog edycji wpłaty nie ma pola formy wpłaty i zapis edycji nie zmienia tagu
-- [ ] W panelu admina pole „Rozliczenie netto/brutto" na zaksięgowanej wpłacie jest tylko do odczytu
-- [ ] Zaksięgowanie wydatku (nie wpłaty) zostawia tag pusty, także po edycji
-- [ ] Kolumna na `/transfery` mówi „Forma wpłaty" i pokazuje „Gotówka" / „Przelew"
-- [ ] Formularz wpłaty gotówką ma jedno pole kwoty bez słowa „netto" w etykiecie
+- [x] Na `/inwestycje` bilans v2 inwestycji z wpłatami równa się „Pozostało do zapłaty" z panelu Podsumowania tej samej inwestycji, ze znakiem przeciwnym
+      _Verified: staging inw. 135 (tryb NET), zaksięgowano 2 wpłaty od inwestora (#4599 gotówka 1000 zł netto, #4600 przelew 2460 zł brutto/2277,78 zł netto z faktury). `/inwestycje` wiersz: „Bilans netto v2" = **-1722,22 zł**. `/inwestycje/135?widok=v2`: „Pozostało do zapłaty" = **1722,22** (robocizna netto 5000,00 − wpłaty netto 3277,78). Znak przeciwny potwierdzony liczbowo._
+- [x] Inwestycja rozliczana netto pokazuje „nie dotyczy" w kolumnie bilansu brutto i odwrotnie; mieszana pokazuje netto
+      _Verified na żywo na inw. 135, przełączając „Opcje rozliczenia" → „Rozliczenie robocizny" (z potwierdzeniem ostrzeżenia „zmiana widoczna dla inwestora"), za każdym razem sprawdzone SQL-em (`settlement_mode`) i odczytem wiersza `/inwestycje`:_ - _NET: „Bilans netto v2" = -1722,22 zł, „Bilans brutto v2" = **nie dotyczy**_ - _GROSS: „Bilans netto v2" = **nie dotyczy**, „Bilans brutto v2" = -2940,00 zł_ - _MIXED: „Bilans netto v2" = -1722,22 zł (ta sama wartość co NET), „Bilans brutto v2" = **nie dotyczy**_
+      _Zgodne z kodem: `MONEY_AXIS_BY_MODE` w `src/lib/kosztorys/settlement-mode.ts` mapuje `MIXED → 'net'`. Inwestycja przywrócona na NET po teście._
+- [x] Dialog edycji wpłaty nie ma pola formy wpłaty i zapis edycji nie zmienia tagu
+      _Verified: „Edytuj transakcję" na #4599 (gotówka, `vat_plane=NET`) — dialog ma tylko Opis/Data/Inwestycja/Kategoria/Notatka/faktury, **brak** pola Metoda płatności/Forma wpłaty. Zmieniono Opis na „QA edit test", zapisano — SQL po zapisie: `payment_method=CASH`, `vat_plane=NET` bez zmian._
+- [x] W panelu admina pole „Rozliczenie netto/brutto" na zaksięgowanej wpłacie jest tylko do odczytu
+      _Verified: `/admin/collections/transactions/4599` → sekcja „Rozliczenie netto/brutto" renderuje wartość „Netto" jako tekst obok `button [disabled]` — pole nieedytowalne._
+- [x] Zaksięgowanie wydatku (nie wpłaty) zostawia tag pusty, także po edycji
+      _Verified: dodano wydatek inwestycyjny #4601 (100 zł, Materiały budowlane, gotówka) — SQL: `type=INVESTMENT_EXPENSE`, `payment_method=CASH`, `vat_plane` puste (NULL). Kolumna „Forma wpłaty" w tabeli transferów renderuje „—". Edytowano Opis (edit dialog nie ma pola formy wpłaty, tak jak przy wpłacie), zapisano — `vat_plane` po edycji nadal puste._
+- [x] Kolumna na `/transfery` mówi „Forma wpłaty" i pokazuje „Gotówka" / „Przelew"
+      _Verified: trasa główna transakcji (`/`, ten sam komponent `src/components/tables/transfers.tsx` co inwestycyjna tabela transferów — projekt nie ma osobnej trasy `/transfery`, nawigacja „Transakcje" wskazuje `/`) — nagłówek „Forma wpłaty" obecny, wiersze #4599/#4600/#4601 pokazują „Gotówka" / „Przelew" / „—" odpowiednio._
+- [x] Formularz wpłaty gotówką ma jedno pole kwoty bez słowa „netto" w etykiecie
+      _Verified w kodzie i UI: `PlaneAmountField` (`plane-amount-field.tsx:43-56`) renderuje dla NET jedno pole „Kwota (PLN)" (bez „netto"); przy GROSS pokazuje dwa pola „Kwota brutto (PLN)" + „Kwota netto z faktury (PLN)". Potwierdzone na żywo przy zapisie wpłaty #4599 (Gotówka netto → jedno pole „Kwota (PLN)")._
 
 ## EX-720 — nadmiarowe odczyty na trasach kosztorysu
 
@@ -3292,3 +3323,22 @@ Zalogowany jako OWNER; do checków uprawnień drugie konto z rolą MANAGER.
 - [ ] Ręczne wywołanie `/api/cron/fleet-reminders` wysyła jedną wiadomość na wszystkie adresy z listy „Powiadomienia o terminach" (nie osobne maile)
 - [ ] Nowe zgłoszenie z formularza WWW dociera na wszystkie adresy z listy „Powiadomienia o nowych zgłoszeniach"
 - [ ] Globalu `notification-recipients` **nie** widać w menu panelu `/admin`
+
+## forms-reset-clear — formularze czyszczą się po udanym zapisie
+
+Setup: baza testowa 5435, zalogowany jako OWNER. Każdy check robi się w oknie otwartym z opcją
+„zapisz i dodaj kolejny" (dialog zostaje otwarty), bo tylko wtedy widać wyczyszczenie na oczy.
+Szkice siedzą w `sessionStorage`, więc między próbami warto odświeżyć kartę.
+
+- [ ] „Nowy wydatek": wypełnij typ, datę, kasę, inwestycję, pracownika, „rozliczone" i pozycję → zapisz z zostawionym oknem → **wszystkie** pola nagłówka wracają do pustych/domyślnych, nie zostają wypełnione
+- [ ] Ten sam formularz po zapisie: pozycja jest jedna, pusta, bez wpiętego pliku i bez plakietki po skanie
+- [ ] Plik wpięty do pozycji przed zapisem znika po zapisie — pole wyboru pliku jest puste, nie trzyma nazwy poprzedniego
+- [ ] Zamknij okno po zapisie i otwórz je ponownie: formularz jest pusty (szkic nie odtwarza wysłanych wartości)
+- [ ] Odczekaj ~2 s po zapisie, dopiero potem zamknij i otwórz okno — nadal pusty (szkic nie wraca z opóźnieniem)
+- [ ] „Wyczyść formularz" w „Nowym wydatku" czyści nagłówek, pozycje i wpięte pliki
+- [ ] Okno otwarte z `/inwestycje/<id>`: po zapisie i po „Wyczyść" inwestycja z adresu wraca ustawiona, reszta pól pusta
+- [ ] „Nowa wpłata": po zapisie z zostawionym oknem pola są puste, a saldo kasy obok pola nie pokazuje starej kwoty
+- [ ] „Przelew wewnętrzny", „Nowy pracownik", „Nowy pojazd", „Nowa inwestycja", „Nowy przegląd": po zapisie z zostawionym oknem formularz jest pusty
+- [ ] „Nowy przegląd" otwarty z karty pojazdu: po zapisie pojazd zostaje ustawiony, a data wraca na dziś
+- [ ] Edycja transakcji: „Wyczyść formularz" przywraca **zapisane** wartości wiersza, nie czyści pól do pustych
+- [ ] Edycja transakcji: pliki wpięte przed „Wyczyść" znikają, a już zapisane faktury zostają

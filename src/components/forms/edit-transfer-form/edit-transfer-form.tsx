@@ -51,6 +51,12 @@ export function EditTransferForm({
   const { submit } = useFormSubmit(FORM_ID)
   const { files, isIngesting, inputKey, fileInputProps, reset: resetFiles } = useFilePickIngest()
 
+  // Bare reset: no draft here, so `defaultValues` really is the row — clearing means „back to saved".
+  function handleReset() {
+    form.reset()
+    resetFiles()
+  }
+
   const form = useAppForm({
     defaultValues: {
       description: row.description,
@@ -78,7 +84,6 @@ export function EditTransferForm({
       }
 
       await submit(!!keepOpen, {
-        form,
         action: async () => {
           // Enter bypasses the disabled submit button, so the guard has to exist here too —
           // saving mid-ingest would persist the row without the pages still being converted.
@@ -91,7 +96,7 @@ export function EditTransferForm({
         },
         successMessage: 'Transakcja zaktualizowana',
         onSubmitSuccess,
-        onReset: resetFiles,
+        onReset: handleReset,
       })
 
       return false
@@ -114,7 +119,7 @@ export function EditTransferForm({
 
   return (
     <form.AppForm>
-      <FormClearButton onReset={resetFiles} />
+      <FormClearButton onReset={handleReset} />
       <form
         onSubmit={(e) => {
           e.preventDefault()

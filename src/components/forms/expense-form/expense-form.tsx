@@ -94,15 +94,20 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
     reset: resetInvoiceFiles,
   } = useInvoiceIngest({ recoveredFiles, storedLineItems: storedValues?.lineItems })
 
-  // FormClearButton runs form.reset() (restores the mount-time default, whose row id is stale) and
-  // then this. Mint a fresh-id blank row so its React key changes and the row — with its uncontrolled
-  // FileInput — remounts, clearing any native FileList that form.reset() can't reach.
   function handleReset() {
+    form.reset(blankValues)
+    // Fresh id so the row remounts and its uncontrolled FileInput drops the native FileList no reset
+    // reaches. Set apart from the reset above, not folded into it: reset adopts whatever it is given
+    // as the new defaults, and the next render would swap the stale row back in. Meta-free, or the
+    // draft listener re-persists what was just cleared.
+    form.setFieldValue('lineItems', [makeLineItem()], {
+      dontUpdateMeta: true,
+      dontRunListeners: true,
+    })
     resetFormData()
     resetRegisterBalance()
     resetInvoiceFiles()
     resetGeneration()
-    form.setFieldValue('lineItems', [makeLineItem()])
   }
 
   // Fills the select only when it would otherwise be empty — a draft that already names an
@@ -172,7 +177,6 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
       const files = positionalFiles(value.lineItems, getFiles())
 
       await submit(!!keepOpen, {
-        form,
         // Submit is the only upload site: the AI scan sends raw bytes and persists nothing, so
         // every attached file is uploaded once here.
         action: () =>

@@ -4,15 +4,13 @@ import { toastMessage } from '@/lib/utils/toast'
 import { useOptimisticFormStore } from '@/stores/optimistic-form-store'
 import type { ActionResultT } from '@/types/action'
 
-type ResettableFormT = { reset: () => void }
-
 type SubmitOptionsT = {
-  form: ResettableFormT
   action: () => Promise<ActionResultT>
   successMessage: string
   files?: Map<number, File[]>
   onSubmitSuccess: () => void
-  onReset?: () => void
+  /** Clearing in full, the form reset included — this hook never touches the form. */
+  onReset: () => void
 }
 
 export function useFormSubmit(formId: string) {
@@ -45,8 +43,7 @@ export function useFormSubmit(formId: string) {
       if (result.success) {
         toastMessage(opts.successMessage, 'success')
         if (result.warning) toastMessage(result.warning, 'warning', 6000)
-        opts.form.reset()
-        opts.onReset?.()
+        opts.onReset()
         // The server action revalidates the cache tag; refresh re-renders the RSC
         // tree so the new row is visible without a manual reload.
         router.refresh()
@@ -60,7 +57,7 @@ export function useFormSubmit(formId: string) {
         opts.action,
         opts.successMessage,
         () => {
-          opts.onReset?.()
+          opts.onReset()
           router.refresh()
         },
       )

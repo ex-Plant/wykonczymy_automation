@@ -91,6 +91,9 @@ export function useManagedForm<TValues, TData>({
   const resetFormData = useFormStore((s) => s.resetFormData)
 
   const reset = () => {
+    // `defaultValues`, never `initialValues` — the latter is the restored draft, so a bare
+    // `form.reset()` hands back the values that were just submitted.
+    form.reset(defaultValues)
     // Clearing the single slot is only ours to do if we wrote it — an edit form doing so would drop
     // an unrelated „Dodaj…" draft still in progress.
     if (persistDraft) resetFormData()
@@ -128,7 +131,6 @@ export function useManagedForm<TValues, TData>({
       }
 
       await submit(!!keepOpen, {
-        form,
         action: () => action(toData(value as TValues)),
         successMessage,
         onSubmitSuccess,
