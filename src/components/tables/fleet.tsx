@@ -18,7 +18,6 @@ export function getFleetColumns() {
     col.accessor('registration', {
       id: 'registration',
       header: 'Rejestracja',
-      meta: { canHide: false },
       cell: (info) => <span className="font-medium">{info.getValue()}</span>,
     }),
     col.accessor((row) => `${row.make} ${row.model}`, {

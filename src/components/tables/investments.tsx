@@ -89,7 +89,7 @@ export function getInvestmentColumns({ userRole }: InvestmentColumnOptionsT) {
     col.accessor('name', {
       id: 'name',
       header: 'Nazwa',
-      meta: { canHide: false, minWidth: 'min-w-56' },
+      meta: { minWidth: 'min-w-56' },
     }),
 
     col.accessor('hasSheet', {

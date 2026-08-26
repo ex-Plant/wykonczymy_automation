@@ -441,16 +441,16 @@ Run once, after Phase 5:
 
 #### Automated
 
-- [x] 1.1 Moved algebra spec passes at its new path
-- [x] 1.2 Kosztorys column-order grid spec still passes
-- [x] 1.3 No import of the old lib or dialog path remains
+- [x] 1.1 Moved algebra spec passes at its new path — bef2cffe
+- [x] 1.2 Kosztorys column-order grid spec still passes — bef2cffe
+- [x] 1.3 No import of the old lib or dialog path remains — bef2cffe
 
 ### Phase 2: Retire `canHide`
 
 #### Automated
 
-- [ ] 2.1 No `canHide` reference survives in `src`
-- [ ] 2.2 The tables' own specs still pass
+- [x] 2.1 No `canHide` reference survives in `src`
+- [x] 2.2 The tables' own specs still pass
 
 ### Phase 3: Ranks in `DataTable`
 

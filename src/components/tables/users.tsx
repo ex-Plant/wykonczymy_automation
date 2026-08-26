@@ -18,7 +18,6 @@ export function getUserColumns({ onToggle }: UserColumnOptionsT) {
     col.accessor('name', {
       id: 'name',
       header: 'Imię i nazwisko',
-      meta: { canHide: false },
     }),
     col.accessor('role', {
       id: 'role',
