@@ -340,13 +340,13 @@ section — not duplicated into `## Progress`.
 
 #### Automated
 
-- [x] 3.1 `pnpm typecheck` passes with the card mounted on both pages
-- [x] 3.2 Action spec passes: empty list rejected, malformed address rejected, sibling lists intact
+- [x] 3.1 `pnpm typecheck` passes with the card mounted on both pages — 44fb9ab7
+- [x] 3.2 Action spec passes: empty list rejected, malformed address rejected, sibling lists intact — 44fb9ab7
 - [ ] 3.3 Browser-level E2E authored via `/10x-e2e` **or** filed to `e2e-backlog` with the issue id recorded
 
 ### Phase 4: Drop the four env vars
 
 #### Automated
 
-- [ ] 4.1 Tree-wide grep for the four var names returns nothing
-- [ ] 4.2 `pnpm typecheck` passes without them in `env/schema.ts`
+- [x] 4.1 Tree-wide grep for the four var names returns nothing — one documentary mention left in the migration header (what the seed replaced); no code reads them
+- [x] 4.2 `pnpm typecheck` passes without them in `env/schema.ts`
