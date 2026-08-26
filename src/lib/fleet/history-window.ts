@@ -20,3 +20,12 @@ export const narrowHistory = (
   byInspectionType((type) =>
     historyByType[type].filter((entry) => isWithinRange(entry.performedAt, range)),
   )
+
+/**
+ * „w wybranym okresie" blames the window, so it may only be said when the window is what emptied the
+ * section — not merely because one is set. A car that has never had an OC keeps saying „Brak wpisów"
+ * while a window is active; otherwise the user reads „nothing in July", widens the window and finds
+ * nothing there either. Written once because both surfaces that render it must agree.
+ */
+export const emptyHistoryLabel = (noun: string, hiddenByWindow: boolean): string =>
+  hiddenByWindow ? `Brak ${noun} w wybranym okresie` : `Brak ${noun}`

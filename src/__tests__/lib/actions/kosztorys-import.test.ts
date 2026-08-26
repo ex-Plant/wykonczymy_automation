@@ -158,8 +158,9 @@ describe.skipIf(!ENV_READY)('kosztorys import actions — persisted state (DB)',
   })
 
   it('ignores a plan handed in by the caller and writes the one it derived itself', async () => {
-    // The action takes no plan by design; this asserts the design holds at runtime rather than only
-    // in the types, since a client can call a server action with any argument list it likes.
+    // The second parameter is the rozliczenie, never a plan — the action re-reads the sheet. Asserted
+    // at runtime rather than only in the types, since a client can call a server action with any
+    // argument list it likes.
     const forged = { sections: [{ id: 1, name: 'Podłożone przez klienta', displayOrder: 0 }] }
     await (applyKosztorysImport as unknown as (id: number, plan: unknown) => Promise<unknown>)(
       investmentId,

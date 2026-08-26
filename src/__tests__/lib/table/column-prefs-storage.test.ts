@@ -4,7 +4,7 @@ import {
   readVisibility,
   writeOrder,
   writeVisibility,
-} from '@/components/ui/data-table/column-prefs-storage'
+} from '@/lib/table/column-prefs-storage'
 
 // The node test env has no window; stand in an in-memory localStorage so the read/write path runs
 // for real and the assertions are on what was PERSISTED, not on a return value.
@@ -27,6 +27,20 @@ beforeEach(() => {
 })
 
 afterEach(() => vi.unstubAllGlobals())
+
+describe('readVisibility', () => {
+  // The one stored value that white-screens the table rather than degrading: consumers index the
+  // result (`columnVisibility[id] !== false`), and `null` parses without throwing.
+  it('degrades a stored null to an empty map', () => {
+    backing.set('table-columns:transfers', 'null')
+    expect(readVisibility('transfers')).toEqual({})
+  })
+
+  it('drops non-boolean entries on read', () => {
+    backing.set('table-columns:transfers', '{"amount":false,"date":"nope"}')
+    expect(readVisibility('transfers')).toEqual({ amount: false })
+  })
+})
 
 describe('readOrder / writeOrder', () => {
   it('round-trips a rank map', () => {

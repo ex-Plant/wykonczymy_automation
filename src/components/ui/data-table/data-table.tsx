@@ -17,8 +17,14 @@ import { VirtualizedTableBody } from './virtualized-table-body'
 import { TableHeader } from './table-header'
 import { TableFooter } from './table-footer'
 import { EmptyRow } from './empty-row'
-import { readOrder, readVisibility, writeOrder, writeVisibility } from './column-prefs-storage'
-import { orderColumnKeys, type ColumnRanksT } from '@/lib/table/column-order'
+import {
+  readOrder,
+  readVisibility,
+  writeOrder,
+  writeVisibility,
+} from '@/lib/table/column-prefs-storage'
+import { baseRanksFromKeys, orderColumnKeys, type ColumnRanksT } from '@/lib/table/column-order'
+import { leafColumnIds } from '@/lib/table/leaf-column-ids'
 
 // One object rather than a positional list: the toolbar needs the rank writers as well as the
 // table, and every widening of that set would otherwise re-touch all eight call sites.
@@ -26,17 +32,13 @@ export type DataTableToolbarContextT<TData> = {
   table: Table<TData>
   columnVisibility: VisibilityState
   ranks: ColumnRanksT
+  // Read off the DECLARED column list, never the ordered one: a rank is a midpoint between its new
+  // neighbours' ranks, and an unranked neighbour falls back to its base. Derive these from the
+  // already-permuted list and the second drop computes its midpoint against neighbours that have
+  // already moved, landing one slot off. Same rule as the kosztorys grid's `assembleBaseRanks`.
+  baseRanks: ColumnRanksT
   setRank: (key: string, rank: number) => void
   resetOrder: () => void
-}
-
-// TanStack resolves a string accessorKey into the column id; a function accessor has no key and must
-// carry an explicit id. Reading the defs (rather than the table) keeps the order out of the table's
-// own construction, which would otherwise have to read a table that doesn't exist yet.
-function leafColumnIds<TData>(columns: ColumnDef<TData, unknown>[]): string[] {
-  return columns.map(
-    (column) => column.id ?? ('accessorKey' in column ? String(column.accessorKey) : ''),
-  )
 }
 
 type DataTablePropsT<TData> = {
@@ -85,8 +87,6 @@ export function DataTable<TData>({
     setRanks(readOrder(storageKey))
   }, [storageKey])
 
-  // Sparse: only a column the user actually dragged gets an entry, so an empty map is exactly the
-  // declared order and a column added later ships at the position the code gives it.
   function persistRanks(next: ColumnRanksT) {
     setRanks(next)
     if (storageKey) writeOrder(storageKey, next)
@@ -100,13 +100,15 @@ export function DataTable<TData>({
     persistRanks({})
   }
 
+  const declaredColumnIds = leafColumnIds(columns)
+
   const table = useReactTable({
     data: data as TData[],
     columns,
     state: {
       sorting,
       columnVisibility,
-      columnOrder: orderColumnKeys(leafColumnIds(columns), ranks),
+      columnOrder: orderColumnKeys(declaredColumnIds, ranks),
     },
     onSortingChange: setSorting,
     onColumnVisibilityChange: (updater) => {
@@ -141,7 +143,14 @@ export function DataTable<TData>({
     <div className={cn('space-y-2', className)}>
       {toolbar && (
         <div className="flex items-center gap-2">
-          {toolbar({ table, columnVisibility, ranks, setRank, resetOrder })}
+          {toolbar({
+            table,
+            columnVisibility,
+            ranks,
+            baseRanks: baseRanksFromKeys(declaredColumnIds),
+            setRank,
+            resetOrder,
+          })}
         </div>
       )}
       <div className="border-border overflow-x-auto rounded-lg border">

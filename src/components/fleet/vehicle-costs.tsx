@@ -8,6 +8,7 @@ import {
   SummaryValueCell,
 } from '@/components/ui/summary-grid'
 import { summariseCosts } from '@/lib/fleet/costs'
+import { emptyHistoryLabel } from '@/lib/fleet/history-window'
 import { INSPECTION_TYPE_LABELS, type InspectionTypeT } from '@/lib/fleet/inspection-types'
 import { formatPLNOrDash } from '@/lib/utils/format-currency'
 import { formatPLDate } from '@/lib/utils/format-date'
@@ -18,19 +19,21 @@ const COLS = `${SUMMARY_LABEL_COL} ${SUMMARY_VALUE_COL} ${SUMMARY_VALUE_COL}`
 
 export function VehicleCosts({
   historyByType,
-  hasWindow,
+  fullHistoryByType,
 }: {
   historyByType: Record<InspectionTypeT, InspectionHistoryEntryT[]>
-  hasWindow: boolean
+  // Re-summarised rather than counted raw: the odometer readings this table leaves out must not make
+  // an empty window look like a window that hid something.
+  fullHistoryByType: Record<InspectionTypeT, InspectionHistoryEntryT[]>
 }) {
   const { byType, total, entries } = summariseCosts(historyByType)
 
   if (entries.length === 0) {
-    return (
-      <p className="text-muted-foreground text-xs">
-        {hasWindow ? 'Brak przeglądów w wybranym okresie' : 'Brak przeglądów'}
-      </p>
+    const label = emptyHistoryLabel(
+      'przeglądów',
+      summariseCosts(fullHistoryByType).entries.length > 0,
     )
+    return <p className="text-muted-foreground text-xs">{label}</p>
   }
 
   return (

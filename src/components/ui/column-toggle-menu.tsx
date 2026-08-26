@@ -26,7 +26,6 @@ export type ColumnToggleItemT = {
 type PropsT = {
   items: ColumnToggleItemT[]
   onToggle: (id: string) => void
-  /** When passed, the picker also offers the reorder trigger. Absent = visibility only. */
   onOpenOrder?: () => void
   className?: string
 }

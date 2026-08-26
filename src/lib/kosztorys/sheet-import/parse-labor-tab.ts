@@ -87,10 +87,18 @@ function readMeasuredQty(
 // Every etap column the owner has NOT renamed carries the sheet's own caption — „1 etap ilość", the
 // same words in all ten. Persisting that would name every etap after a header, so only a caption
 // that says something else counts as a name.
-const DEFAULT_STAGE_CAPTION = /^\d+ etap( ilosc)?$/
+const DEFAULT_STAGE_CAPTION = /^(\d+) etap( ilosc)?$/
 
 const isNamedStage = (caption: string): boolean =>
   caption !== '' && !DEFAULT_STAGE_CAPTION.test(fold(caption))
+
+// „4 etap ilość" → 4. The sheet's own number, not the column's position in the run: delete etap
+// column E and the run shrinks, so the fifth surviving column is the sheet's sixth etap. Falls back
+// to the position for a column the owner blanked — there is nothing else to call it.
+const sheetStageNumber = (caption: string, column: number): number => {
+  const match = DEFAULT_STAGE_CAPTION.exec(fold(caption))
+  return match ? Number(match[1]) : column
+}
 
 export function parseLaborTab(
   grid: unknown[][],
@@ -205,13 +213,18 @@ export function parseLaborTab(
       stageIdByColumn.set(column, stageIdByColumn.size + 1)
   }
 
-  const stages: KosztorysStageT[] = Array.from(stageIdByColumn, ([column, id]) => ({
-    id,
-    ordinal: id,
-    label: isNamedStage(caption(column)) ? caption(column) : `Etap ${column}`,
-    plane: null,
-    workerId: null,
-  }))
+  const stages: KosztorysStageT[] = Array.from(stageIdByColumn, ([column, id]) => {
+    const columnCaption = caption(column)
+    return {
+      id,
+      ordinal: id,
+      label: isNamedStage(columnCaption)
+        ? columnCaption
+        : `Etap ${sheetStageNumber(columnCaption, column)}`,
+      plane: null,
+      workerId: null,
+    }
+  })
 
   return {
     sections,

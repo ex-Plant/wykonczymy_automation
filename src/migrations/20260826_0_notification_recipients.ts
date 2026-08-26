@@ -1,8 +1,6 @@
 import { type MigrateUpArgs, type MigrateDownArgs, sql } from '@payloadcms/db-vercel-postgres'
 
 // Hand-written (migrate:create's snapshot baseline is stale — see AGENTS.md).
-// The `notification-recipients` global: three address lists replacing FLEET_NOTIFICATION_EMAIL /
-// ADMIN_EMAIL / LEADS_NOTIFY_EMAIL / LEADS_ALERT_EMAIL.
 // Shapes copied from what Payload's Drizzle layer emits for an array field — the row `id` is a
 // varchar, not a serial, because Payload mints array-row ids itself rather than letting Postgres.
 // The global needs no `payload_locked_documents_rels` column: globals are locked through

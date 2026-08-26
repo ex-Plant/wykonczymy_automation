@@ -273,9 +273,8 @@ export async function compareWithSheet(
 // cannot decide what gets written.
 export async function applyKosztorysImport(
   investmentId: number,
-  // The rozliczenie every imported etap gets, picked once in the import window. Anything but the two
-  // planes is read as „nie ustawiaj" rather than refused — a client sending nonsense here asks for
-  // undecided etapy, which is what the import did before this existed.
+  // Anything but the two planes is read as „nie ustawiaj" rather than refused: a client sending
+  // nonsense here asks for undecided etapy, which is what an import without a pick produces anyway.
   plane?: ToolPlaneT | null,
 ): Promise<ActionResultT<ApplyImportResultT>> {
   return protectedAction<ApplyImportResultT>(

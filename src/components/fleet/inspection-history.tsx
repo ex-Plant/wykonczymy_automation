@@ -8,6 +8,7 @@ import {
   SummaryTable,
   SummaryValueCell,
 } from '@/components/ui/summary-grid'
+import { emptyHistoryLabel } from '@/lib/fleet/history-window'
 import { INSPECTION_TYPE_LABELS, INSPECTION_TYPES } from '@/lib/fleet/inspection-types'
 import { formatPLNOrDash } from '@/lib/utils/format-currency'
 import { formatPLDate } from '@/lib/utils/format-date'
@@ -110,14 +111,16 @@ function HistoryTable({ entries }: { entries: InspectionHistoryEntryT[] }) {
 }
 
 /**
- * `hasWindow` says a date window is set, which is a different claim from an empty section: a car with
- * no OC at all must keep saying so even while a window is active, or the user reads „nothing in July"
- * and stops looking.
+ * Takes the unnarrowed history beside the shown one because the empty-state wording is per section:
+ * a window may have emptied OC while the przegląd rejestracyjny below it is empty simply because the
+ * car has never had one.
  */
 export function InspectionHistory({
   historyByType,
-  hasWindow,
-}: Pick<VehicleDetailT, 'historyByType'> & { hasWindow: boolean }) {
+  fullHistoryByType,
+}: Pick<VehicleDetailT, 'historyByType'> & {
+  fullHistoryByType: VehicleDetailT['historyByType']
+}) {
   return (
     <div className="flex flex-col gap-6">
       {INSPECTION_TYPES.map((type) => (
@@ -126,7 +129,7 @@ export function InspectionHistory({
 
           {historyByType[type].length === 0 ? (
             <p className="text-muted-foreground text-xs">
-              {hasWindow ? 'Brak wpisów w wybranym okresie' : 'Brak wpisów'}
+              {emptyHistoryLabel('wpisów', fullHistoryByType[type].length > 0)}
             </p>
           ) : (
             <HistoryTable entries={historyByType[type]} />

@@ -70,9 +70,8 @@ export const serverSchema = z
     META_PAGE_ACCESS_TOKEN: z.string().min(1),
     META_PAGE_ID: z.string().min(1),
     WPFORMS_WEBHOOK_SECRET: z.string().min(1),
-    // Recipients moved to the `notification-recipients` global — a var holds one address, and the
-    // owner needed more than one per stream, editable without a redeploy. A *from*-address is not a
-    // recipient: it is infrastructure the SMTP account has to match, so it stays here.
+    // A *from*-address is not a recipient: it is infrastructure the SMTP account has to match, so it
+    // stays in env while the recipient lists live in the `notification-recipients` global.
     LEADS_REPLY_FROM: z.string().min(1),
     // Google (Sheets + Drive for kosztorys integration)
     GOOGLE_SERVICE_ACCOUNT_JSON: z

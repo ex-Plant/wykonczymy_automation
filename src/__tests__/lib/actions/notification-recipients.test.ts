@@ -8,10 +8,11 @@ import type { Payload } from 'payload'
 // Same mock surface as the sibling action specs: requireAuth needs a request/cookie we lack in node,
 // and revalidation touches next/cache outside a request context.
 vi.mock('server-only', () => ({}))
+const authState = vi.hoisted(() => ({ role: 'OWNER' as string }))
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuth: vi.fn(async () => ({
     success: true,
-    user: { id: 0, email: 'o@t.com', name: 'Owner', role: 'OWNER' },
+    user: { id: 0, email: 'o@t.com', name: 'Owner', role: authState.role },
   })),
 }))
 vi.mock('@/lib/cache/revalidate', () => ({ revalidateNotificationRecipients: vi.fn() }))
@@ -42,6 +43,7 @@ describe.skipIf(!ENV_READY)('saveRecipientListAction (DB)', () => {
 
   // Firm-wide state, not this spec's own row: left mutated it decides who a later spec mails.
   afterAll(async () => {
+    authState.role = 'OWNER'
     await resetGlobal()
   })
 
@@ -78,5 +80,24 @@ describe.skipIf(!ENV_READY)('saveRecipientListAction (DB)', () => {
     await saveRecipientListAction('newLead', ['  spaced@example.com  '])
 
     expect((await readRecipientLists(payload)).newLead).toEqual(['spaced@example.com'])
+  })
+
+  it('stores one entry per address when the same one is typed twice', async () => {
+    await resetGlobal()
+    await saveRecipientListAction('newLead', ['dup@example.com', 'dup@example.com'])
+
+    expect((await readRecipientLists(payload)).newLead).toEqual(['dup@example.com'])
+  })
+
+  // Who may rewrite these lists is the action's one security property, and `canEdit` on the card
+  // only hides the button — this is the half that actually holds.
+  it('rejects a MANAGER without touching the row', async () => {
+    await resetGlobal()
+    authState.role = 'MANAGER'
+    const result = await saveRecipientListAction('fleetDigest', ['manager@example.com'])
+    authState.role = 'OWNER'
+
+    expect(result.success).toBe(false)
+    expect((await readRecipientLists(payload)).fleetDigest).toEqual(['flota@example.com'])
   })
 })

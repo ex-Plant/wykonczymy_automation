@@ -70,6 +70,15 @@ export function SheetImportDialog({
   const [pending, startTransition] = useTransition()
   const [plane, setPlane] = useState<PlanePickT>(NO_PLANE)
 
+  // The editor mounts this dialog once for both triggers, so closing it never unmounts the pick. A
+  // successful import happens to clear it (the tree replacement remounts the body), but „Anuluj" and
+  // a failed apply do not — and a rozliczenie nobody chose this time would stamp every imported etap.
+  const [openedWith, setOpenedWith] = useState(open)
+  if (open !== openedWith) {
+    setOpenedWith(open)
+    if (open) setPlane(NO_PLANE)
+  }
+
   const { confirmDisabled, mismatchedTotals } = evaluateImportGate(preview, loaded, pending)
 
   function handleConfirm() {
@@ -156,9 +165,7 @@ const PLANE_OPTIONS = [
   })),
 ]
 
-// The sheet has no column for the rozliczenie, so without this every imported etap arrives undecided
-// — and an undecided etap is locked in the grid. One pick for the whole kosztorys; the odd etap out
-// gets changed in its own header afterwards.
+// One pick for the whole kosztorys; the odd etap out gets changed in its own header afterwards.
 function PlaneBlock({
   plane,
   onChange,

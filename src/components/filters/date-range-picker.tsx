@@ -8,7 +8,7 @@ import { FilterSelect } from '@/components/filters/filter-select'
 import { Loader } from '@/components/ui/loader/loader'
 import { MONTHS } from '@/lib/constants/months'
 import { getMonthDateRange } from '@/lib/utils/date'
-import type { DateRangeT } from '@/lib/utils/date-range'
+import { ALL_TIME, type DateRangeT } from '@/lib/utils/date-range'
 
 const YEARS_OFFERED = 5
 
@@ -34,12 +34,12 @@ export function DateRangePicker({ value, onChange, isPending = false }: DateRang
   const pickerYear = anchor ? String(anchor.getFullYear()) : ''
 
   function handleMonthChange(month: string) {
-    if (!month) return onChange({})
+    if (!month) return onChange(ALL_TIME)
     onChange(getMonthDateRange(Number(month), pickerYear ? Number(pickerYear) : now.getFullYear()))
   }
 
   function handleYearChange(year: string) {
-    if (!year) return onChange({})
+    if (!year) return onChange(ALL_TIME)
     onChange(
       getMonthDateRange(pickerMonth ? Number(pickerMonth) : now.getMonth() + 1, Number(year)),
     )
@@ -79,7 +79,7 @@ export function DateRangePicker({ value, onChange, isPending = false }: DateRang
         onChange={(to) => onChange({ ...value, to: to || undefined })}
       />
 
-      <ClearButton onClick={() => onChange({})} disabled={!value.from && !value.to}>
+      <ClearButton onClick={() => onChange(ALL_TIME)} disabled={!value.from && !value.to}>
         Wyczyść daty
       </ClearButton>
     </FilterGrid>

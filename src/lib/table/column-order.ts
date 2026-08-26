@@ -21,6 +21,16 @@ export function orderColumnKeys(keys: readonly string[], ranks: ColumnRanksT): s
     .map(({ key }) => key)
 }
 
+// Ranks are arithmetic (midpoints, comparisons) and every store that holds them is client-writable,
+// so a hand-edited `{"amount":"x"}` would put NaN in the comparator and scramble the order with no
+// error. Returns the input untouched when nothing is dropped — the kosztorys store runs this on
+// every render and relies on the identity.
+export function dropNonFiniteRanks(stored: ColumnRanksT): ColumnRanksT {
+  const entries = Object.entries(stored)
+  const finite = entries.filter(([, rank]) => Number.isFinite(rank))
+  return finite.length === entries.length ? stored : Object.fromEntries(finite)
+}
+
 // The single rank to persist so that `key` lands at `toIndex`.
 //
 // Interior drops take the midpoint of their new neighbours; the two edges take min−1 / max+1 over the

@@ -7,7 +7,7 @@ import { VehicleCosts } from '@/components/fleet/vehicle-costs'
 import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import { narrowHistory } from '@/lib/fleet/history-window'
 import type { InspectionTypeT } from '@/lib/fleet/inspection-types'
-import type { DateRangeT } from '@/lib/utils/date-range'
+import { ALL_TIME, type DateRangeT } from '@/lib/utils/date-range'
 import type { InspectionHistoryEntryT } from '@/types/fleet'
 
 type VehicleViewT = 'inspections' | 'costs'
@@ -30,9 +30,8 @@ export function VehicleDetailTabs({
   historyByType: Record<InspectionTypeT, InspectionHistoryEntryT[]>
 }) {
   const [view, setView] = useState<VehicleViewT>('inspections')
-  const [range, setRange] = useState<DateRangeT>({})
+  const [range, setRange] = useState<DateRangeT>(ALL_TIME)
 
-  const hasWindow = Boolean(range.from || range.to)
   const shown = narrowHistory(historyByType, range)
 
   return (
@@ -44,9 +43,9 @@ export function VehicleDetailTabs({
       </div>
 
       {view === 'inspections' ? (
-        <InspectionHistory historyByType={shown} hasWindow={hasWindow} />
+        <InspectionHistory historyByType={shown} fullHistoryByType={historyByType} />
       ) : (
-        <VehicleCosts historyByType={shown} hasWindow={hasWindow} />
+        <VehicleCosts historyByType={shown} fullHistoryByType={historyByType} />
       )}
     </div>
   )

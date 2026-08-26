@@ -3,7 +3,7 @@
 import { useSearchParams } from 'next/navigation'
 import { DateRangePicker } from '@/components/filters/date-range-picker'
 import { useUrlFilterParams } from '@/hooks/use-url-filter-params'
-import type { DateRangeT } from '@/lib/utils/date-range'
+import { dayBound, type DateRangeT } from '@/lib/utils/date-range'
 
 /** Reads the window from the URL and writes it back there — one owner of `from`/`to`, not two. */
 export function DateFilters({ baseUrl }: { baseUrl: string }) {
@@ -11,8 +11,8 @@ export function DateFilters({ baseUrl }: { baseUrl: string }) {
   const { updateMultipleParams, isPending } = useUrlFilterParams(baseUrl)
 
   const value: DateRangeT = {
-    from: searchParams.get('from') || undefined,
-    to: searchParams.get('to') || undefined,
+    from: dayBound(searchParams.get('from')),
+    to: dayBound(searchParams.get('to')),
   }
 
   return (

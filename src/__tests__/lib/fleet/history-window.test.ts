@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { narrowHistory } from '@/lib/fleet/history-window'
+import { emptyHistoryLabel, narrowHistory } from '@/lib/fleet/history-window'
 import { byInspectionType, INSPECTION_TYPES } from '@/lib/fleet/inspection-types'
+import { ALL_TIME } from '@/lib/utils/date-range'
 import type { InspectionHistoryEntryT } from '@/types/fleet'
 
 const entry = (
@@ -71,9 +72,21 @@ describe('narrowHistory', () => {
       entry({ id: 2, type: 'ODOMETER', performedAt: '2026-08-25' }),
     ])
 
-    const narrowed = narrowHistory(history, {})
+    const narrowed = narrowHistory(history, ALL_TIME)
 
     expect(narrowed.TECHNICAL.map((item) => item.id)).toEqual([1])
     expect(narrowed.ODOMETER.map((item) => item.id)).toEqual([2])
+  })
+})
+
+describe('emptyHistoryLabel', () => {
+  // The regression: a window being SET is not what makes a section empty. Blame it only when the
+  // section has something outside the window to hide.
+  it('blames the window only when it is what hid the entries', () => {
+    expect(emptyHistoryLabel('wpisów', true)).toBe('Brak wpisów w wybranym okresie')
+  })
+
+  it('says plainly there is nothing when the whole history is empty', () => {
+    expect(emptyHistoryLabel('wpisów', false)).toBe('Brak wpisów')
   })
 })
