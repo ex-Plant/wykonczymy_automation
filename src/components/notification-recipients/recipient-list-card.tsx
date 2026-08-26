@@ -11,6 +11,8 @@ import type { RecipientListT } from '@/lib/email/recipients'
 type RecipientListCardPropsT = {
   list: RecipientListT
   title: string
+  /** How this stream decides what to send — the card is the only place anyone asks. */
+  description?: React.ReactNode
   emails: string[]
   /** Reading is `MANAGEMENT_ROLES` (the page's own gate); writing is owner/admin, as the action is. */
   canEdit: boolean
@@ -22,7 +24,13 @@ type RecipientListCardPropsT = {
  * That placement is the whole point (owner, 2026-08-26): the complaint these lists answer was „I
  * can't see who gets notified", which a settings page — or /admin — would leave untouched.
  */
-export function RecipientListCard({ list, title, emails, canEdit }: RecipientListCardPropsT) {
+export function RecipientListCard({
+  list,
+  title,
+  description,
+  emails,
+  canEdit,
+}: RecipientListCardPropsT) {
   return (
     <section className="border-border rounded-md border p-4">
       <div className="flex items-center gap-2">
@@ -52,6 +60,11 @@ export function RecipientListCard({ list, title, emails, canEdit }: RecipientLis
           </FormDialog>
         )}
       </div>
+      {description && (
+        <Description size="xs" className="mt-2">
+          {description}
+        </Description>
+      )}
       {emails.length === 0 ? (
         // Not a styling choice: a stream with nobody in it makes its sender throw, so the page has
         // to say so rather than render an empty line that reads as "nothing to see here".
