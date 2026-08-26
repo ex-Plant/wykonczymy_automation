@@ -333,8 +333,8 @@ section — not duplicated into `## Progress`.
 
 #### Automated
 
-- [ ] 2.1 `src/__tests__/lib/email/recipients.test.ts` passes, incl. the empty-list throw
-- [ ] 2.2 `pnpm exec vitest run src/__tests__/leads/` passes with no `process.env` recipient assignment left
+- [x] 2.1 `src/__tests__/lib/email/recipients.test.ts` passes, incl. the empty-list throw
+- [x] 2.2 `pnpm exec vitest run src/__tests__/leads/` passes with no `process.env` recipient assignment left
 
 ### Phase 3: The lists on /flota and /zgloszenia
 

@@ -9,8 +9,7 @@ import {
 } from '@/lib/leads/notify'
 
 beforeAll(() => {
-  process.env.LEADS_NOTIFY_EMAIL = 'inbox@example.com'
-  process.env.LEADS_ALERT_EMAIL = 'ops@example.com'
+  // LEADS_REPLY_FROM stays env-borne: it is a sender identity, not a recipient list.
   process.env.LEADS_REPLY_FROM = 'admin@wykonczymy.com.pl'
 })
 
@@ -24,17 +23,25 @@ const lead = {
   submittedAt: '2026-07-05T18:48:40.000Z',
 } as unknown as Lead
 
-const fakePayload = (sendEmail: ReturnType<typeof vi.fn>) => ({ sendEmail }) as unknown as Payload
+const fakePayload = (sendEmail: ReturnType<typeof vi.fn>) =>
+  ({
+    sendEmail,
+    findGlobal: vi.fn().mockResolvedValue({
+      fleetDigest: [{ email: 'flota@example.com' }],
+      newLead: [{ email: 'inbox@example.com' }],
+      opsAlerts: [{ email: 'ops@example.com' }],
+    }),
+  }) as unknown as Payload
 
 describe('notifyNewLead', () => {
-  it('sends the internal heads-up to LEADS_NOTIFY_EMAIL, never to the lead', async () => {
+  it('sends the internal heads-up to the newLead recipients, never to the lead', async () => {
     const sendEmail = vi.fn().mockResolvedValue({})
     await notifyNewLead(fakePayload(sendEmail), lead)
 
     expect(sendEmail).toHaveBeenCalledTimes(1)
     const arg = sendEmail.mock.calls[0][0]
-    expect(arg.to).toBe('inbox@example.com')
-    expect(arg.to).not.toBe(lead.email)
+    expect(arg.to).toEqual(['inbox@example.com'])
+    expect(arg.to).not.toContain(lead.email)
     expect(arg.html).toContain('anna.nowak@example.com')
     expect(arg.subject).not.toContain('TEST')
   })
@@ -111,14 +118,14 @@ describe('sendAutoReply', () => {
 })
 
 describe('notifyShapeAlert', () => {
-  it('alerts the ops inbox (LEADS_ALERT_EMAIL) with the leadgen_id and reason', async () => {
+  it('alerts the opsAlerts recipients with the leadgen_id and reason', async () => {
     const sendEmail = vi.fn().mockResolvedValue({})
     await notifyShapeAlert(fakePayload(sendEmail), {
       leadgenId: '1000000000000001',
       reason: 'No email could be extracted from the lead',
     })
     const arg = sendEmail.mock.calls[0][0]
-    expect(arg.to).toBe('ops@example.com')
+    expect(arg.to).toEqual(['ops@example.com'])
     expect(arg.html).toContain('1000000000000001')
     expect(arg.html).toContain('No email could be extracted')
   })
@@ -142,7 +149,7 @@ describe('notifyReconcileRecovery', () => {
     await notifyReconcileRecovery(fakePayload(sendEmail), { recovered, scanned: 30 })
 
     const arg = sendEmail.mock.calls[0][0]
-    expect(arg.to).toBe('ops@example.com')
+    expect(arg.to).toEqual(['ops@example.com'])
     expect(arg.html).toContain('Anna Nowak')
     expect(arg.html).toContain('komercyjnie - wwa')
   })

@@ -1,6 +1,6 @@
 import type { Payload } from 'payload'
 import { FRONTEND_URL } from '@/lib/env'
-import { serverEnv } from '@/lib/env/server'
+import { requireRecipients } from '@/lib/email/recipients'
 import { escapeHtml } from '@/lib/utils/escape-html'
 import { daysLabel } from '@/lib/fleet/deadline-label'
 import { INSPECTION_TYPE_LABELS } from '@/lib/fleet/inspection-types'
@@ -75,11 +75,11 @@ const subjectFor = (digest: FleetDigestT): string => {
 }
 
 /**
- * The daily digest, to the fleet inbox and the admin inbox as ONE message with two addresses — not
- * two sends, so the bookkeeping stamp the caller writes afterwards still describes one delivery.
+ * The daily digest, to the whole `fleetDigest` list as ONE message with N addresses — not N sends,
+ * so the bookkeeping stamp the caller writes afterwards still describes one delivery.
  *
  * Throws on send failure so the caller can skip stamping: a deadline marked "announced" by a mail
- * that never left goes silent for a week.
+ * that never left goes silent for a week. Throws for the same reason when the list is empty.
  */
 export async function notifyFleetDigest(payload: Payload, digest: FleetDigestT): Promise<void> {
   const html = `
@@ -93,7 +93,7 @@ export async function notifyFleetDigest(payload: Payload, digest: FleetDigestT):
   `
 
   await payload.sendEmail({
-    to: [serverEnv.FLEET_NOTIFICATION_EMAIL, serverEnv.ADMIN_EMAIL],
+    to: await requireRecipients(payload, 'fleetDigest'),
     subject: subjectFor(digest),
     html,
   })

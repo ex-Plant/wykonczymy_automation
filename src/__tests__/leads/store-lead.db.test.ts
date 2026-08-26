@@ -31,7 +31,6 @@ describe.skipIf(!ENV_READY)('storeLead + captureLead (DB)', () => {
   const createdIds: number[] = []
 
   beforeAll(async () => {
-    process.env.LEADS_NOTIFY_EMAIL ??= 'inbox@example.com'
     const { getPayload } = await import('payload')
     const config = (await import('@payload-config')).default
     payload = await getPayload({ config })

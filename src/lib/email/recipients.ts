@@ -1,0 +1,42 @@
+import type { Payload } from 'payload'
+
+/**
+ * The three notification streams, each an independently edited address list.
+ *
+ * Not to be confused with `STREAMS` in `src/lib/db/notifications.ts` — that one tracks per-user
+ * unread cursors for the in-app badge, which is a different question about a different table.
+ */
+export const RECIPIENT_LISTS = ['fleetDigest', 'newLead', 'opsAlerts'] as const
+
+export type RecipientListT = (typeof RECIPIENT_LISTS)[number]
+
+const LIST_LABELS: Record<RecipientListT, string> = {
+  fleetDigest: 'powiadomienia o terminach floty',
+  newLead: 'powiadomienia o nowych zgłoszeniach',
+  opsAlerts: 'alerty techniczne',
+}
+
+export type RecipientListsT = Record<RecipientListT, string[]>
+
+/** Uncached on purpose: the senders run in crons and webhooks, outside any request cache. */
+export async function readRecipientLists(payload: Payload): Promise<RecipientListsT> {
+  const global = await payload.findGlobal({ slug: 'notification-recipients', depth: 0 })
+
+  return Object.fromEntries(
+    RECIPIENT_LISTS.map((list) => [list, (global[list] ?? []).map((row) => row.email)]),
+  ) as RecipientListsT
+}
+
+/**
+ * Addresses for one stream, or a throw. A stream with nobody in it is a fault: mailing the void
+ * looks identical to a healthy run in every log, and the whole point of these streams is that
+ * somebody hears about a problem. Every call site already catches, so raising costs nothing.
+ */
+export async function requireRecipients(payload: Payload, list: RecipientListT): Promise<string[]> {
+  const addresses = (await readRecipientLists(payload))[list]
+
+  if (addresses.length === 0)
+    throw new Error(`Brak odbiorców dla listy „${LIST_LABELS[list]}" — nie ma do kogo wysłać.`)
+
+  return addresses
+}
