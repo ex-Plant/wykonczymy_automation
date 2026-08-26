@@ -76,6 +76,7 @@ import * as migration_20260824_0_drop_kosztorys_client_view_hidden_columns from 
 import * as migration_20260824_1_require_inspection_cost from './20260824_1_require_inspection_cost'
 import * as migration_20260825_0_fix_own_tools_coeff_rounding from './20260825_0_fix_own_tools_coeff_rounding'
 import * as migration_20260825_1_fleet_sheet_parity from './20260825_1_fleet_sheet_parity'
+import * as migration_20260826_0_notification_recipients from './20260826_0_notification_recipients'
 
 export const migrations = [
   {
@@ -467,5 +468,10 @@ export const migrations = [
     up: migration_20260825_1_fleet_sheet_parity.up,
     down: migration_20260825_1_fleet_sheet_parity.down,
     name: '20260825_1_fleet_sheet_parity',
+  },
+  {
+    up: migration_20260826_0_notification_recipients.up,
+    down: migration_20260826_0_notification_recipients.down,
+    name: '20260826_0_notification_recipients',
   },
 ]

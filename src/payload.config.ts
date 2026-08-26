@@ -32,6 +32,7 @@ import { Users } from '@/collections/users'
 import { VehicleInspections } from '@/collections/vehicle-inspections'
 import { Vehicles } from '@/collections/vehicles'
 import { KosztorysClientViewDefaults } from '@/globals/kosztorys-client-view-defaults'
+import { NotificationRecipients } from '@/globals/notification-recipients'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -94,7 +95,7 @@ export default buildConfig({
     VehicleInspections,
     Media,
   ],
-  globals: [KosztorysClientViewDefaults],
+  globals: [KosztorysClientViewDefaults, NotificationRecipients],
   plugins: [
     vercelBlobStorage({
       collections: { media: true },
