@@ -56,6 +56,27 @@ describe('parseLaborTab', () => {
     expect(items.some((item) => item.clientPrice > 100_000)).toBe(false)
   })
 
+  // The literals are real values off the preview DB, not invented drift.
+  it('strips float drift off every figure it reads from the sheet', () => {
+    const { items, progress } = parse([
+      ...BIALOSTOCKA_LABOR_HEADER,
+      row({ A: 'Sekcja', B: 'Sekcja', C: 'Sekcja', N: 'x', O: 'x', S: 100 }),
+      row({
+        C: 'malowanie ścian',
+        D: 0.1 + 0.2,
+        N: 161.39000000000001,
+        O: 30.340000000000003,
+        P: 'm2',
+        Q: 6.8100000000000005,
+      }),
+    ])
+
+    expect(items[0].plannedQty).toBe(161.39)
+    expect(items[0].clientPrice).toBe(6.81)
+    expect(items[0].sheetMeasuredQty).toBe(30.34)
+    expect(progress[0].qtyDone).toBe(0.3)
+  })
+
   it('reads rabat as a fraction and stores it as a percentage', () => {
     const { items } = parse(BIALOSTOCKA_ROWS)
     const item = items[0]
