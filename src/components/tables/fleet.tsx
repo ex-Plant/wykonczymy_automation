@@ -31,6 +31,13 @@ export function getFleetColumns() {
         </span>
       ),
     }),
+    // „Opony" is the set currently on the car — not the TYRES deadline column below, which is
+    // „Wymiana opon" and answers when the next swap is due.
+    col.accessor('tyres', {
+      id: 'tyres',
+      header: 'Opony',
+      cell: (info) => <span>{info.getValue() || '—'}</span>,
+    }),
     col.accessor((row) => row.activeFlags.length, {
       id: 'flags',
       header: 'Do wymiany',
@@ -56,25 +63,35 @@ export function getFleetColumns() {
       ),
     }),
     ...SCHEDULED_INSPECTION_TYPES.map((type) =>
-      col.accessor((row) => row.deadlines[type].daysLeft ?? undefined, {
-        id: type,
-        header: INSPECTION_TYPE_LABELS[type].pl,
-        // A car with nothing recorded has no distance to sort by; park those at the end rather than
-        // letting null read as "most urgent".
-        sortUndefined: 'last',
-        cell: (info) => (
-          <div className="flex flex-col items-start gap-1">
-            <DeadlineCell
-              deadline={info.row.original.deadlines[type]}
-              muted={info.row.original.status === 'RETIRED'}
-            />
-            {/* The kilometre overrun belongs to the oil deadline, not to the car as a whole. */}
-            {type === 'OIL_CHANGE' && (
-              <OilIntervalBadge kmSinceOilChange={info.row.original.kmSinceOilChange} />
-            )}
-          </div>
-        ),
-      }),
+      col.accessor(
+        (row) => {
+          const deadline = row.deadlines[type]
+
+          // „bezterminowo" outranks whatever event is still on file: a car marked not-applicable
+          // keeps its last przegląd row, so sorting on `daysLeft` alone would rank it among the live
+          // deadlines while the cell reads that nothing is due.
+          return deadline.exempt ? undefined : (deadline.daysLeft ?? undefined)
+        },
+        {
+          id: type,
+          header: INSPECTION_TYPE_LABELS[type].pl,
+          // A car with nothing recorded has no distance to sort by; park those at the end rather than
+          // letting null read as "most urgent".
+          sortUndefined: 'last',
+          cell: (info) => (
+            <div className="flex flex-col items-start gap-1">
+              <DeadlineCell
+                deadline={info.row.original.deadlines[type]}
+                muted={info.row.original.status === 'RETIRED'}
+              />
+              {/* The kilometre overrun belongs to the oil deadline, not to the car as a whole. */}
+              {type === 'OIL_CHANGE' && (
+                <OilIntervalBadge kmSinceOilChange={info.row.original.kmSinceOilChange} />
+              )}
+            </div>
+          ),
+        },
+      ),
     ),
     col.accessor('status', {
       id: 'status',

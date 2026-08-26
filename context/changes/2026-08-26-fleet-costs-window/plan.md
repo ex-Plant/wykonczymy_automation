@@ -266,11 +266,11 @@ duplicated into `## Progress`.
 
 #### Automated
 
-- [x] 2.1 `history-window.test.ts` passes, incl. the `kmSincePrevious` survival case — PENDING_SHA
-- [x] 2.2 `pnpm typecheck` passes with both tabs taking `hasWindow` — PENDING_SHA
+- [x] 2.1 `history-window.test.ts` passes, incl. the `kmSincePrevious` survival case — 64f5cf5d
+- [x] 2.2 `pnpm typecheck` passes with both tabs taking `hasWindow` — 64f5cf5d
 
 ### Phase 3: Opony column on the fleet listing
 
 #### Automated
 
-- [ ] 3.1 `pnpm exec vitest run src/__tests__/lib/fleet/` still passes
+- [x] 3.1 `pnpm exec vitest run src/__tests__/lib/fleet/` still passes — PENDING_SHA
