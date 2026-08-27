@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { setGoogleCredentialEnv } from '@/__tests__/helpers/google-credentials'
 
 const getMock = vi.fn()
 const valuesBatchUpdateMock = vi.fn()
@@ -44,10 +45,7 @@ beforeEach(() => {
   spreadsheetsGetMock.mockReset()
   batchUpdateMock.mockReset()
   batchUpdateMock.mockResolvedValue({ data: {} })
-  process.env.GOOGLE_SERVICE_ACCOUNT_JSON = JSON.stringify({
-    client_email: 'test@example.iam.gserviceaccount.com',
-    private_key: '-----BEGIN PRIVATE KEY-----\nMIITEST\n-----END PRIVATE KEY-----\n',
-  })
+  setGoogleCredentialEnv()
 })
 
 describe('applyTabRowsBatch', () => {

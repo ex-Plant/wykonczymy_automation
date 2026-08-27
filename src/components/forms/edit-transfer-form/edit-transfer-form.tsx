@@ -51,7 +51,8 @@ export function EditTransferForm({
   const { submit } = useFormSubmit(FORM_ID)
   const { files, isIngesting, inputKey, fileInputProps, reset: resetFiles } = useFilePickIngest()
 
-  // Bare reset: no draft here, so `defaultValues` really is the row — clearing means „back to saved".
+  // A bare reset is right HERE and nowhere else: this form persists no draft, so its `defaultValues`
+  // really are the row — „wyczyść" means „back to what is saved", not „blank".
   function handleReset() {
     form.reset()
     resetFiles()

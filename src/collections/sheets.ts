@@ -51,8 +51,8 @@ export const Sheets: CollectionConfig = {
       label: { en: 'Google Sheet ID', pl: 'ID arkusza Google' },
       admin: {
         description: {
-          en: 'Long string between /d/ and /edit in the sheet URL. The sheet must be shared with the service account as Editor.',
-          pl: 'Długi ciąg pomiędzy /d/ a /edit w URL arkusza. Arkusz musi być udostępniony kontu usługi jako Edytujący.',
+          en: 'Long string between /d/ and /edit in the sheet URL. Share the sheet with the Editor service account as Editor, and with the reader account as Viewer.',
+          pl: 'Długi ciąg pomiędzy /d/ a /edit w URL arkusza. Udostępnij arkusz kontu zapisującemu jako Edytujący, a kontu czytającemu jako Przeglądający.',
         },
       },
     },

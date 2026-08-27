@@ -17,7 +17,7 @@ import { copyToClipboard } from '@/lib/utils/copy-to-clipboard'
  */
 const VERDICTS: Record<SheetFailureReasonT, string> = {
   forbidden:
-    'Ta aplikacja nie ma dostępu do arkusza. Udostępnij go jako Edytujący adresowi poniżej, a potem spróbuj ponownie.',
+    'Ta aplikacja nie ma dostępu do arkusza. Udostępnij go jako Przeglądający adresowi poniżej, a potem spróbuj ponownie.',
   'not-found':
     'Arkusz o tym identyfikatorze nie istnieje albo został usunięty. Popraw powiązanie arkusza w ustawieniach inwestycji — czekanie tu nie pomoże.',
   'missing-tab': `Arkusz nie ma zakładki „${LABOR_TAB}", a to z niej czytamy prace. Sprawdź, czy nie została przemianowana.`,

@@ -3,7 +3,8 @@
 import { requireAuth } from '@/lib/auth/require-auth'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import { getInvestmentSheetId } from '@/lib/google/sheet-lookup'
-import { extractSheetId, serviceAccountEmail, verifySheetAccess } from '@/lib/google/sheet-access'
+import { extractSheetId, verifySheetAccess } from '@/lib/google/sheet-access'
+import { writeServiceAccountEmail } from '@/lib/google/auth'
 import { stampAllTabs } from '@/lib/google/app-managed-tabs'
 import {
   investmentSchema,
@@ -92,7 +93,10 @@ export async function createInvestmentAction(data: InvestmentFormDataT) {
  * not offered — the service account has no Drive quota, so linking an existing
  * sheet is the only supported path.
  */
-// The service-account email a user must share their sheet with before linking.
+// The service-account email a user must share their sheet with AS EDITOR before linking — the
+// Editor account, never the Viewer one the app reads with. Granting Editor to the reader would hand
+// write rights back to every laptop and preview deploy for that sheet, which is the hole the
+// two-account split exists to close.
 // Non-secret; surfaced in the setup dialog so the share step is clear up front
 // (not only discovered via the "share with…" error after a failed link attempt).
 // Requires auth (like every other action here) and never throws: returns '' if the
@@ -102,7 +106,7 @@ export async function getServiceAccountEmailAction(): Promise<string> {
   const auth = await requireAuth(MANAGEMENT_ROLES)
   if (!auth.success) return ''
   try {
-    return serviceAccountEmail()
+    return writeServiceAccountEmail()
   } catch {
     return ''
   }
@@ -156,7 +160,7 @@ export async function linkSheetAction(investmentId: number, input: string) {
           success: false,
           error:
             'Nie można otworzyć tego arkusza. Udostępnij go jako Edytujący dla konta ' +
-            `usługi: ${serviceAccountEmail()} — a następnie spróbuj ponownie.`,
+            `usługi: ${writeServiceAccountEmail()} — a następnie spróbuj ponownie.`,
         }
       }
 

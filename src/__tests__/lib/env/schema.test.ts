@@ -129,3 +129,42 @@ describe('blobTokenRefusal', () => {
     expect(blobTokenRefusal(undefined, undefined)).toBeNull()
   })
 })
+
+// The Editor credential exists only in Vercel Production, which is also the only environment that
+// writes to a sheet — so a malformed value has the fewest eyes on it and the longest silence: it
+// passes boot and dies inside a deferred write that sheets-sync swallows as non-fatal.
+describe('serverSchema — Editor service-account credential', () => {
+  it('accepts its absence, which is every environment but production', () => {
+    const result = serverSchema.safeParse(baseEnv)
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts a credential carrying client_email and private_key', () => {
+    const result = serverSchema.safeParse({
+      ...baseEnv,
+      GOOGLE_SERVICE_ACCOUNT_WRITE_JSON: JSON.stringify({
+        client_email: 'writer@example.iam.gserviceaccount.com',
+        private_key: 'key',
+      }),
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('refuses a value that is not JSON', () => {
+    const result = serverSchema.safeParse({
+      ...baseEnv,
+      GOOGLE_SERVICE_ACCOUNT_WRITE_JSON: '{"client_email": truncated',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('refuses JSON missing the private key', () => {
+    const result = serverSchema.safeParse({
+      ...baseEnv,
+      GOOGLE_SERVICE_ACCOUNT_WRITE_JSON: JSON.stringify({
+        client_email: 'writer@example.iam.gserviceaccount.com',
+      }),
+    })
+    expect(result.success).toBe(false)
+  })
+})
