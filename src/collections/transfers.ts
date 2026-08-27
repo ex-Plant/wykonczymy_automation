@@ -99,14 +99,13 @@ export const Transfers: CollectionConfig = {
     {
       // The netto twin of `amount` (brutto). On a netto wydatek it is what the investor is
       // billed while brutto is what left the register; on a wpłata brutto it is what the
-      // faktura named as netto. Immutable like `amount` — a wrong netto is corrected by
-      // cancelling the row and re-adding it, so no edit path can move a figure both
-      // bilanses read. Which rows carry it, and the netAmount ≤ amount rule, have one
+      // faktura named as netto. Which rows carry it, and the netAmount ≤ amount rule, have one
       // authority each: `carriesNetAmount` and hooks/transfers/validate.ts.
+      // Write-once, not immutable — same rule as `vatPlane` below.
       name: 'netAmount',
       type: 'number',
       label: { en: 'Net amount', pl: 'Kwota netto' },
-      access: { update: () => false },
+      access: { update: ({ doc }) => doc?.netAmount == null },
       admin: {
         condition: (data) => carriesNetAmount(typeOf(data), data?.vatPlane),
       },
@@ -143,13 +142,13 @@ export const Transfers: CollectionConfig = {
       // `carriesVatPlane` in the validate hook nulls it everywhere else. Not `required`, and the
       // create schema keeps it `.optional()`: the form always sends a plane now, but rows written
       // before that stay null and read as netto in the reconciliation.
-      // Immutable like `amount`, and for the same reason — the plane decides which side of the
-      // settlement the wpłata pays, so moving it after the fact rewrites a bilans the client has
-      // already seen. A plane typed wrong is corrected by cancelling the row and booking it again.
+      // The quiet half of write-once (rule and rationale: hooks/transfers/validate.ts) — it STRIPS
+      // rather than refuses, and only on /admin and REST: a Local API write defaults to
+      // `overrideAccess: true` and skips field access entirely.
       name: 'vatPlane',
       type: 'select',
       label: { en: 'Deposit VAT plane', pl: 'Rozliczenie netto/brutto' },
-      access: { update: () => false },
+      access: { update: ({ doc }) => doc?.vatPlane == null },
       options: [
         { label: { en: 'Net', pl: 'Netto' }, value: 'NET' },
         { label: { en: 'Gross', pl: 'Brutto' }, value: 'GROSS' },

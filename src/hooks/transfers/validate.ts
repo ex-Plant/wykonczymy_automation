@@ -16,6 +16,11 @@ import { getAmountError, getNetAmountError } from '@/lib/utils/validation'
 
 type TransferData = Partial<Transaction>
 
+const FROZEN_FIELD_LABELS = {
+  vatPlane: 'Rozliczenia netto/brutto',
+  netAmount: 'Kwoty netto',
+} as const
+
 export const validateTransfer: CollectionBeforeValidateHook = ({
   data,
   req,
@@ -67,6 +72,21 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
   }
 
   const errors: string[] = []
+
+  // Write-once, and this is the rule's home. Moving a booked plane or netto rewrites a bilans the
+  // client has already seen — that correction is anuluj i zaksięguj na nowo. null → value stays
+  // open: a legacy row rewrites nothing, its figure is merely still missing.
+  // Here rather than at the fields' `access.update`, which a Local API write skips — hooks it
+  // cannot, so this is the only altitude covering every write path. Read BEFORE the normalisation
+  // below: that nulls both fields after a type change, and it is the hook tidying up, not a caller.
+  if (operation === 'update') {
+    for (const field of ['vatPlane', 'netAmount'] as const) {
+      const booked = original?.[field]
+      if (booked != null && field in d && d[field] !== booked) {
+        errors.push(`${FROZEN_FIELD_LABELS[field]} zaksięgowanej transakcji nie można zmienić.`)
+      }
+    }
+  }
 
   // CORRECTION allows negative (invoice credits); every other type must be positive.
   if (d.amount !== undefined && d.amount !== null) {
