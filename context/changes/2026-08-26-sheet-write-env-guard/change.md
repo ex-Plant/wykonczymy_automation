@@ -44,8 +44,8 @@ Regression test jest wymagany: hook/szew nie strzela poza produkcją.
 **Brama manualna `staging → main` była zamrożona** na sekcjach dotykających arkuszy
 (`sheet-live-compare`, `kosztorys-importer`, `import-etapy-z-arkusza`, `sheet-column-mapping`,
 `EX-686`, `sheet-measured-qty-from-formula`) do czasu wejścia strażnika. **Odmrożone 2026-08-26**
-wraz z warunkiem uruchamiania (własny arkusz testowy na `GOOGLE_SHEETS_WRITE_ALLOWLIST`, nigdy
-arkusz klienta) — `context/changes/staging-to-main-gate/ledger.md`.
+wraz z warunkiem uruchamiania (własne konto Edytora nadane wyłącznie własnemu arkuszowi testowemu,
+nigdy arkusz klienta) — `context/changes/staging-to-main-gate/ledger.md`.
 
 Do posprzątania po fixie: wiersze, które localhost zdążył wpisać/nadpisać w arkuszu
 „Bialostocka 5/152 Wojtek - ekipa hulko".

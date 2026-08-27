@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { READER_CREDENTIAL, WRITER_CREDENTIAL } from '@/__tests__/helpers/google-credentials'
 
 const valuesGetMock = vi.fn()
 const valuesBatchUpdateMock = vi.fn()
@@ -33,14 +34,8 @@ vi.mock('googleapis', () => ({
 const SHEET = '152HYswm1ESgQxbk8rMt9JSeX1R-ppj49rbcZZtyCNBs'
 const HEADER = ['id', 'data', 'typ', 'opis', 'kwota', 'kategoria', 'notatka']
 
-const READER_JSON = JSON.stringify({
-  client_email: 'kosztorys-sheets-reader@example.iam.gserviceaccount.com',
-  private_key: '-----BEGIN PRIVATE KEY-----\nREADER\n-----END PRIVATE KEY-----\n',
-})
-const WRITER_JSON = JSON.stringify({
-  client_email: 'kosztorys-sheets@example.iam.gserviceaccount.com',
-  private_key: '-----BEGIN PRIVATE KEY-----\nWRITER\n-----END PRIVATE KEY-----\n',
-})
+const READER_JSON = JSON.stringify(READER_CREDENTIAL)
+const WRITER_JSON = JSON.stringify(WRITER_CREDENTIAL)
 
 const everyApiMock = [
   valuesGetMock,
@@ -99,8 +94,7 @@ describe('writes need the Editor credential', () => {
     for (const mock of everyApiMock) expect(mock).not.toHaveBeenCalled()
   })
 
-  // VERCEL_ENV was the old gate and is now irrelevant — claiming to be production buys nothing,
-  // because the thing that is missing is a credential, not a flag.
+  // What is missing is a credential, not a flag — so there is no env var to set that reopens this.
   it('stays shut when VERCEL_ENV claims production but no credential is present', async () => {
     process.env.VERCEL_ENV = 'production'
     const { applyTabRowsBatch, EXPENSES_TAB_CONFIG } = await import('@/lib/google/sheets')
@@ -122,18 +116,15 @@ describe('writes need the Editor credential', () => {
       removed: 0,
     })
 
-    // Both tokens are minted here — the batch reads the grid before it writes — so the assertion
-    // has to bind identity to SCOPE, not just count emails. The writable scope must never be
-    // handed the reader's key, and the reader must stay on the readonly one.
-    const byScope = Object.fromEntries(
-      vi.mocked(google.auth.JWT).mock.calls.map((call) => [call[0]?.scopes?.[0], call[0]?.email]),
-    )
-    expect(byScope['https://www.googleapis.com/auth/spreadsheets']).toBe(
-      'kosztorys-sheets@example.iam.gserviceaccount.com',
-    )
-    expect(byScope['https://www.googleapis.com/auth/spreadsheets.readonly']).toBe(
-      'kosztorys-sheets-reader@example.iam.gserviceaccount.com',
-    )
+    // The batch reads the grid before it writes, and that read goes through the SAME client — so a
+    // sheet shared with only the Editor still syncs. Binding identity to scope rather than counting
+    // emails is what proves it: one Editor-scoped token, and no readonly token minted at all.
+    const byScope = vi
+      .mocked(google.auth.JWT)
+      .mock.calls.map((call) => [call[0]?.scopes?.[0], call[0]?.email])
+    expect(byScope).toEqual([
+      ['https://www.googleapis.com/auth/spreadsheets', WRITER_CREDENTIAL.client_email],
+    ])
   })
 
   // Reading must survive: import, the sheet comparison and the inspector all run from a machine

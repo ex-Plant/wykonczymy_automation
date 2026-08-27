@@ -1,7 +1,7 @@
-import { serverEnv } from '@/lib/env/server'
-import { parseServiceAccountCredentials } from './auth'
+import { hasWriteServiceAccountCredentials, parseServiceAccountCredentials } from './auth'
+import { logError } from '@/lib/utils/log-error'
 import { getReadonlySheetsClient } from './readonly-sheets-client'
-import { getWritableSheetsClient } from './sheets'
+import { getWritableSheetsClient } from './writable-sheets-client'
 
 // The service-account email — what an owner must share a sheet with for the app
 // to read/sync it. Parsed from the same credential JSON the clients use.
@@ -31,10 +31,10 @@ export function extractSheetId(input: string): string | undefined {
 // no-op write (rewrite the title to itself) under the full `spreadsheets` scope —
 // a Viewer share can read but not write, so this surfaces the gap now.
 //
-// That probe is a real write, so it needs the Editor credential — which exists only in production.
-// Everywhere else the probe is SKIPPED, not failed: `null` here means „the service account has no
-// access", and returning it for a missing credential would send the reader off to re-share a sheet
-// that was never the problem. Linking still works locally; what it stops proving is Editor rights.
+// Without the Editor credential the probe is SKIPPED, not failed: `null` here means „the service
+// account has no access", and returning it for a missing credential would send the owner off to
+// re-share a sheet that was never the problem. Linking still works locally; what it stops proving
+// is Editor rights.
 export async function verifySheetAccess(spreadsheetId: string): Promise<{ title: string } | null> {
   try {
     const res = await getReadonlySheetsClient().spreadsheets.get({
@@ -43,8 +43,8 @@ export async function verifySheetAccess(spreadsheetId: string): Promise<{ title:
     })
     const title = res.data.properties?.title ?? ''
 
-    if (!serverEnv.GOOGLE_SERVICE_ACCOUNT_WRITE_JSON) {
-      console.warn(
+    if (!hasWriteServiceAccountCredentials()) {
+      logError(
         `[sheet-access] write probe skipped for ${spreadsheetId} — no Editor credential outside production`,
       )
       return { title }

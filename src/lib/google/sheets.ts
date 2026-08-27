@@ -1,5 +1,5 @@
-import { google, sheets_v4 } from 'googleapis'
-import { createWriteServiceAccountJWT } from './auth'
+import { sheets_v4 } from 'googleapis'
+import { getWritableSheetsClient } from './writable-sheets-client'
 import { getReadonlySheetsClient } from './readonly-sheets-client'
 import {
   columnLetter,
@@ -39,19 +39,6 @@ export {
   type TabRowInputT,
 } from './sheet-configs'
 export { buildTabSummary, formulaArgSeparator } from './sheet-summary'
-
-// The only place in the repo that mints a write-scoped Sheets token, which is what makes the gate
-// impossible to route around: every write below sits under this call, and a new writing function
-// inherits it by needing a client at all — not by remembering a convention. Reads take
-// getReadonlySheetsClient() instead, so the gate never closes off reading.
-//
-// The gate is the CREDENTIAL, not this code. Outside production there is no Editor credential to
-// mint from, and the Viewer one every other environment carries is refused by Google itself. The
-// throw here only turns that into a readable sentence instead of a bare 403 from googleapis.
-export function getWritableSheetsClient(): sheets_v4.Sheets {
-  const auth = createWriteServiceAccountJWT(['https://www.googleapis.com/auth/spreadsheets'])
-  return google.sheets({ version: 'v4', auth })
-}
 
 type HeaderMapT = { headerRow: number; cols: Record<string, number> }
 
@@ -97,8 +84,14 @@ function resolveHeaders(cfg: SheetTabConfigT, grid: unknown[][]): HeaderMapT {
 // catch this specifically.
 class MissingTabError extends Error {}
 
-async function readGrid(spreadsheetId: string, cfg: SheetTabConfigT): Promise<unknown[][]> {
-  const sheets = getReadonlySheetsClient()
+// The client is a parameter because the WRITE path must read with the same account it writes
+// with: two accounts holding the sheet is now the norm, but requiring both for one write would
+// make a sheet shared with only the Editor fail its own sync — silently, behind sheets-sync's catch.
+async function readGrid(
+  spreadsheetId: string,
+  cfg: SheetTabConfigT,
+  sheets: sheets_v4.Sheets = getReadonlySheetsClient(),
+): Promise<unknown[][]> {
   try {
     const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: tabRange(cfg) })
     return (res.data.values ?? []) as unknown[][]
@@ -196,7 +189,7 @@ export async function applyTabRowsBatch(
   removeIds: number[] = [],
 ): Promise<{ added: number; updated: number; removed: number }> {
   const sheets = getWritableSheetsClient()
-  const grid = await readGrid(spreadsheetId, cfg)
+  const grid = await readGrid(spreadsheetId, cfg, sheets)
   const { headerRow, cols } = resolveHeaders(cfg, grid)
   const fields = fieldsOf(cfg)
 

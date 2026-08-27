@@ -54,6 +54,15 @@ export const blobTokenRefusal = (
   )
 }
 
+function isServiceAccountJson(raw: string): boolean {
+  try {
+    const parsed = JSON.parse(raw)
+    return typeof parsed?.client_email === 'string' && typeof parsed?.private_key === 'string'
+  } catch {
+    return false
+  }
+}
+
 export const serverSchema = z
   .object({
     DB_POSTGRES_URL: z.string().min(1),
@@ -77,21 +86,23 @@ export const serverSchema = z
     GOOGLE_SERVICE_ACCOUNT_JSON: z
       .string()
       .min(1, 'GOOGLE_SERVICE_ACCOUNT_JSON is required')
-      .refine((raw) => {
-        try {
-          const parsed = JSON.parse(raw)
-          return typeof parsed?.client_email === 'string' && typeof parsed?.private_key === 'string'
-        } catch {
-          return false
-        }
-      }, 'GOOGLE_SERVICE_ACCOUNT_JSON must be valid JSON with client_email and private_key'),
+      .refine(
+        isServiceAccountJson,
+        'GOOGLE_SERVICE_ACCOUNT_JSON must be valid JSON with client_email and private_key',
+      ),
+    // Optional because every other environment is MEANT to lack it — absence is the gate, not a
+    // misconfiguration. Do not make this required. Why the gate is a credential: `lib/google/auth.ts`.
+    // Refined when present: a malformed Editor credential would otherwise pass boot and fail inside
+    // a deferred write that sheets-sync swallows, in the one environment that writes at all.
+    GOOGLE_SERVICE_ACCOUNT_WRITE_JSON: z
+      .string()
+      .optional()
+      .refine(
+        (raw) => raw === undefined || isServiceAccountJson(raw),
+        'GOOGLE_SERVICE_ACCOUNT_WRITE_JSON must be valid JSON with client_email and private_key',
+      ),
     KOSZTORYS_TEMPLATE_SHEET_ID: z.string().min(1, 'KOSZTORYS_TEMPLATE_SHEET_ID is required'),
     KOSZTORYS_DRIVE_FOLDER_ID: z.string().optional(),
-    // The Editor credential — the ONLY one that can change a sheet, and it exists only in Vercel
-    // Production. Optional here because every other environment is meant to lack it: absence is the
-    // gate, not a misconfiguration. The credential above is a Viewer everywhere, so a machine
-    // holding it cannot write no matter what it sets VERCEL_ENV to — Google refuses, not our code.
-    GOOGLE_SERVICE_ACCOUNT_WRITE_JSON: z.string().optional(),
     // OpenRouter (receipt-scan vision extraction). Referer/app-name are optional attribution
     // headers OpenRouter surfaces on its dashboard; only the key is required to make calls.
     OPENROUTER_API_KEY: z.string().min(1),

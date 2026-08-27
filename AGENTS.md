@@ -157,9 +157,12 @@ Prefer hand-editing `@package.json` over `pnpm remove` / `pnpm install`. On this
   what `.env`, Preview and Development carry; `GOOGLE_SERVICE_ACCOUNT_WRITE_JSON`
   (`kosztorys-sheets@…`) is the **Editor** and exists **only in Vercel Production**. So a write from
   a dev machine is refused by Google (`403`), not by our code — no env var, no `VERCEL_ENV=production`
-  and no code edit can undo that. `getWritableSheetsClient` (`src/lib/google/sheets.ts`) is the one
-  place that mints from the Editor credential and throws a readable sentence when it is absent, so
-  you get an explanation instead of a bare 403; reads take `getReadonlySheetsClient()`.
+  and no code edit can undo that. `getWritableSheetsClient`
+  (`src/lib/google/writable-sheets-client.ts`) is the one place **in the app** that mints a
+  write-scoped **Sheets** token, and it throws a readable sentence when the credential is absent so
+  you get an explanation instead of a bare 403; reads take `getReadonlySheetsClient()`. The only
+  other holder of the Editor credential is `scripts/share-sheets-with-reader.mjs`, which mints a
+  **Drive** token — a strictly broader power, since it can change who may edit a sheet.
   Repairing a sheet happens from production, and there is no other route.
   **A new sheet gets shared by hand with both addresses — the roles are not interchangeable:**
 
@@ -170,7 +173,10 @@ Prefer hand-editing `@package.json` over `pnpm remove` / `pnpm install`. On this
 
   The link dialog shows only the first and says „jako Edytujący" — the reader is the one you have to
   remember, and giving it Editor would hand write rights back to every laptop for that sheet.
-  `scripts/share-sheets-with-reader.mjs` does the reader half in bulk.
+  `scripts/share-sheets-with-reader.mjs` does the reader half in bulk — from production, over a
+  `id<TAB>name` TSV exported from psql: `node scripts/share-sheets-with-reader.mjs sheets.tsv`
+  dry-runs, `--apply` grants. It skips a sheet the reader already holds, shouts if the reader was
+  given anything above Viewer, and exits non-zero on any failure.
 
 - **The production Vercel Blob store belongs to production only.** Invoice bytes live in Blob, which
   has no versioning and no undelete — and the local DB is a restored prod dump, so `media.filename`

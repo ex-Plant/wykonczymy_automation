@@ -1,14 +1,18 @@
-# Bramka środowiskowa na zapisie do Google Sheets — plan wdrożenia
+# Zapis do Google Sheets tylko z produkcji — dwa konta usługi
+
+> **Ten plan został przepisany po wdrożeniu.** Pierwsza wersja opisywała bramkę w kodzie
+> (`VERCEL_ENV` + lista dozwolonych identyfikatorów, moduł `sheet-write-guard.ts`). Została
+> **porzucona w trakcie** i skasowana — powód niżej, w „Porzucona ścieżka". To, co czytasz,
+> opisuje stan faktycznie wdrożony.
 
 ## Overview
 
-Każdy zapis do Google Sheets przechodzi dziś przez klienta z zakresem `spreadsheets`, budowanego
-w dwóch miejscach, bez żadnego sprawdzenia środowiska. Identyfikator arkusza pochodzi z bazy,
-a każda baza nieprodukcyjna to przywrócony zrzut produkcji — więc localhost, preview i `db-test`
-piszą do żywych arkuszy klientów. Plan zamyka to jedną bramką na szwie zapisu: poza produkcją
-klient zapisowy powstaje **wyłącznie** dla arkusza wpisanego na jawną listę dozwolonych
-identyfikatorów. Odczyty przenoszą się na klienta `readonly`, żeby praca nad importerem i podglądem
-arkusza dalej działała lokalnie.
+Każdy zapis do Google Sheets przechodził przez klienta z zakresem `spreadsheets` budowanego w dwóch
+miejscach, bez żadnego sprawdzenia środowiska. Identyfikator arkusza pochodzi z bazy, a każda baza
+nieprodukcyjna to przywrócony zrzut produkcji — więc localhost, preview i `db-test` pisały do żywych
+arkuszy (36 obcych wierszy na 8 arkuszach w sierpniu 2026). Granica zapisu przenosi się do
+**poświadczenia**: poza produkcją aplikacja niesie konto z prawem wyłącznie do odczytu, więc odmawia
+**Google**, a nie nasz kod.
 
 ## Current State Analysis
 
@@ -36,29 +40,31 @@ arkusza dalej działała lokalnie.
   `src/__tests__/lib/env/schema.test.ts`. Kluczem jest `VERCEL_ENV`, nigdy `NODE_ENV` (lokalny
   `next build` ustawia `NODE_ENV=production`). `VERCEL_ENV` jest już zadeklarowany w `serverSchema`
   (`schema.ts:96`) jako opcjonalny.
-- **Testy jednostkowe mockują `googleapis`** i przechodzą fikcyjne identyfikatory arkuszy: `'s'`
-  (`src/__tests__/lib/google/sheets.test.ts`, `tab-rows.test.ts`) i `'golden-sheet'`
-  (`sheets-golden.test.ts`). Stub `serverEnv` (`src/__tests__/stubs/env-server.ts`) czyta
-  `process.env` leniwie, więc `VERCEL_ENV` jest tam `undefined` — bramka odmówi, dopóki spece nie
-  wpiszą swoich identyfikatorów na listę dozwolonych.
+- **Testy jednostkowe mockują `googleapis`**, a stub `serverEnv` (`src/__tests__/stubs/env-server.ts`)
+  czyta `process.env` **leniwie** — więc spec ustawia poświadczenie w `beforeEach` i trafia ono do
+  kodu bez przeładowania modułu. To jest szew, przez który spece ścieżki zapisu wstrzykują fałszywe
+  poświadczenie Edytora.
 
 ## Desired End State
 
-Zapis do arkusza jest możliwy wyłącznie wtedy, gdy `VERCEL_ENV === 'production'`, albo gdy docelowy
-`spreadsheetId` figuruje w `GOOGLE_SHEETS_WRITE_ALLOWLIST`. W każdym innym przypadku klient zapisowy
-w ogóle nie powstaje — funkcja rzuca przed pierwszym wywołaniem Google API.
+Dwa konta usługi w jednym projekcie GCP:
 
-Weryfikacja: uruchomienie aplikacji lokalnie (`VERCEL_ENV` nieustawiony) i dodanie wydatku
-inwestycyjnego na inwestycji z podpiętym arkuszem nie zmienia arkusza, a w logu serwera pojawia się
-odmowa z identyfikatorem arkusza. Odczyty — podgląd arkusza, import kosztorysu, porównanie
-z arkuszem — działają bez zmian.
+| zmienna                             | konto                       | rola                                     | gdzie żyje                                                  |
+| ----------------------------------- | --------------------------- | ---------------------------------------- | ----------------------------------------------------------- |
+| `GOOGLE_SERVICE_ACCOUNT_JSON`       | `kosztorys-sheets-reader@…` | Przeglądający na wszystkich 56 arkuszach | `.env`, Vercel Preview, Vercel Development, **i** produkcja |
+| `GOOGLE_SERVICE_ACCOUNT_WRITE_JSON` | `kosztorys-sheets@…`        | Edytujący                                | **wyłącznie** Vercel Production                             |
+
+Zapis z maszyny deweloperskiej dostaje `403` od Google. Nie ma zmiennej środowiskowej, ustawienia
+`VERCEL_ENV` ani zmiany kodu, która to odblokuje — bo brakuje nie flagi, tylko klucza.
+
+Weryfikacja (wykonana na żywym arkuszu, nie założona): odczyt tytułu przechodzi, `values.update`
+kończy się `403 The caller does not have permission`, a ta sama próba z ustawionym
+`VERCEL_ENV=production` kończy się tak samo.
 
 ### Key Discoveries
 
 - Szew jest jeden i domknięty: `sheets.ts:42-45` + `sheet-access.ts:32-33`. Żaden skrypt nie pisze
   (sprawdzone: `scripts/*.mjs` i `src/scripts/*.ts` mają 0 wywołań `values.update|append|clear|batchUpdate`).
-- `getClient()` nie zna `spreadsheetId`, ale **wszystkie cztery wywołania** (`sheets.ts:92,189,301,638`)
-  mają go w zasięgu jako parametr własnej funkcji — przewleczenie jest darmowe.
 - `blobTokenRefusal` mieszka w `env/schema.ts`, bo `payload.config.ts` musi go zaimportować bez
   `server-only`. Ścieżka arkuszy tego ograniczenia **nie ma** — hook ładuje `sheets-sync` leniwie
   przez dynamiczny import wewnątrz `after()`, czyli w grafie Next, gdzie `serverEnv` jest legalny
@@ -81,256 +87,121 @@ z arkuszem — działają bez zmian.
   zostawione — `cleanup-checklist.md`.
 - **Nie dodajemy bramki po stronie `createServiceAccountJWT`** (`google/auth.ts:17`) — bije również
   token `readonly` dla importu kosztorysu i skryptów.
+- **Nie dodajemy odmowy w drugą stronę** (wzorzec `blobTokenRefusal`: odrzuć poświadczenie Edytora,
+  gdy `VERCEL_ENV !== 'production'`). Byłby to tripwire, nie bramka — i zamknąłby jedyną drogę pracy
+  nad zapisem lokalnie, czyli własne konto Edytora nadane wyłącznie własnemu arkuszowi testowemu.
+  Takie konto z definicji nie sięga do żadnego z 56 produkcyjnych arkuszy, więc furtka jest bezpieczna
+  z tego samego powodu, z którego cała zmiana działa: liczy się poświadczenie, nie flaga.
+- **Nie rotujemy starego klucza Edytora.** Konto się nie zmieniło i dalej jest legalnym Edytorem na
+  produkcji; kopie klucza zdjęto z maszyny, co zamyka realną ekspozycję.
 - **Nie robimy wyjątku dla „Zresetuj wydatki inwestycyjne".** Reset to najbardziej destrukcyjna
   operacja w zestawie; po zmianie naprawa arkusza klienta odbywa się z produkcji i nie ma innej drogi.
 
 ## Implementation Approach
 
-Predykat odmowy jako czysta funkcja obok szwu, potem przewleczenie `spreadsheetId` przez fabrykę
-klienta zapisowego, przy okazji rozdzielenie odczytów na klienta `readonly`. Trzy fazy, każda
-zostawiająca drzewo w spójnym stanie.
+**Co robi kod.** Nie jest bramką — bramka jest w poświadczeniu. Kod robi trzy rzeczy:
 
-**Dlaczego lista identyfikatorów, a nie flaga `ALLOW_WRITE=1`.** Flaga zostanie włączona w `.env`
-przy pierwszej pracy nad importerem i już tam zostanie — dziura wraca cicho. Lista wiąże zgodę
-z **tożsamością zasobu**, tak samo jak `blobTokenRefusal` wiąże token ze środowiskiem po id store'a:
-nawet z furtką otwartą, zapis do arkusza klienta jest odmówiony, dopóki ktoś świadomie nie wklei jego
-identyfikatora do własnego `.env`.
+1. `getWritableSheetsClient()` (`src/lib/google/writable-sheets-client.ts`) zostaje jedynym miejscem
+   **w aplikacji** bijącym token Sheets w zakresie zapisu, żeby nowa funkcja pisząca dziedziczyła
+   układ przez sam fakt potrzebowania klienta, a nie przez pamiętanie konwencji.
+2. Brak poświadczenia rzuca czytelne zdanie (`auth.ts`) **przed** pierwszym wywołaniem Google API,
+   żeby zamiast gołego `403` z `googleapis` padło wyjaśnienie.
+3. Odczyty jadą na `getReadonlySheetsClient()`, więc bramka nigdy nie zamyka czytania — import,
+   podgląd i „Porównaj z arkuszem Google" działają lokalnie bez żadnych uprawnień do zapisu.
 
-**Dlaczego nie wiążemy płaszczyzny bazy z płaszczyzną zasobu** (co `research.md` sugeruje jako
-najmocniejszy wzorzec, `backfill-heic-media.ts:153-175`). Tam ma to sens, bo niebezpieczeństwo idzie
-w obie strony. Tu jedynym groźnym kierunkiem jest „nie-produkcja pisze do produkcyjnego arkusza",
-a to `VERCEL_ENV` odcina w całości. Jedyny przypadek, którego nie łapie — produkcja wskazana na
-nieprodukcyjną bazę — wymagałby zaszycia hosta Neona w kodzie, a gałęzie Neona są rotowane
-(`memory: debugging-neon-branch-deleted-by-retention`), więc bramka zaczęłaby odmawiać na produkcji
-po rotacji. Zamiana pewnej awarii na hipotetyczną ochronę.
+Ścieżka zapisu czyta i pisze **tym samym** klientem: arkusz udostępniony tylko kontu Edytora ma
+synchronizować się w całości, a nie padać cicho na odczycie gridu za `catch`-em `sheets-sync`.
 
----
+`verifySheetAccess` degraduje się, a nie zawodzi: bez poświadczenia Edytora sonda zapisu jest
+**pomijana**, nie oblewana. `null` dalej znaczy „konto nie ma dostępu w ogóle" — zwracanie go przy
+braku poświadczenia wysyłałoby właściciela po ponowne udostępnianie arkusza, który nigdy nie był
+problemem.
 
-## Phase 1: Predykat odmowy i zmienna środowiskowa
+**Adres, który UI każe udostępnić, to konto PISZĄCE.** `writeServiceAccountEmail()` czyta go
+z poświadczenia Edytora, a tam gdzie go nie ma (czyli wszędzie poza produkcją) zwraca stałą — adres
+konta usługi nie jest sekretem, a instrukcja musi być poprawna również lokalnie. Nadanie Edytora
+kontu **czytającemu** oddałoby prawo zapisu każdemu laptopowi i każdemu preview dla tego arkusza,
+czyli otworzyłoby dziurę po jednym arkuszu naraz. Powierzchnia zgłaszająca błąd **odczytu**
+(`kosztorys-import`) zostaje przy adresie czytającym i prosi o rolę Przeglądającego.
 
-### Overview
+### Porzucona ścieżka: bramka na fladze
 
-Czysta, testowalna funkcja rozstrzygająca „czy wolno pisać do tego arkusza" plus deklaracja nowej
-zmiennej w warstwie env. Zero wpięcia — po tej fazie zachowanie aplikacji jest niezmienione.
+Pierwotny plan stawiał predykat `sheetWriteRefusal(VERCEL_ENV, spreadsheetId, allowlist)`
+w `src/lib/google/sheet-write-guard.ts`: poza produkcją klient zapisowy powstaje tylko dla arkusza
+wpisanego na `GOOGLE_SHEETS_WRITE_ALLOWLIST`. Wdrożone w `d09c59c9`, `4210bc7d`, `408f7db4`,
+`60d4a31b` i skasowane w `3b8f3bfd`.
 
-### Changes Required
-
-#### 1. Predykat
-
-**File**: `src/lib/google/sheet-write-guard.ts` (nowy)
-
-**Intent**: Jedno miejsce rozstrzygające, czy klient zapisowy może powstać dla danego arkusza.
-Kolokowany ze szwem, który chroni — inaczej niż `blobTokenRefusal`, którego miejsce w `env/schema.ts`
-wymusza graf Payloada; tu tego ograniczenia nie ma.
-
-**Contract**: `sheetWriteRefusal(vercelEnv: string | undefined, spreadsheetId: string, allowlist: string | undefined): string | null`
-— zwraca tekst odmowy albo `null`, bez side-effectów, bez importu `server-only`. Reguła:
-`vercelEnv === 'production'` przepuszcza każdy arkusz; poza produkcją przepuszcza wyłącznie
-identyfikator obecny na liście z `allowlist` (rozdzielana przecinkami, białe znaki przycinane, puste
-wpisy pomijane). Tekst odmowy nazywa arkusz i wskazuje `GOOGLE_SHEETS_WRITE_ALLOWLIST` jako furtkę.
-Dodatkowo eksportuje `parseSheetWriteAllowlist(raw: string | undefined): string[]`, żeby test
-sprawdzał parsowanie osobno od reguły.
-
-#### 2. Deklaracja zmiennej
-
-**File**: `src/lib/env/schema.ts`
-
-**Intent**: `GOOGLE_SHEETS_WRITE_ALLOWLIST` jako opcjonalna zmienna serwerowa — nieustawiona znaczy
-„poza produkcją nie wolno pisać nigdzie", co jest właściwym domyślnym.
-
-**Contract**: nowe pole `z.string().optional()` w `serverSchema`, obok pozostałych zmiennych Google.
-**Bez `superRefine`** — nie ma tu zależności między polami do zwalidowania; reguła żyje w predykacie,
-który jest wołany per-arkusz w runtime, nie raz przy parsowaniu env.
-
-#### 3. Test jednostkowy predykatu
-
-**File**: `src/__tests__/lib/google/sheet-write-guard.test.ts` (nowy)
-
-**Intent**: Przypiąć regułę, zanim cokolwiek jej użyje.
-
-**Contract**: przypadki — produkcja przepuszcza arkusz spoza listy; `undefined` (localhost,
-`pnpm test`, `pnpm test:e2e`) odmawia; `'preview'` odmawia; poza produkcją arkusz z listy przechodzi,
-a jego sąsiad z tej samej listy-nie-listy nie; lista z białymi znakami i pustymi wpisami parsuje się
-poprawnie; pusta i nieustawiona lista odmawia wszystkiego poza produkcją. Identyfikatory w teście
-są **literałami**, nie budowane ze stałych produkcyjnych — inaczej test dowodziłby tylko, że bramka
-zgadza się sama ze sobą (ten sam szczegół pilnuje `schema.test.ts:13-14`).
-
-### Success Criteria
-
-#### Automated Verification
-
-- Spec predykatu przechodzi: `pnpm exec vitest run src/__tests__/lib/google/sheet-write-guard.test.ts`
-
-#### Manual Verification
-
-- brak — faza nie zmienia zachowania aplikacji
+**Dlaczego padło.** Ta maszyna trzyma sekrety produkcji (`DB_POSTGRES_URL_PROD`, JSON konta usługi),
+więc **żadne sprawdzenie środowiska nie odróżni produkcji od developera, który ustawił zmienne**.
+Bramka na fladze jest tak mocna, jak maszyna, która ją liczy — a ta maszyna jest po drugiej stronie.
+Bramka w poświadczeniu jest egzekwowana przez Google, poza maszyną, i nie da się jej przegadać.
+Kolejność wdrożenia wynikała z tego samego rachunku: dotychczasowe konto **zostało** piszącym (jest
+już Edytorem na wszystkich 56 arkuszach, więc zero ponownego udostępniania i ani chwili, w której
+produkcja traci zapis), a nowe, czytające, dostało tylko addytywne nadania Przeglądającego.
 
 ---
 
-## Phase 2: Szew — klient zapisowy za bramką, odczyty na `readonly`
+## Wdrożone zmiany
 
-### Overview
+### 1. Poświadczenia (`src/lib/env/schema.ts`, `src/lib/google/auth.ts`)
 
-Fabryka klienta zapisowego przyjmuje `spreadsheetId` i odmawia przed zwróceniem klienta. Odczyty
-przenoszą się na `getReadonlySheetsClient()`, żeby bramka nie zamknęła czytania. Jedna faza, bo
-rozdzielenie jej na dwie zostawiłoby drzewo w stanie, w którym lokalne odczyty są zepsute.
+- `GOOGLE_SERVICE_ACCOUNT_WRITE_JSON` jako opcjonalna zmienna serwerowa — opcjonalna, bo każde inne
+  środowisko **ma jej nie mieć**; jej brak to bramka, nie błąd konfiguracji. Walidowana `.refine()`
+  na kształt JSON-a **gdy jest obecna**: zepsute poświadczenie Edytora inaczej przeszłoby bootstrap
+  i padło wewnątrz odroczonego zapisu, który `sheets-sync` połyka — w jedynym środowisku, które pisze.
+- `auth.ts` jest jedynym właścicielem pytania „czy jest poświadczenie Edytora"
+  (`hasWriteServiceAccountCredentials`) i jedyną drogą do klucza (`parseWriteServiceAccountCredentials`
+  jest prywatna dla modułu — eksport byłby drugimi drzwiami do klucza prywatnego).
 
-### Changes Required
+### 2. Szew klienta (`src/lib/google/writable-sheets-client.ts`, `sheets.ts`, `sheet-access.ts`)
 
-#### 1. Fabryka klienta zapisowego
+Fabryka klienta zapisowego dostaje własny moduł, bliźniaczy wobec `readonly-sheets-client.ts` —
+wcześniej siedziała w 655-linijkowym module domenowym, przez co `sheet-access.ts` ciągnął cały graf
+`sheets.ts` po jedną czterolinijkową funkcję.
 
-**File**: `src/lib/google/sheets.ts`
+### 3. Konta w interfejsie (`lib/actions/{investments,sheets}.ts`, `sheet-access-block.tsx`)
 
-**Intent**: `getClient()` staje się bramką — przyjmuje arkusz, sprawdza predykat, rzuca przy odmowie.
-Nazwa zmienia się na `getWritableSheetsClient`, żeby przy czytaniu kodu było widać, że to strona
-zapisowa; „getClient" nie mówi nic i to on jest powodem, dla którego odczyty się tu przykleiły.
+Powierzchnie „udostępnij **jako Edytujący**" nazywają konto piszące; powierzchnia zgłaszająca brak
+**odczytu** nazywa konto czytające i prosi o Przeglądającego.
 
-**Contract**: `getWritableSheetsClient(spreadsheetId: string): sheets_v4.Sheets`. Czyta
-`serverEnv.VERCEL_ENV` i `serverEnv.GOOGLE_SHEETS_WRITE_ALLOWLIST`, woła `sheetWriteRefusal`,
-przy niepustym wyniku rzuca `Error` z tym tekstem. Wołający: `applyTabRowsBatch` (`:189`) i
-`setupTab` (`:301`) — oba mają `spreadsheetId` w sygnaturze.
+### 4. Narzędzie operatorskie (`scripts/share-sheets-with-reader.mjs`)
 
-#### 2. Odczyty na kliencie readonly
-
-**File**: `src/lib/google/sheets.ts`
-
-**Intent**: `readGrid` i `tabGid` czytają, więc nie mają powodu trzymać tokenu z prawem zapisu —
-po bramce trzymanie go oznaczałoby dodatkowo, że lokalnie przestają działać.
-
-**Contract**: `readGrid` (`:92`) i `ensureTab` (`:638`, przez `tabGid`) biorą klienta z
-`getReadonlySheetsClient()`. `setupTab` zostaje w całości na kliencie zapisowym — jego
-`spreadsheets.get` (`:303`) czyta metadane tuż przed `values.clear` na tej samej zakładce, więc
-rozdzielanie go dawałoby dwa tokeny w jednej operacji bez żadnego zysku.
-
-#### 3. Sonda uprawnień degraduje się do odczytu
-
-**File**: `src/lib/google/sheet-access.ts`
-
-**Intent**: `verifySheetAccess` przestaje budować własnego klienta. Poza produkcją, dla arkusza spoza
-listy, sonda zapisu jest pomijana zamiast wywalać podpięcie — inaczej lokalne podpięcie arkusza
-zwracałoby `null`, a UI mówiłoby „udostępnij arkusz koncie usługowemu", co jest nieprawdą i wysłałoby
-człowieka w złą stronę.
-
-**Contract**: odczyt tytułu idzie przez `getReadonlySheetsClient()`. Sonda zapisu (przepisanie tytułu
-na ten sam) wykonuje się tylko wtedy, gdy `sheetWriteRefusal` zwraca `null`; przy odmowie jest
-pomijana z logiem `console.warn` nazywającym arkusz i powód. Zwracany kształt
-(`{ title } | null`) **bez zmian** — `null` nadal znaczy „konto usługowe nie ma dostępu", i tylko to.
-
-#### 4. Test regresyjny na szwie
-
-**File**: `src/__tests__/lib/google/sheet-write-guard-seam.test.ts` (nowy)
-
-**Intent**: Przypiąć zachowanie, którego zabrakło w incydencie — i to obserwowalne (brak wywołania
-Google API), a nie zwracaną wartość predykatu, którą już pokrywa faza 1.
-
-**Contract**: z mockiem `googleapis` w kształcie istniejących speców z `src/__tests__/lib/google/`:
-przy `VERCEL_ENV` nieustawionym i pustej liście, `applyTabRowsBatch` na arkuszu klienta **rzuca**
-i **żaden** mock (`values.batchUpdate`, `spreadsheets.batchUpdate`, `values.clear`) nie został
-wywołany; to samo dla `setupTab`. Przy tym samym środowisku, ale arkuszu wpisanym na listę — zapis
-przechodzi. Nieustawiony `VERCEL_ENV` jest tu realnym warunkiem, nie sztucznym: tak wygląda
-i localhost, i `pnpm test:e2e`.
-
-#### 5. Dostosowanie istniejących speców
-
-**Files**: `src/__tests__/lib/google/sheets.test.ts`, `sheets-golden.test.ts`, `tab-rows.test.ts`,
-`src/__tests__/lib/actions/sheets-sync.test.ts`
-
-**Intent**: Spece przechodzą fikcyjne identyfikatory (`'s'`, `'golden-sheet'`) i działają dziś
-dlatego, że bramki nie ma. Po zmianie mają przechodzić **dlatego, że lista dozwolonych działa** —
-czyli same są dowodem, że furtka nie jest zepsuta.
-
-**Contract**: w `beforeEach` (albo w istniejącym bloku seedującym env — `sheets-sync.test.ts:106`
-robi to już dla `GOOGLE_SERVICE_ACCOUNT_JSON`) ustawić `process.env.GOOGLE_SHEETS_WRITE_ALLOWLIST`
-na identyfikatory, których dany spec używa. **Nie** ustawiać `VERCEL_ENV='production'` — to
-wyłączyłoby bramkę w testach i przykryło regresję, którą ten plan zakłada.
-
-### Success Criteria
-
-#### Automated Verification
-
-- Test regresyjny szwu przechodzi: `pnpm exec vitest run src/__tests__/lib/google/sheet-write-guard-seam.test.ts`
-- Dotychczasowe spece arkuszowe przechodzą przez listę dozwolonych, nie przez brak bramki:
-  `pnpm exec vitest run src/__tests__/lib/google src/__tests__/lib/actions/sheets-sync.test.ts src/__tests__/hooks/sync-sheet.test.ts`
-
-#### Manual Verification
-
-- Lokalnie (`VERCEL_ENV` nieustawiony, lista pusta) dodanie wydatku inwestycyjnego na inwestycji
-  z podpiętym arkuszem **nie zmienia arkusza**, a w logu serwera jest odmowa z identyfikatorem arkusza
-- Lokalnie „Zresetuj wydatki inwestycyjne" kończy się widocznym błędem, nie cichym sukcesem
-- Lokalnie z własnym arkuszem testowym na `GOOGLE_SHEETS_WRITE_ALLOWLIST` zapis i reset działają
-- Podgląd arkusza, import kosztorysu i porównanie z arkuszem działają lokalnie bez zmian
-- Podpięcie arkusza lokalnie kończy się sukcesem z ostrzeżeniem o pominiętej sondzie zapisu, a nie
-  komunikatem „udostępnij arkusz koncie usługowemu"
-
----
-
-## Phase 3: Dokumentacja i odmrożenie bramy QA
-
-### Overview
-
-Zapisanie reguły tam, gdzie następny człowiek jej poszuka, i zdjęcie zamrożenia z sekcji bramy
-`staging → main`, które czekały na strażnika.
-
-### Changes Required
-
-#### 1. Reguła w AGENTS.md
-
-**File**: `AGENTS.md`
-
-**Intent**: Sekcja „Databases And Live Data" opisuje już analogiczną regułę dla Vercel Blob. Arkusze
-mają tam dziś jedno zdanie („`GOOGLE_SERVICE_ACCOUNT_JSON` … zapisy do Sheets dotykają żywych
-danych"), które po tej zmianie jest nieaktualne.
-
-**Contract**: zaktualizować ten punkt: zapisy są odcięte poza produkcją, odczyty otwarte, furtką jest
-`GOOGLE_SHEETS_WRITE_ALLOWLIST` z identyfikatorem **własnego** arkusza testowego, a naprawa arkusza
-klienta odbywa się z produkcji. Jedno zdanie o tym, że szwem jest `getWritableSheetsClient` i nowa
-funkcja pisząca dziedziczy bramkę przez niego, a nie przez konwencję.
-
-#### 2. Odmrożenie sekcji bramy QA
-
-**File**: `context/changes/staging-to-main-gate/ledger.md`
-
-**Intent**: Sześć sekcji jest zamrożonych na czas braku strażnika (`sheet-live-compare`,
-`kosztorys-importer`, `import-etapy-z-arkusza`, `sheet-column-mapping`, `EX-686`,
-`sheet-measured-qty-from-formula`).
-
-**Contract**: zdjąć adnotację o zamrożeniu, dopisać warunek uruchamiania tych sekcji — własny arkusz
-testowy na liście dozwolonych, nigdy arkusz klienta.
-
-### Success Criteria
-
-#### Automated Verification
-
-- brak — faza jest wyłącznie prozą
-
-#### Manual Verification
-
-- Zamrożone sekcje bramy `staging → main` dają się uruchomić na arkuszu testowym
-
----
+Hurtowe nadanie Przeglądającego kontu czytającemu, uruchamiane **z produkcji** (potrzebuje
+poświadczenia Edytora, bo udostępnianie pliku wymaga Edytora na nim). Dry-run domyślnie, idempotentne,
+krzyczy gdy konto czytające ma rolę wyższą niż Przeglądający, wychodzi z kodem ≠ 0 przy jakimkolwiek
+błędzie. To **jedyny inny** posiadacz poświadczenia Edytora w repo — i bije token `drive`, czyli
+uprawnienie szersze niż token Sheets; `AGENTS.md` mówi to wprost, żeby teza o „jedynym miejscu"
+nie była nieprawdziwa.
 
 ## Testing Strategy
 
 ### Unit
 
-- `sheetWriteRefusal` — reguła i parsowanie listy (faza 1)
-- Szew — `applyTabRowsBatch` / `setupTab` nie wykonują **żadnego** wywołania Google API przy odmowie
-  (faza 2). To jest właściwy test regresyjny incydentu: asercja na obserwowalnym efekcie, nie na
-  wartości zwracanej przez predykat.
+- `sheets-write-credential.test.ts` — brak poświadczenia ⇒ rzut **przed** pierwszym wywołaniem Google
+  API i zero wywołań mocków; `VERCEL_ENV='production'` niczego nie zmienia; ścieżka zapisu bije
+  **jeden** token, w zakresie `spreadsheets`, na tożsamość Edytora, i **nie** bije tokenu readonly
+  (to jest dowód, że arkusz udostępniony tylko Edytorowi się synchronizuje); odczyt zostaje otwarty
+  przy zerowym poświadczeniu Edytora.
+- `auth.test.ts` — adres pokazywany pod „jako Edytujący" to konto **piszące**, nigdy czytające,
+  także gdy poświadczenia nie ma. Strażnik regresji dla dziury znalezionej na bramie review.
+- `sheet-access.test.ts` — obie gałęzie sondy: z poświadczeniem wykonuje `batchUpdate`, bez —
+  zwraca tytuł i **nie pisze nic**; brak odczytu dalej daje `null`.
+- `env/schema.test.ts` — nieobecność przechodzi, poprawny JSON przechodzi, urwany JSON i JSON bez
+  klucza prywatnego są odrzucane na bootstrapie.
 
 ### Integration
 
-Brak nowych. Ścieżka hook → `sheets-sync` → `sheets.ts` jest już pokryta
-(`src/__tests__/hooks/sync-sheet.test.ts`, `src/__tests__/lib/actions/sheets-sync.test.ts`) i po
-zmianie przechodzi przez listę dozwolonych — czyli te spece stają się dodatkowym dowodem, że furtka
-działa.
+Brak nowych. Ścieżka hook → `sheets-sync` → `sheets.ts` jest pokryta
+(`src/__tests__/hooks/sync-sheet.test.ts`, `src/__tests__/lib/actions/sheets-sync.test.ts`); te spece
+wstrzykują fałszywe poświadczenie Edytora, żeby ścieżki zapisu dało się przejechać. To **nie** jest
+obejście bramki — bramką jest rola Przeglądającego na prawdziwym poświadczeniu, a tego żaden test
+nie podrobi.
 
 ### E2E
 
-Brak. `pnpm test:e2e` nie ustawia `VERCEL_ENV`, więc po zmianie bramka odmawia, a sync połyka
-wyjątek w `catch` — spece nie zmieniają zachowania. To jest właśnie skutek pożądany i on domyka
-`research.md` §5 („naprawa literówki w `e2e/helpers.ts:46` natychmiast otwiera kanał na żywy
-arkusz").
+Brak. `pnpm test:e2e` nie niesie poświadczenia Edytora, więc zapis odmawia, a sync połyka wyjątek —
+i to jest skutek pożądany: domyka `research.md` §5 („naprawa literówki w `e2e/helpers.ts:46`
+natychmiast otwiera kanał na żywy arkusz").
 
 ## Whole-tree Gate
 
@@ -350,21 +221,19 @@ arkusz").
 
 > Konwencja: `- [ ]` do zrobienia, `- [x]` zrobione. Dopisz ` — <commit sha>` po wylądowaniu kroku.
 
-### Phase 1: Predykat odmowy i zmienna środowiskowa
+### Wdrożenie
 
 #### Automated
 
-- [x] 1.1 Spec predykatu przechodzi: `pnpm exec vitest run src/__tests__/lib/google/sheet-write-guard.test.ts` — d09c59c9
+- [x] Spece poświadczenia, szwu, sondy i schematu env przechodzą: `pnpm exec vitest run src/__tests__/lib/google src/__tests__/lib/env src/__tests__/lib/actions/sheets-sync.test.ts src/__tests__/hooks/sync-sheet.test.ts` — 3b8f3bfd + bramka review
+- [x] `pnpm typecheck` — 3b8f3bfd
+- [x] `pnpm build` — 3b8f3bfd
 
-### Phase 2: Szew — klient zapisowy za bramką, odczyty na `readonly`
+#### Infrastruktura (wykonane i zweryfikowane na żywo)
 
-#### Automated
-
-- [x] 2.1 Test regresyjny szwu przechodzi: `pnpm exec vitest run src/__tests__/lib/google/sheet-write-guard-seam.test.ts` — 4210bc7d
-- [x] 2.2 Spece arkuszowe przechodzą przez listę dozwolonych: `pnpm exec vitest run src/__tests__/lib/google src/__tests__/lib/actions/sheets-sync.test.ts src/__tests__/hooks/sync-sheet.test.ts` — 4210bc7d
-
-### Phase 3: Dokumentacja i odmrożenie bramy QA
-
-#### Automated
-
-- [x] 3.1 brak checków automatycznych — faza wyłącznie prozą
+- [x] 56/56 arkuszy udostępnionych kontu czytającemu jako Przeglądający
+- [x] `GOOGLE_SERVICE_ACCOUNT_WRITE_JSON` wyłącznie na Vercel Production
+- [x] `.env`, Preview i Development na koncie czytającym
+- [x] Klucz Edytora zdjęty z maszyny (kopie `.env.bak-*` zredagowane, kopie w `/tmp` wymazane)
+- [ ] `GOOGLE_SERVICE_ACCOUNT_JSON` na Production podmienione na konto czytające — **dopiero po
+      wdrożeniu kodu**, inaczej deploy w międzyczasie odciąłby produkcji zapis

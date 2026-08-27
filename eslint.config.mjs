@@ -105,7 +105,8 @@ export default ts.config(
   {
     // One-off plain-Node .mjs tools (not app code) — their process/console use trips no-undef and
     // it's not worth a Node-globals config block. scripts/inspect-sheet.mjs = sheet-inspection POC;
-    // scripts/blob-snapshot.mjs = EX-459 blob backup/recovery tool.
+    // scripts/blob-snapshot.mjs = EX-459 blob backup/recovery tool;
+    // scripts/share-sheets-with-reader.mjs = bulk Viewer grant for the read-only service account.
     ignores: [
       '.next/',
       '.next-e2e/',
@@ -114,6 +115,7 @@ export default ts.config(
       'scripts/blob-mirror.mjs',
       'scripts/blob-snapshot.mjs',
       'scripts/blob-restore.mjs',
+      'scripts/share-sheets-with-reader.mjs',
     ],
   },
 )

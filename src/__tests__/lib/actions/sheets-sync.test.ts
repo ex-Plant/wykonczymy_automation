@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Payload } from 'payload'
 import type { MaterialSyncPreviewT } from '@/lib/actions/sheets-sync'
+import { setGoogleCredentialEnv } from '@/__tests__/helpers/google-credentials'
 
 vi.mock('server-only', () => ({}))
 
@@ -103,17 +104,7 @@ const {
 // ── helpers ──────────────────────────────────────────────────────────────
 
 function setEnv() {
-  // Writing needs the Editor credential, which lives only in Vercel Production — these specs supply
-  // a fake one so the write paths stay exercisable. Not a way around the gate: the real gate is that
-  // the credential on a dev machine is a Viewer, which no test can fake away.
-  process.env.GOOGLE_SERVICE_ACCOUNT_WRITE_JSON = JSON.stringify({
-    client_email: 'writer@example.iam.gserviceaccount.com',
-    private_key: '-----BEGIN PRIVATE KEY-----\nWRITER\n-----END PRIVATE KEY-----\n',
-  })
-  process.env.GOOGLE_SERVICE_ACCOUNT_JSON = JSON.stringify({
-    client_email: 'test@x.iam.gserviceaccount.com',
-    private_key: '-----BEGIN PRIVATE KEY-----\nx\n-----END PRIVATE KEY-----\n',
-  })
+  setGoogleCredentialEnv()
 }
 
 // Queue the kosztoryses lookup (the FIRST find call inside any action that

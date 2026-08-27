@@ -3,6 +3,14 @@
 > Pełny plan: `context/changes/2026-08-26-sheet-write-env-guard/plan.md`
 > Research: `context/changes/2026-08-26-sheet-write-env-guard/research.md`
 
+> **⚠️ Ten brief zamrożono w momencie zatwierdzenia planu i NIE opisuje stanu wdrożonego.**
+> Opisany tu projekt — predykat `sheetWriteRefusal` na `VERCEL_ENV` + lista
+> `GOOGLE_SHEETS_WRITE_ALLOWLIST` — został w trakcie **porzucony i skasowany**: ta maszyna trzyma
+> sekrety produkcji, więc żadne sprawdzenie środowiska nie odróżni produkcji od developera, który
+> ustawił zmienne. Wdrożono bramkę w **poświadczeniu**: poza produkcją aplikacja niesie konto
+> z prawem wyłącznie do odczytu, więc odmawia Google. Aktualny opis i uzasadnienie:
+> `plan.md` → „Porzucona ścieżka". Poniższe zostaje jako zapis tego, co zatwierdzono.
+
 ## Co i po co
 
 Localhost, preview i baza E2E pisały do żywych arkuszy klientów — w ośmiu arkuszach wylądowało

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { setGoogleCredentialEnv } from '@/__tests__/helpers/google-credentials'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GOLDEN CHARACTERIZATION TEST (regression lock, spec criterion 1).
@@ -62,17 +63,7 @@ beforeEach(() => {
   spreadsheetsGetMock.mockReset()
   batchUpdateMock.mockReset()
   batchUpdateMock.mockResolvedValue({ data: {} })
-  // Writing needs the Editor credential, which lives only in Vercel Production — these specs supply
-  // a fake one so the write paths stay exercisable. Not a way around the gate: the real gate is that
-  // the credential on a dev machine is a Viewer, which no test can fake away.
-  process.env.GOOGLE_SERVICE_ACCOUNT_WRITE_JSON = JSON.stringify({
-    client_email: 'writer@example.iam.gserviceaccount.com',
-    private_key: '-----BEGIN PRIVATE KEY-----\nWRITER\n-----END PRIVATE KEY-----\n',
-  })
-  process.env.GOOGLE_SERVICE_ACCOUNT_JSON = JSON.stringify({
-    client_email: 'test@example.iam.gserviceaccount.com',
-    private_key: '-----BEGIN PRIVATE KEY-----\nMIITEST\n-----END PRIVATE KEY-----\n',
-  })
+  setGoogleCredentialEnv()
 })
 
 describe('GOLDEN: expenses tab emitted requests', () => {
