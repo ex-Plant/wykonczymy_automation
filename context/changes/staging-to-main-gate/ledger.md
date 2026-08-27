@@ -241,6 +241,189 @@ be 161.39`. Po fixie 198/198 w całym `sheet-import`, `pnpm typecheck` czysty.
       przeczytać dwojako. **Potrzebne od człowieka:** przeformułowanie boxa. **Dyspozycja testowa:**
       no automated test — redakcja rejestru, nie zachowanie kodu.
 
+**B17 (EX-564 rabat bulk-apply, EX-571 dokończenie, kosztorys-podsumowanie-tabs, kosztorys-tryb-mieszany) — 2026-08-26, baza preview:**
+
+- **`EX-564` — +7 boxów, domknięte 8/8** (z 1/8). Cała ścieżka rabatu: podwykonawcy pozostają
+  bez rabatu (potwierdzone i w UI — „Suma etapy netto" niezmieniona przy aktywnym 15% rabacie
+  pozycji — i w schemacie: `discount_type`/`discount_value` nie sąsiaduje z kolumnami
+  `w_tools_override_*`/`own_tools_override_*`), bulk-apply 15% nadpisuje istniejący rabat
+  dowolnego typu (SQL-potwierdzone), walidacja odrzuca ujemne/>100 (sprawdzone przez atrybut
+  `disabled`), `0%` to **świadome** zerowanie masowe za bramką dialogu potwierdzenia (nie cichy
+  brak działania — komentarz w `percent-discount.ts` wprost to opisuje), a „Rabat całościowy"
+  (kwotowy, 750 zł) przetrwał restart strony i — potwierdzone czytaniem kodu, nie klikaniem w
+  drawer „Wersje" (niestabilny w tej sesji Playwrighta) — przetrwałby też przywrócenie wersji:
+  `restoreSnapshotAction` woła `restoreKosztorys` bez opcji `clearGlobalDiscount`, która domyślnie
+  jest `false`; jedyne dwa wywołania z `clearGlobalDiscount:true` to „Wyczyść kosztorys" i import z
+  arkusza/preset — restore wersji nie jest jednym z nich. **Trzy pozycje checklisty opisują
+  nieaktualny kształt UI** (kontrolka to jeden 3-wartościowy `SimpleSelect`, nie para checkboxów;
+  przycisk to „Zapisz", nie „Zastosuj") — odnotowane inline, nie blokuje.
+- **`EX-571` — +3 boxy, 13/16** (z 10/16). Figura robociznej w Podsumowaniu jest niezależna od
+  widoku gridu (kod: panel czyta propsy liczone raz po stronie serwera, nie stan widoku kolumn) —
+  rabat globalny odejmuje się od robocizny tak samo jak przed EX-571 (5000,00 → -750,00 →
+  4392,86, zgodne z wcześniejszym pomiarem). Podpowiedzi „Rabat nie obniża stawek robocizny dla
+  ekip." potwierdzone na kolumnach Razem Netto/Brutto i Etap — kwota netto (`header-tips.ts`);
+  kolumna „Rabat" sama nie ma zarejestrowanej podpowiedzi wcale (nie błędna treść, tylko brak —
+  odłożone, nieistotne pieniężnie). **2 boxy zostają otwarte** — oba to ten sam,
+  udokumentowany brak ścieżki UI do etapu bez wybranej płaszczyzny z niezerowym pomiarem (jedyne
+  takie etapy żyją na inwestycji 31, read-only, i mają zerowy pomiar).
+- **`kosztorys-podsumowanie-tabs` — +5 boxów, 6/11** (z 1/11). Oś netto/brutto materiały+robocizna,
+  przeliczenie % redukcji materiałów po „Zapisz", zakładka Wydatki (podział + wykres kołowy),
+  zakładka Robocizna (pasek postępu — z podpowiedzią, pozycja nad tabelą nie pod, etykieta
+  „Robocizna" nie „Suma transzy" — trzy rozjazdy z brzmieniem checklisty, odnotowane), lista wpłat
+  (mechanizm to per-wiersz flaga poza-planem + tabela „Wpłaty wg formy" tylko w MIXED, nie „kołowy
+  wykres płaszczyzn" jak w checkliście). **1 box definitywnie nieosiągalny w tym środowisku:**
+  `SELECT … FROM transactions WHERE type IN ('COMPANY_FUNDING','OTHER_DEPOSIT') AND cancelled=false
+AND investment_id IS NOT NULL` zwraca **0 wierszy** na całej bazie preview — nie „nie dotarłem",
+  tylko strukturalnie nie ma na czym pokazać. **Potrzebne od człowieka:** czy regresyjny test
+  jednostkowy (`get-deposit-transactions.test.ts`) wystarcza jako pokrycie, czy dopiąć osierocony
+  wiersz historyczny (id 858) do jednorazowej inwestycji przez UI — nie ma do tego ścieżki w UI, więc
+  wymaga jawnej zgody człowieka.
+- **`kosztorys-tryb-mieszany`** pozostaje **0/6** — **zdiagnozowana jako martwa/zdezaktualizowana
+  checklista, nie regres.** Cała Faza 2 opisuje UI sprzed EX-536 (ręczny input `C`, „trzy wiersze
+  gotówkowe"). Żywe zachowanie Mieszanego jest już poprawnie pokryte przez
+  `mixed-settlement-both-planes` i `kosztorys-podsumowanie-tabs` — finding rekomenduje przeredagowanie
+  lub usunięcie sekcji zamiast dalszego odhaczania.
+- **`kosztorys-zaliczka-v2`** (4/4) i **`mixed-settlement-both-planes`** (7/7) — domknięte wcześniej
+  w tej samej partii (przed tym segmentem), bez zmian tutaj.
+- **`EX-597` — +1 box, 6/18** (z 5/18): „Sekcje renderują się w `displayOrder`, nie kolejności
+  wstawienia" potwierdzone czytaniem SQL-a — `json_agg` w `kosztorys-tree.ts` sortuje
+  `ORDER BY display_order, id`, kolejność wstawienia to tylko remis. `EX-596` bez zmian (7/18) —
+  wszystkie 11 otwartych boxów mają już komplet ustaleń/`Needs human:` z wcześniejszych partii tej
+  bramy, priorytet #7 w tej partii nie uzasadniał ponownego przejeżdżania na żywo.
+- **0 błędów produktu tej partii** — każdy pozorny regres (Zapisz „cicho" nie reagujący na `0`,
+  brak kolumn rabatu u podwykonawców, brak podziału per-row w gridzie po rabacie kwotowym) okazał się
+  po przeczytaniu kodu zamierzonym zachowaniem albo nieaktualnym opisem checklisty.
+- **Fixture'y:** inwestycja **135** — `settlement_mode='NET'` (bez zmian), `materials_net_rate=0.05`
+  (z wcześniejszej partii, bez zmian), pozycja „Malowanie ścian QA" ma teraz `discount_type='percent',
+discount_value=15` (nadpisane z 10% podczas testu bulk-apply), **oraz** `global_discount_type='amount',
+global_discount_value=750` (nowe z tej partii) — te dwa mechanizmy rabatu (per-pozycja percent +
+  globalny amount) świadomie zostawione współistniejące, fixture jest throwaway/mutowalny. Depozyty
+  4599/4600 i wydatki 4601/4602 z wcześniejszej partii bez zmian. Inwestycje 31/90/65 nietknięte.
+
+**B18 (fleet-costs-window, fleet-sheet-parity, notification-recipients, re-weryfikacja `f49de35b`) —
+2026-08-26, fresh Preview `2aa156ce`:**
+
+- **Build potwierdzony fresh na starcie:** `origin/staging` HEAD `2aa156ce`, zawiera `f49de35b`,
+  `1027592f`, `dfd72b31`, `99caf1cb`, `494a2039` — potwierdzone przed pierwszym boxem (patrz sekcja
+  „Fix" powyżej dla szczegółów re-weryfikacji).
+- **`fleet-costs-window` — 12/12 zweryfikowane, 0 findings.** Cała sekcja domknięta na żywo na
+  pojeździe QA B18 001 (id=2, 3 wpisy przeglądów w różnych miesiącach): picker dat w osobnym rzędzie,
+  zawężenie obu zakładek naraz bez przeładowania/fetcha (`browser_network_requests` czysty, URL
+  niezmieniony), blok nad zakładkami czyta pełną historię niezależnie od okna (architektura
+  `narrowHistory`/`fullHistoryByType`, `vehicle-detail-tabs.tsx`), oba warianty pustego stanu
+  („Brak wpisów w wybranym okresie" / „Brak przeglądów w wybranym okresie"), kolumna „Od poprzedniego"
+  liczona z pełnej historii, kolumna Ubezpieczyciel znika gdy okno zostawia same wpisy bez
+  ubezpieczyciela (`columnsFor` w `inspection-history.tsx`), okno nie dziedziczy się z `/flota`, nie
+  kasuje się przy przełączeniu Przeglądy↔Koszty, kolumna „Opony" na `/flota` (pozycja, wartość, „—" dla
+  pustej, chowalna osobno od „Wymiana opon").
+- **`fleet-sheet-parity` — +7 boxów zweryfikowanych (7/14 razem z 2 już `[x]` od wcześniej, 5 zostaje
+  otwartych).** Sekcja odblokowana od poprzedniego statusu „poza zasięgiem" (B7: feature niewypchnięta)
+  — na tym buildzie **jest** żywa, ale jej „Setup" jest stały: `src/scripts/import-fleet-sheet.ts`,
+  skrypt zasilający dziewięć konkretnych rejestracji z arkusza, został skasowany w `0fa9dd8e` po
+  jednorazowym imporcie na prod. Zweryfikowane bez zależności od tego seedu: warunkowe pola
+  Ubezpieczyciel/Nr polisy tylko przy Rodzaj=OC (kod + `/admin` na żywo), zapis przeglądu z pustym
+  Koszt, toggle OC↔Przegląd w dialogu, „Odczyt licznika" (tylko data/przebieg/notatka), „bezterminowo"
+  przeżywa reload, auto bez cen czyta „—" i nie wchodzi do „Razem", strona pojazdu (Opony/Uwagi/polisa).
+  5 boxów zostaje otwartych jako finding — nazywają konkretne rejestracje (`354E000003305`,
+  `22044 4672279`, `WD776AL`, `WF 7029W`, `WF7972X`) nieodtwarzalne bez arkusza źródłowego.
+- **`notification-recipients` — 13/13 zweryfikowane na żywo (9 z realną interakcją UI, 2 wyłącznie
+  kodem z zakazu wysyłki e-mail, 2 wyłącznie kodem z konwencji tego gate'u dla ról).** Karty na
+  `/flota` (2 zasiane adresy) i `/zgloszenia` (dwie karty side-by-side, po jednym adresie) potwierdzone.
+  Pełny cykl edycji przeprowadzony na żywo na liście `fleetDigest`: dodanie trzeciego adresu z
+  końcową spacją → zapis natychmiastowy bez przeładowania → SQL potwierdza wiersz przycięty →
+  przeżywa `page.reload()` → usunięcie z powrotem do 2 wierszy, SQL potwierdza. Nieprawidłowy adres
+  blokuje zapis w obu ścieżkach (natywna walidacja `type="email"` ORAZ, po jej wyłączeniu do testu,
+  komunikat aplikacji „Nieprawidłowy adres e-mail") — patrz finding niżej. Izolacja list potwierdzona
+  SQL-em (`newLead`/`opsAlerts` niezmienione przez cały test na `fleetDigest`). Global ukryty w
+  `/admin` (`admin: { hidden: true }`, potwierdzone kodem i live). Dwa boxy o realnej wysyłce
+  (cron `/api/cron/fleet-reminders`, nowy lead) zweryfikowane **wyłącznie kodem** — bez wywołania
+  endpointów — `notifyFleetDigest`/`notifyNewLead` robią jedno `sendEmail` z całą listą w `to`, zgodnie
+  z checklistą. MANAGER (brak przycisku „Edytuj") zweryfikowany wyłącznie kodem, bez przelogowania —
+  ta sama konwencja co B2a/B3 (nie ryzykować jedynej żywej sesji OWNER).
+- **Re-weryfikacja po `f49de35b`** — `table-column-reordering` (10/10, dowód na fresh Preview zamiast
+  `localhost`) i `EX-555` box 1 (inw. 6) — obie potwierdzone bez regresji, pełny opis w sekcji „Fix"
+  powyżej i w `manual-checks.md`.
+- **Nowy finding (dryf fikstury, nie defekt):** `EX-555` box 3 opierał się na inw. 31 jako przykładzie
+  „bez kosztorysu w v2 mimo zaksięgowanego `LABOR_COST`" — SQL na żywo pokazuje **336 wierszy** w
+  `kosztorys_items` dla inw. 31 teraz, czyli ktoś spoza tej sesji zaczął wprowadzać jej kosztorys od
+  poprzedniej partii. Inw. 31 jest real/read-only dla tego gate'u, więc nie dało się ani zbadać dalej,
+  ani przywrócić — box zostaje `[x]` (był poprawny gdy dowód powstawał), premisa jako żywy przykład
+  jest przestarzała. Potrzebna nowa inwestycja referencyjna dla przyszłych powtórek.
+- **2 drobne findings (nieblokujące, needs human):** tytuł karty na `/flota` w kodzie to
+  „Powiadomienia", nie „Powiadomienia o terminach" jak w checkliście (kosmetyka); pole adresu ma
+  `type="email"`, więc natywna walidacja przeglądarki może zablokować zapis PRZED pokazaniem komunikatu
+  aplikacji „Nieprawidłowy adres e-mail" — zapis i tak jest zablokowany, różni się tylko widoczność
+  komunikatu.
+- **0 błędów produktu tej partii** poza dwoma drobnymi findingami wyżej (żadne nie blokuje mergu).
+- **`## EX-711` (obie sekcje, 27/31 i 16/28) NIE dojechane w tej partii** — czas w całości poszedł na
+  trzy sekcje wyżej zgodnie z priorytetem „głębiej niż szerzej".
+- **Fixture'y:** pojazd **QA B18 001** (id=2, trwały fixture floty — 3 wpisy przeglądów w różnych
+  miesiącach, wyjątek „bezterminowo" na Przegląd techniczny) zostaje jako stała fikstura dla kolejnych
+  partii. `notification-recipients` przywrócone do stanu sprzed testu (2 adresy na `fleetDigest`,
+  1 na każdej z pozostałych list) — potwierdzone SQL-em. Inwestycja 135: mutacje z partii B17
+  (transakcje #4670 anulowana/#4671/#4672, rabaty per-pozycja + globalny) bez dalszych zmian w tej
+  partii. Inwestycje 31/90/65 nietknięte (poza odczytem SQL na 31). Filtr Status na `/inwestycje`
+  (dodanie „Zakończona") przywrócony do stanu domyślnego po użyciu.
+
+**B19 (import-etapy-z-arkusza, sheet-live-compare, `EX-686`, kosztorys-importer, sheet-column-mapping) —
+2026-08-26, baza preview:**
+
+- **Rdzeń tej partii: jeden strukturalny fakt, potwierdzony kodem i SQL-em, blokuje sześć różnych
+  boxów w trzech sekcjach naraz.** Kanoniczny arkusz Google (`1kEWaMv9…`) ma zero wpisanego wykonania
+  w kolumnach `D:M` i zero przemianowanych nagłówków etapów w całej zakładce `kosztorys_robocizny` —
+  `parse-labor-tab.ts:216` (`usedColumns.has(column) || isNamedStage(caption(column))`) wpuszcza
+  kolumnę etapu tylko przy wykonaniu albo własnej nazwie, więc **każdy** import z tego arkusza daje
+  strukturalnie 0 etapów, niezależnie od tego, która inwestycja importuje i czy import jest
+  pierwszy-w-życiu. Świeży, jednorazowy import na inw. 135 (link + import od zera, nie powtórka)
+  to potwierdził na żywo: SQL po imporcie — `count(*) FROM kosztorys_sections WHERE investment_id=135`
+  = 14, `kosztorys_items` = 372, **`kosztorys_stages` = 0** — zgodne co do liczby z podglądem „Co
+  wejdzie" w UI. To samo doświadczenie zamyka `import-etapy-z-arkusza`'s box 11 (czysta oferta:
+  import przechodzi, „Brak etapów." w podsumowaniu, siatka się nie wywala, okno importu nie pyta o
+  rozliczenie) i tłumaczy, dlaczego nawet **świeża, nigdy wcześniej niesynchronizowana** inwestycja
+  na `sheet-live-compare`'s „Porównaj z arkuszem…" nie daje realnej tranzycji do zaobserwowania —
+  pierwsze-w-życiu otwarcie na inw. 135 mimo to wylądowało na gałęzi „Zapisany Pomiar z natury był
+  już zgodny z arkuszem Google.", bo `sheet_measured_qty` zostaje `NULL` na wszystkich 372 pozycjach
+  przed i po. Rozszerza — nie zastępuje — wcześniejsze findingi B14 (`sheet-live-compare`) i
+  wcześniejszą blokadę w `EX-686`: rzucenie tam samej rzuconej, throwaway inwestycji nie wystarczy,
+  bo brakujące dane leżą w **arkuszu**, nie w inwestycji.
+- **Korekta błędnej liczby „10 etapów"** w dwóch boxach (`kosztorys-importer` „Co wejdzie" i
+  `sheet-column-mapping` „Wskazanie kolumny „S" przelicza podgląd") — obie zapisane wcześniej bez
+  towarzyszącego sprawdzenia SQL-em, obie poprawione na **0 etapów** z odniesieniem do dowodu wyżej.
+  Self-korekta, nie zgłoszenie do backlogu — dowód jest teraz w pliku.
+- **`EX-686` — +1 box, 8/13.** „Kosztorys założony ręcznie (bez importu) nie pokazuje przycisku…"
+  przeniesiony z „Needs human" na `[x]`: inw. 133 i 134 mają ręcznie zbudowany kosztorys (373 pozycji
+  każda) z `kosztoryses.google_sheet_id IS NULL` — SQL: `sheet_measured_qty` `NULL` na wszystkich
+  373 wierszach obu inwestycji, a menu „Problemy" na inw. 134 na żywo nie ma żadnej pozycji „z
+  pomiarem do rozpisania na etapy". Pozostałe 4 boxy tej sekcji zostają otwarte z tego samego,
+  wcześniej już udokumentowanego powodu fikstury (brak zapisywalnej inwestycji z realnym rozjazdem
+  arkuszowym) — skorygowane, nie zmienione.
+- **`sheet-column-mapping` — bez nowych ticków (4/11), jedna próba domknięcia boxa „wskazanie na
+  jednej inwestycji nie zmienia drugiej" nie powiodła się fiksturowo.** Próbowano inw. 134 jako
+  drugiej inwestycji — menu „Opcje" na 134 w ogóle nie ma pozycji łączącej z arkuszem (ten sam
+  gating co Finding A w `kosztorys-importer`: akcja znika, gdy kosztorys ma już pozycje), więc box
+  zostaje otwarty z wyjaśnieniem, nie z nowym findingiem. **Uwaga porządkowa:** wcześniejsza w tej
+  sesji próba kliknięcia przycisku „Dodaj kosztorys" na 134 (przed tą partią raportu) nie
+  zarejestrowała się w UI (brak zmiany w DB, brak toastu, przycisk pozostał `enabled`) — po
+  ponownym, czystym podejściu okazało się to fałszywym alarmem narzędziowym: menu na 134 strukturalnie
+  nie oferuje tej akcji, więc wcześniejsze kliknięcia trafiały w martwy/nieaktualny snapshot, nie w
+  realny przycisk. Nie jest to defekt aplikacji.
+- **0 nowych błędów produktu tej partii** — wszystko, co wyglądało na regres (brakujące etapy, brak
+  tranzycji przy „Porównaj z arkuszem"), okazało się jednym, spójnym faktem strukturalnym arkusza
+  źródłowego, nie kodem.
+- **Fixture'y:** inwestycja **135** — podłączona do kanonicznego arkusza (`google_sheet_id` ustawiony
+  po raz pierwszy) i zaimportowana w całości (372 pozycji / 14 sekcji / 0 etapów), zastępując
+  poprzednią zawartość rozpiski. `global_discount_type='amount', global_discount_value=750` i
+  `materials_net_rate=0.05` z partii B17 **przetrwały** import (to pola inwestycji, nie pozycji) —
+  potwierdzone SQL-em i widoczne w panelu Marża („Rabat -750,00"). Pozycja „Malowanie ścian QA" z
+  jej 15% rabatem per-pozycja **nie przetrwała** — import zastąpił wszystkie pozycje, ta konkretna
+  pozycja już nie istnieje pod tym opisem. Fixture jest throwaway, nowy stan (import z kanonicznego
+  arkusza) zostaje jako baza dla kolejnych partii zamiast przywracania przez „Wersje" — pozwala od
+  razu testować `sheet-column-mapping`/`sheet-live-compare` bez ponownego importu. Inwestycje 133/134
+  odczytane wyłącznie SQL-em, nietknięte. Inwestycje 31/90/65 nietknięte.
+- **Nie dojechane w budżecie tej partii:** `import-zastepuje-w-calosci` (0/6) — priorytet najniższy w
+  tej partii, cały czas poszedł na domknięcie strukturalnego bloku wyżej zgodnie z „głębiej niż
+  szerzej".
+
 ## Migracje `main..staging` (27) — kolejność deploya
 
 Klasyfikacja z ciała `up()` (nie z `down()`). Zasada z AGENTS.md: **ADD → migracja przed kodem**,
@@ -311,3 +494,31 @@ callbacków. Fix: sygnatura widocznych kolumn w `key` wiersza. Guard: **EX-743**
 z ukrytą kolumną mogła czytać wartość sąsiada. Sprawdzone boxy, które opierały się na odczycie
 liczby przy ukrytych kolumnach, wymagają powtórki po redeployu — dotyczy głównie sekcji
 `table-column-reordering` i `EX-555` (kolumny v2 na liście inwestycji).
+
+**Powtórka wykonana — B18 (2026-08-26), fresh Preview `2aa156ce`, po `f49de35b`:** oba miejsca
+potwierdzone bezpośrednio na docelowym buildzie (nie `localhost`). `table-column-reordering`:
+ukrycie pojedynczej kolumny (19/19 nagłówków↔komórek dopasowanych po klasie), ukrycie wszystkich 20
+(`headerCount:0, dataCellCount:0, tbodyRowCount:46` — realnie pusta, nie ukryty rozjazd), przywrócenie
+wszystkich (`20/20`). `EX-555` box 1 (inw. 6, „brak danych" na v2): dokładnie te same wartości co
+przed fixem. **Fix trzyma na żywym artefakcie. Zero regresji.**
+
+## Odmrożenie sekcji arkuszowych (2026-08-26, `sheet-write-env-guard`)
+
+Sześć sekcji było wstrzymanych, odkąd wyszło, że localhost i preview pisały do **żywych arkuszy**
+(36 obcych wierszy na 8 arkuszach; arkusze są nasze, udostępniamy je klientom). Bramka weszła i
+**nie jest bramką w kodzie** — jest w poświadczeniu. Poza produkcją aplikacja niesie konto
+`kosztorys-sheets-reader@…` z prawem **tylko do odczytu**, więc próba zapisu z laptopa czy z preview
+kończy się `403` od Google. Żadna flaga, żadne `VERCEL_ENV=production` ani zmiana kodu tego nie
+odblokuje. **Wstrzymanie zdjęte.**
+
+**Warunek uruchamiania tych sekcji — węższy, niż mogłoby się wydawać.** Cała strona kosztorysowa
+jest **wyłącznie odczytowa**: import, „Pobierz i zastąp", ręczne wskazanie kolumny i „Porównaj
+z arkuszem Google" jadą na `getReadonlySheetsClient()` (`src/lib/actions/kosztorys-import.ts:81,196`)
+i nie zapisują do arkusza ani jednej komórki — czytają go i piszą do **bazy**. Wszystkie sześć sekcji
+przejeżdża się lokalnie jak dotąd, bez żadnych dodatkowych uprawnień.
+
+Zapis w tej aplikacji ma dokładnie dwa źródła i oba dotyczą **trzech zakładek lustrzanych**
+(`wydatki inwestycyjne`, `transfery`, `rozliczone R+M`): `sheets-sync` po mutacji wydatku/transferu
+oraz `stampAllTabs` (podpięcie arkusza, podpięcie do inwestycji, „Zresetuj wydatki inwestycyjne").
+Tylko box dotykający **tych** ścieżek odmówi poza produkcją. Naprawa arkusza odbywa się z produkcji
+i innej drogi nie ma.
