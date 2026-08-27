@@ -87,6 +87,19 @@ produkcyjnych**. Poza produkcją nie zadziała żaden. Zostaje ręczny `curl` ze
 ale to akt świadomy, a i tak: `cleanup` sprząta własną bazę (nieszkodliwe), a `leads-reconcile`
 i `fleet-reminders` sprowadzają się do wysyłki maila — czyli do bramki, która już stoi.
 
+## Porzucona ścieżka: bramka na fladze
+
+Pierwsza wersja bramki arkuszowej była predykatem `sheetWriteRefusal(VERCEL_ENV, spreadsheetId,
+allowlist)` — poza produkcją klient zapisowy powstawał wyłącznie dla arkusza wpisanego na
+`GOOGLE_SHEETS_WRITE_ALLOWLIST`. Wdrożona i skasowana w tej samej zmianie (`d09c59c9` … `3b8f3bfd`).
+Padła, bo ta maszyna trzyma sekrety produkcji, więc **żadne sprawdzenie środowiska nie odróżni
+produkcji od developera, który ustawił zmienne**. Bramka w poświadczeniu jest egzekwowana przez
+Google, poza maszyną, i nie da się jej przegadać.
+
+Kolejność podmiany wynikała z tego samego rachunku: dotychczasowe konto **zostało** piszącym (było
+już Edytorem na wszystkich 56 arkuszach, więc zero ponownego udostępniania i ani chwili, w której
+produkcja traci zapis), a nowe, czytające, dostało wyłącznie addytywne nadania Przeglądającego.
+
 ## Zasada
 
 Nowy efekt wychodzący dostaje bramkę wtedy i tylko wtedy, gdy szkoda jest **nieodwracalna albo
