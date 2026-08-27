@@ -39,6 +39,28 @@ export type InspectionRecordT = InspectionEventT & {
   attachmentCount: number
 }
 
+/**
+ * One row of a vehicle's history, as the page renders it — an `InspectionRecordT` with the
+ * bookkeeping the UI never shows dropped and the distance since the previous event of the same type
+ * added. It lives here rather than in `src/types/fleet.ts` because the pure rules in this directory
+ * (`costs`, `policy-label`, `history-window`) take it as input, and a rule must not reach into the
+ * view layer for its own argument type (EX-739).
+ */
+export type InspectionHistoryEntryT = {
+  id: number
+  type: InspectionTypeT
+  performedAt: string
+  nextDueAt: string | null
+  odometer: number | null
+  cost: number | null
+  insurer: string
+  policyNumber: string
+  note: string
+  attachmentCount: number
+  /** Distance since the previous event of the same type; `null` when either reading is missing. */
+  kmSincePrevious: number | null
+}
+
 export type VehicleSummaryT = {
   id: number
   registration: string

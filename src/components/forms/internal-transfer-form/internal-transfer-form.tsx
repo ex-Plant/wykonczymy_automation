@@ -5,7 +5,6 @@ import { useStore } from '@/components/forms/hooks/form-hooks'
 import { useManagedForm } from '@/components/forms/hooks/use-managed-form'
 import { FormShell } from '@/components/forms/form-components/form-shell'
 import { useRegisterBalance } from '@/components/forms/hooks/use-register-balance'
-import { type PaymentMethodT } from '@/lib/constants/transfers'
 import { createTransferAction } from '@/lib/actions/transfers'
 import { internalTransferFormSchema } from '@/components/forms/internal-transfer-form/internal-transfer-schema'
 import type { CreateTransferFormT } from '@/lib/schemas/transfer'
@@ -17,7 +16,6 @@ import {
   CashRegisterField,
   DateField,
   DescriptionField,
-  PaymentMethodField,
   SourceRegisterField,
 } from '@/components/forms/form-fields'
 import FormFooter from '../form-components/form-footer'
@@ -34,7 +32,6 @@ type FormValuesT = {
   description: string
   amount: string
   date: string
-  paymentMethod: string
   sourceRegister: string
   targetRegister: string
 }
@@ -57,7 +54,6 @@ export function InternalTransferForm({
       description: '',
       amount: '',
       date: today(),
-      paymentMethod: 'CASH',
       sourceRegister: getDefaultCashRegister(referenceData),
       targetRegister: '',
     },
@@ -71,7 +67,6 @@ export function InternalTransferForm({
       amount: Number(value.amount),
       date: value.date,
       type: 'REGISTER_TRANSFER',
-      paymentMethod: value.paymentMethod as PaymentMethodT,
       sourceRegister: Number(value.sourceRegister),
       targetRegister: Number(value.targetRegister),
     }),
@@ -103,8 +98,6 @@ export function InternalTransferForm({
           <AmountField form={form} fieldClassName="min-w-0 flex-1" />
           <DateField form={form} fieldClassName="w-40" />
         </div>
-
-        <PaymentMethodField form={form} />
 
         <DescriptionField form={form} />
       </FieldGroup>

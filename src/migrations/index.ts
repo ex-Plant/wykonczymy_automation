@@ -78,6 +78,7 @@ import * as migration_20260825_0_fix_own_tools_coeff_rounding from './20260825_0
 import * as migration_20260825_1_fleet_sheet_parity from './20260825_1_fleet_sheet_parity'
 import * as migration_20260826_0_notification_recipients from './20260826_0_notification_recipients'
 import * as migration_20260826_1_drop_inspection_next_due_odometer from './20260826_1_drop_inspection_next_due_odometer'
+import * as migration_20260827_0_payment_method_nullable from './20260827_0_payment_method_nullable'
 
 export const migrations = [
   {
@@ -479,5 +480,10 @@ export const migrations = [
     up: migration_20260826_1_drop_inspection_next_due_odometer.up,
     down: migration_20260826_1_drop_inspection_next_due_odometer.down,
     name: '20260826_1_drop_inspection_next_due_odometer',
+  },
+  {
+    up: migration_20260827_0_payment_method_nullable.up,
+    down: migration_20260827_0_payment_method_nullable.down,
+    name: '20260827_0_payment_method_nullable',
   },
 ]

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { filterByStatuses } from '@/hooks/use-status-filter'
+import { filterByStatuses, selectionFrom } from '@/hooks/use-status-filter'
 import type { InvestmentStatusT } from '@/types/reference-data'
 
 type RowT = { id: number; status: InvestmentStatusT }
@@ -38,5 +38,32 @@ describe('filterByStatuses', () => {
 
   it('none selected → no rows', () => {
     expect(idsFor([])).toEqual([])
+  })
+})
+
+describe('selectionFrom — the persisted map', () => {
+  it('falls back to the defaults when nobody has picked yet', () => {
+    expect([...selectionFrom({})].sort()).toEqual(['active', 'planowana'])
+  })
+
+  // The reason the map holds a flag per status instead of a list of the picked ones: „wybrano nic"
+  // and „jeszcze nie wybierano" are different answers, and a list says the same thing for both.
+  it('honours an explicit all-false as the empty selection', () => {
+    expect([...selectionFrom({ active: false, completed: false, planowana: false })]).toEqual([])
+  })
+
+  it('reads back what was picked', () => {
+    expect([...selectionFrom({ active: false, completed: true, planowana: true })].sort()).toEqual([
+      'completed',
+      'planowana',
+    ])
+  })
+
+  // localStorage is client-writable, so a hand-edited value must not filter the listing away.
+  it('degrades a value that answers nothing to the defaults', () => {
+    expect([...selectionFrom({ nonsense: true } as Record<string, boolean>)].sort()).toEqual([
+      'active',
+      'planowana',
+    ])
   })
 })

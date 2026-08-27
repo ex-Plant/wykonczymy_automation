@@ -179,7 +179,7 @@ export function buildTransferFilters(
 }
 
 // The fields a CANCELLATION row does not carry. cancelTransferAction copies only amount, date,
-// description, paymentMethod and the back-reference — deliberately, since a persisted sourceRegister
+// description and the back-reference — deliberately, since a persisted sourceRegister
 // would be subtracted a second time by the balance query (see enrichCancellationOriginals). So every
 // screen that narrows by one of these — kasa, pracownik, inwestycja — cut the audit rows away before
 // they could be paired with anything, and „Tryb anulowań" answered „Brak danych" on all three.
@@ -188,13 +188,16 @@ export function buildTransferFilters(
 const isBranch = (field: string, condition: unknown): condition is Where[] =>
   (field === 'or' || field === 'and') && Array.isArray(condition)
 
-const FIELDS_ONLY_THE_ORIGINAL_CARRIES = [
+export const FIELDS_ONLY_THE_ORIGINAL_CARRIES = [
   'sourceRegister',
   'targetRegister',
   'investment',
   'worker',
   'expenseCategory',
   'otherCategory',
+  // Joined the list when the method stopped being copied onto the audit row: an anulowanie is never
+  // asked how it was paid, so „anulowania przelewem" can only mean the original's method.
+  'paymentMethod',
 ] as const
 
 /**

@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { PAYMENT_METHODS } from '@/lib/constants/transfers'
 import { refineAmount, refineDate } from '@/lib/utils/validation'
 
 export const createInternalTransferSchema = z
@@ -7,7 +6,6 @@ export const createInternalTransferSchema = z
     description: z.string().optional().default(''),
     amount: z.number().positive('Kwota musi być większa niż 0'),
     date: z.string().min(1, 'Data jest wymagana'),
-    paymentMethod: z.enum(PAYMENT_METHODS),
     sourceRegister: z.number({ error: 'Kasa źródłowa jest wymagana' }),
     targetRegister: z.number({ error: 'Kasa docelowa jest wymagana' }),
   })
@@ -30,7 +28,6 @@ export const internalTransferFormSchema = z
     description: z.string(),
     amount: z.string(),
     date: z.string(),
-    paymentMethod: z.string(),
     sourceRegister: z.string(),
     targetRegister: z.string(),
   })

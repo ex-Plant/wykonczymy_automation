@@ -1,4 +1,4 @@
-import type { InspectionHistoryEntryT } from '@/types/fleet'
+import type { InspectionHistoryEntryT } from '@/lib/fleet/types'
 
 /**
  * „Ubezpieczyciel · nr polisy" for the polisa currently in force — the first entry, since the history

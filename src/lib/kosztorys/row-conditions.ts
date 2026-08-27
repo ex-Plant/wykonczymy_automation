@@ -249,17 +249,35 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     matches: (row, ctx) =>
       !(row.plannedQty > 0) && !(rowTotalQtyDone(row, ctx.stages, 'client') > 0),
   },
+  // A missing cena j.m. is two different problems, so it is two entries, split on whether any work has
+  // been executed — and split rather than added beside a broad one, so the counts stay disjoint and no
+  // pozycja is reported (and chased) twice. Work already done at no price cannot be settled at all,
+  // which is money; a priced-at-nothing pozycja nobody has started is only an offer still to finish.
   {
-    id: 'no-client-price',
-    label: 'bez ceny j.m.',
+    id: 'no-client-price-with-work',
+    label: 'z wykonaną pracą bez ceny j.m.',
     // A defect, not a state: a section fully executed but unpriced is exactly what must not be folded
     // away — that is the bug „Zwiń puste sekcje" had.
     sectionLabel: null,
     kind: 'diagnostic',
     tone: 'defect',
+    // The executed quantity alongside the price cells: engaging a problem that says „praca wykonana"
+    // and showing no column carrying that work leaves the claim unverifiable on screen.
+    revealsColumns: [...PRICE_COLUMNS, 'stageQtySum'],
+    matches: (row, ctx) => !(row.clientPrice > 0) && rowTotalQtyDone(row, ctx.stages, 'client') > 0,
+  },
+  {
+    id: 'no-client-price',
+    // Names both halves of what it matches: shortened back to „bez ceny j.m." it would read as the
+    // whole set while covering only the untouched pozycje, and come back as a bug report.
+    label: 'bez ceny j.m. i bez wykonanej pracy',
+    sectionLabel: null,
+    kind: 'diagnostic',
+    tone: 'defect',
     revealsColumns: PRICE_COLUMNS,
     // The only hand-typed price; the subcontractor planes derive from it through the coefficients.
-    matches: (row) => !(row.clientPrice > 0),
+    matches: (row, ctx) =>
+      !(row.clientPrice > 0) && !(rowTotalQtyDone(row, ctx.stages, 'client') > 0),
   },
   {
     id: MEASURE_DIVERGED_CONDITION_ID,
@@ -322,7 +340,7 @@ export const ROW_CONDITIONS: RowConditionT[] = [
   // reads „0,00 zł" exactly like a deliberate one. `> 0` is the whole rule; the guard above judges a
   // price that exists, this one judges its absence.
   //
-  // Gated on the client price so it never fires where „bez ceny j.m." already has: with no Cena j.m.
+  // Gated on the client price so it never fires where the two cena j.m. problems already have: with no Cena j.m.
   // an auto row computes 0 zł by arithmetic, and on a fresh kosztorys that would flag every pozycja.
   // Exactly zero rather than „nie dodatnia", so a negative stawka belongs to the guard alone — read as
   // absence too it would be counted twice in the „Problemy" list and chased twice in the grid.

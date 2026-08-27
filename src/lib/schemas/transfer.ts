@@ -13,7 +13,9 @@ export const createTransferSchema = z
     amount: z.number(),
     date: z.string().min(1, 'Data jest wymagana'),
     type: z.enum(TRANSFER_TYPES),
-    paymentMethod: z.enum(PAYMENT_METHODS),
+    // Null on every type that never asks — `carriesPaymentMethod` is what makes it required on the
+    // two that do, from `validateTransferFields` below.
+    paymentMethod: z.enum(PAYMENT_METHODS).nullish(),
     sourceRegister: z.number().optional(),
     targetRegister: z.number().optional(),
     investment: z.number().optional(),
@@ -50,11 +52,16 @@ export const updateTransferSchema = z.object({
   description: z.string().optional().default(''),
   amount: z.number().positive('Kwota musi być większa niż 0').optional(),
   date: z.string().min(1, 'Data jest wymagana'),
-  paymentMethod: z.enum(PAYMENT_METHODS),
+  paymentMethod: z.enum(PAYMENT_METHODS).nullish(),
   investment: z.number().optional(),
   expenseCategory: z.number().optional(),
   otherCategory: z.number().optional(),
   invoiceNote: z.string().optional(),
+  // Only ever a FILL-IN on a legacy wpłata that carries neither. Both rules that govern it need the
+  // stored row, which no schema has: `updateTransferAction` decides whether the answer is sent, and
+  // `hooks/transfers/validate.ts` refuses to move one already booked.
+  vatPlane: z.enum(['NET', 'GROSS']).optional(),
+  netAmount: z.number().optional(),
 })
 
 export type UpdateTransferFormT = z.infer<typeof updateTransferSchema>

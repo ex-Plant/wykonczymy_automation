@@ -22,7 +22,7 @@ describe('the „Problemy" list', () => {
   it('names the subject each row acts on — pozycje or etapy', () => {
     const problemToggles = model({ 'no-client-price': 9, 'stage-no-plane': 2 })
     expect(problemToggles.map((toggle) => toggle.label)).toEqual([
-      'Pozycje bez ceny j.m. (9)',
+      'Pozycje bez ceny j.m. i bez wykonanej pracy (9)',
       'Etapy bez wybranego sposobu rozliczenia (2)',
     ])
   })
@@ -68,7 +68,9 @@ describe('the „Problemy" list', () => {
   // down to the held pozycje — or, for an etap problem, to no etap columns at all.
   it('keeps the engaged problem at „(0)" once its last match is fixed', () => {
     const problemToggles = model({ 'no-client-price': 0 }, ['no-client-price'])
-    expect(problemToggles.map((toggle) => toggle.label)).toEqual(['Pozycje bez ceny j.m. (0)'])
+    expect(problemToggles.map((toggle) => toggle.label)).toEqual([
+      'Pozycje bez ceny j.m. i bez wykonanej pracy (0)',
+    ])
     expect(problemToggles[0].active).toBe(true)
   })
 

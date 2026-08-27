@@ -1,10 +1,10 @@
 ---
 change_id: sheet-write-env-guard
 title: Zapisy do Google Sheets tylko z produkcji — localhost nadpisywał żywy arkusz klienta
-status: implemented
+status: archived
 created: 2026-08-26
-updated: 2026-08-26
-archived_at: null
+updated: 2026-08-27
+archived_at: 2026-08-27T10:54:05Z
 branch: sheet-write-env-guard
 worktree: null
 ---

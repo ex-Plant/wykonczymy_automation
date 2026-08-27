@@ -20,6 +20,7 @@ import {
   needsTargetRegister,
   needsWorker,
   canBeSettled,
+  carriesPaymentMethod,
   type TransferTypeT,
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
@@ -138,7 +139,7 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
   const [blankValues] = useState<FormValuesT>(() => ({
     date: today(),
     type: 'INVESTMENT_EXPENSE',
-    paymentMethod: 'CASH',
+    paymentMethod: '',
     sourceRegister: getDefaultCashRegister(referenceData),
     targetRegister: '',
     investment: investmentFromUrl,
@@ -181,7 +182,7 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
       const data: CreateBulkExpenseFormT = {
         date: value.date,
         type,
-        paymentMethod: value.paymentMethod as PaymentMethodT,
+        paymentMethod: (value.paymentMethod as PaymentMethodT) || null,
         sourceRegister: value.sourceRegister ? Number(value.sourceRegister) : undefined,
         targetRegister: value.targetRegister ? Number(value.targetRegister) : undefined,
         investment: value.investment ? Number(value.investment) : undefined,
@@ -330,7 +331,7 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
           />
         )}
 
-        <PaymentMethodField form={form} />
+        {carriesPaymentMethod(currentType) && <PaymentMethodField form={form} />}
 
         {needsWorker(currentType) && (
           <EntityComboboxField form={form} variant="worker" items={referenceData.workers} />

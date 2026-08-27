@@ -48,7 +48,7 @@ export type TransferDocT = {
   amount: number
   netAmount?: number | null
   type: string
-  paymentMethod: string
+  paymentMethod?: string | null
   date: string
   sourceRegister?: RelationIdT
   targetRegister?: RelationIdT
@@ -74,7 +74,7 @@ export function mapTransferRow(doc: TransferDocT, lookups: TransferLookupsT): Tr
     amount: doc.amount,
     netAmount: doc.netAmount ?? null,
     type: doc.type as TransferTypeT,
-    paymentMethod: doc.paymentMethod as PaymentMethodT,
+    paymentMethod: (doc.paymentMethod as PaymentMethodT | null) ?? null,
     date: doc.date,
     sourceRegisterId: toNullableId(doc.sourceRegister),
     targetRegisterId: toNullableId(doc.targetRegister),

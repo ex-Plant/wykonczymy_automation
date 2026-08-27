@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { FormWithFieldT } from '@/components/forms/hooks/form-hooks'
 import { SelectItem } from '@/components/ui/select'
 import {
@@ -13,6 +14,10 @@ type PaymentMethodFieldPropsT = {
   readonly listeners?: { onChange?: (arg: { value: string }) => void }
   readonly fieldClassName?: string
   readonly labels?: Record<PaymentMethodT, string>
+  readonly label?: string
+  // Above the methods — „Nie określono" is an unanswered question, not a method, so it cannot come
+  // from PAYMENT_METHODS.
+  readonly leadingOption?: ReactNode
 }
 
 export function PaymentMethodField({
@@ -20,11 +25,14 @@ export function PaymentMethodField({
   listeners,
   fieldClassName,
   labels = PAYMENT_METHOD_LABELS,
+  label = 'Metoda płatności',
+  leadingOption,
 }: PaymentMethodFieldPropsT) {
   return (
     <form.AppField name="paymentMethod" listeners={listeners}>
       {(field) => (
-        <field.Select label="Metoda płatności" showError fieldClassName={fieldClassName}>
+        <field.Select label={label} showError fieldClassName={fieldClassName}>
+          {leadingOption}
           {PAYMENT_METHODS.map((m) => (
             <SelectItem key={m} value={m}>
               {labels[m]}

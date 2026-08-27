@@ -63,8 +63,11 @@ describe('a section fully executed but unpriced', () => {
     expect([...sectionIdsWhereAllMatch(rows, 'no-measured-qty', ctx)]).toEqual([20])
   })
 
-  it('is counted by the „bez ceny j.m." diagnostic instead of being hidden', () => {
-    expect(countMatching(rows, 'no-client-price', ctx)).toBe(1)
+  // The executed half of the split: work recorded at no price is the unbillable case, and it must not
+  // land in „bez ceny j.m. i bez wykonanej pracy", which is the merely-unfinished offer.
+  it('is counted by the „z wykonaną pracą bez ceny j.m." diagnostic instead of being hidden', () => {
+    expect(countMatching(rows, 'no-client-price-with-work', ctx)).toBe(1)
+    expect(countMatching(rows, 'no-client-price', ctx)).toBe(0)
   })
 })
 

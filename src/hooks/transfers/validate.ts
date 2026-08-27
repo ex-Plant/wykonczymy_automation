@@ -11,10 +11,16 @@ import {
   canBeSettled,
   carriesNetAmount,
   carriesVatPlane,
+  carriesPaymentMethod,
 } from '@/lib/constants/transfers'
 import { getAmountError, getNetAmountError } from '@/lib/utils/validation'
 
 type TransferData = Partial<Transaction>
+
+const FROZEN_FIELD_LABELS = {
+  vatPlane: 'Rozliczenia netto/brutto',
+  netAmount: 'Kwoty netto',
+} as const
 
 export const validateTransfer: CollectionBeforeValidateHook = ({
   data,
@@ -49,6 +55,7 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
   const worker = resolved('worker')
   const expenseCategory = resolved('expenseCategory')
   const vatPlane = resolved('vatPlane')
+  const paymentMethod = resolved('paymentMethod')
 
   // CANCELLATION rows skip all normal validation — relational fields are null
   if (type === 'CANCELLATION') {
@@ -67,6 +74,21 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
   }
 
   const errors: string[] = []
+
+  // Write-once, and this is the rule's home. Moving a booked plane or netto rewrites a bilans the
+  // client has already seen — that correction is anuluj i zaksięguj na nowo. null → value stays
+  // open: a legacy row rewrites nothing, its figure is merely still missing.
+  // Here rather than at the fields' `access.update`, which a Local API write skips — hooks it
+  // cannot, so this is the only altitude covering every write path. Read BEFORE the normalisation
+  // below: that nulls both fields after a type change, and it is the hook tidying up, not a caller.
+  if (operation === 'update') {
+    for (const field of ['vatPlane', 'netAmount'] as const) {
+      const booked = original?.[field]
+      if (booked != null && field in d && d[field] !== booked) {
+        errors.push(`${FROZEN_FIELD_LABELS[field]} zaksięgowanej transakcji nie można zmienić.`)
+      }
+    }
+  }
 
   // CORRECTION allows negative (invoice credits); every other type must be positive.
   if (d.amount !== undefined && d.amount !== null) {
@@ -144,6 +166,17 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
 
   if (!carriesVatPlane(type)) {
     d.vatPlane = null
+  }
+
+  // Nulled here so the transfers filter can be trusted whatever wrote the row (admin panel, REST, a
+  // script). Gated on presence, unlike every strip above it, because this is the one stripped field
+  // whose legacy rows legitimately hold a value the rule now forbids — the migration deliberately
+  // did not backfill them — so an unconditional null would rewrite history on an unrelated edit.
+  // The others have no such history and stay unconditional.
+  if (carriesPaymentMethod(type)) {
+    if (!paymentMethod) errors.push('Payment method is required for this transfer type.')
+  } else if ('paymentMethod' in d) {
+    d.paymentMethod = null
   }
 
   if (needsExpenseCategory(type, !!investment) && !expenseCategory) {

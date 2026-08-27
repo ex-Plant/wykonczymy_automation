@@ -6,9 +6,9 @@ import { activeFlags } from '@/lib/fleet/flags'
 import { kmSinceOilChange, latestByType, latestOdometerReading } from '@/lib/fleet/deadlines'
 import { byInspectionType, type InspectionTypeT } from '@/lib/fleet/inspection-types'
 import { classifyDeadline } from '@/lib/fleet/thresholds'
-import type { InspectionRecordT } from '@/lib/fleet/types'
+import type { InspectionHistoryEntryT, InspectionRecordT } from '@/lib/fleet/types'
 import { type DateRangeT } from '@/lib/utils/date-range'
-import type { FleetRowT, InspectionHistoryEntryT, FleetDeadlineT } from '@/types/fleet'
+import type { FleetRowT, FleetDeadlineT } from '@/types/fleet'
 
 const toDeadline = (
   nextDueAt: string | null,

@@ -26,8 +26,11 @@ import {
   canBeSettled,
   carriesNetAmount,
   carriesVatPlane,
+  carriesPaymentMethod,
+  canFillVatPlane,
   isLaborCost,
   isCancellationType,
+  planeFor,
   isVatPlane,
   VAT_PLANES,
 } from '@/lib/constants/transfers'
@@ -145,19 +148,25 @@ const HELPERS: Record<string, { fn: HelperFn; trueFor: string[] }> = {
     // has one — every other type stores null and validate.ts strips a smuggled plane.
     trueFor: ['INVESTOR_DEPOSIT'],
   },
+  carriesPaymentMethod: {
+    fn: carriesPaymentMethod,
+    trueFor: ['INVESTOR_DEPOSIT', 'INVESTMENT_EXPENSE_NET'],
+  },
 }
 
 // No row in the truth table above, which is keyed on transfer type. The first three are
 // not boolean — their per-type answers are pinned by the spec-table consistency suite
 // instead (transfer-spec-table.test.ts). `isVatPlane` is boolean but narrows a VAT plane,
-// not a transfer type, so it gets its own suite below; `carriesNetAmount` is keyed on the
-// PAIR (type, plane), which the truth table above has no column for, so it too gets one.
+// not a transfer type, so it gets its own suite below; `carriesNetAmount` and `planeFor` are
+// keyed on a PAIR the truth table above has no column for, so they too get their own.
 const NOT_A_TRANSFER_TYPE_PREDICATE = [
   'financialBucketOf',
   'billedAmountOf',
   'billedAmountFor',
   'isVatPlane',
   'carriesNetAmount',
+  'planeFor',
+  'canFillVatPlane',
 ]
 
 describe('transfer constants — helper truth table', () => {
@@ -401,6 +410,37 @@ describe('carriesNetAmount — keyed on the pair, not the type', () => {
     ['OTHER_DEPOSIT', 'GROSS', false],
   ] as const)('carriesNetAmount(%s, %s) === %s', (type, plane, expected) => {
     expect(carriesNetAmount(type, plane)).toBe(expected)
+  })
+})
+
+// The method IS the plane, and both forms that name one read it here — the wpłata form when
+// booking, the edit form when filling in a legacy row — so a fork between the two is impossible.
+describe('planeFor — the method names the plane, on the deposit type alone', () => {
+  it.each([
+    ['INVESTOR_DEPOSIT', 'TRANSFER', 'GROSS'],
+    ['INVESTOR_DEPOSIT', 'CASH', 'NET'],
+    // A przelew on any other type is only the tor it travelled: one kwota, and no brutto field on
+    // screen for a GROSS tag to name.
+    ['INVESTMENT_EXPENSE', 'TRANSFER', 'NET'],
+    ['COMPANY_FUNDING', 'TRANSFER', 'NET'],
+    ['INVESTOR_DEPOSIT', undefined, 'NET'],
+  ] as const)('planeFor(%s, %s) === %s', (type, method, expected) => {
+    expect(planeFor(type, method)).toBe(expected)
+  })
+})
+
+// The predicate the whole fill-in turns on, named once so the form that offers the question, the
+// payload that carries the answer and the action that lets it through cannot drift apart.
+describe('canFillVatPlane — only a wpłata that never had a plane', () => {
+  it.each([
+    [{ type: 'INVESTOR_DEPOSIT', vatPlane: null }, true],
+    [{ type: 'INVESTOR_DEPOSIT', vatPlane: undefined }, true],
+    [{ type: 'INVESTOR_DEPOSIT', vatPlane: 'NET' }, false],
+    [{ type: 'INVESTOR_DEPOSIT', vatPlane: 'GROSS' }, false],
+    [{ type: 'INVESTMENT_EXPENSE', vatPlane: null }, false],
+    [{ type: 'COMPANY_FUNDING', vatPlane: null }, false],
+  ] as const)('%o → %s', (row, expected) => {
+    expect(canFillVatPlane(row)).toBe(expected)
   })
 })
 

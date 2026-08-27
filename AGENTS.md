@@ -160,26 +160,41 @@ Prefer hand-editing `@package.json` over `pnpm remove` / `pnpm install`. On this
   and no code edit can undo that. `getWritableSheetsClient`
   (`src/lib/google/writable-sheets-client.ts`) is the one place **in the app** that mints a
   write-scoped **Sheets** token, and it throws a readable sentence when the credential is absent so
-  you get an explanation instead of a bare 403; reads take `getReadonlySheetsClient()`. The only
+  you get an explanation instead of a bare 403; reads take `getReadonlySheetsClient()`, which is
+  readonly by SCOPE — on production it carries the Editor account, so one share covers a sheet. The only
   other holder of the Editor credential is `scripts/share-sheets-with-reader.mjs`, which mints a
   **Drive** token — a strictly broader power, since it can change who may edit a sheet.
   Repairing a sheet happens from production, and there is no other route. The var is **optional in
   the schema everywhere but production**, where its absence fails the boot (`env/schema.ts`
   `superRefine`) — elsewhere the absence IS the gate, but on production deleting it would break no
   request and silently stop every transfer from reaching the owner's sheet.
-  **A new sheet gets shared by hand with both addresses — the roles are not interchangeable:**
+  **A new sheet needs ONE share for production — Edytujący for the Editor account.** Production
+  reads with the Editor credential too (`getReadonlySheetsClient` mints its readonly-scoped token
+  from the write credential wherever that credential exists), so the reader share is what a sheet
+  needs to be readable from **localhost / Preview / the E2E DB**, never from production:
 
   ```
-  kosztorys-sheets@wykonczymy-kosztorys-bk.iam.gserviceaccount.com          → Edytujący
-  kosztorys-sheets-reader@wykonczymy-kosztorys-bk.iam.gserviceaccount.com   → Przeglądający
+  kosztorys-sheets@wykonczymy-kosztorys-bk.iam.gserviceaccount.com          → Edytujący   (produkcja)
+  kosztorys-sheets-reader@wykonczymy-kosztorys-bk.iam.gserviceaccount.com   → Przeglądający (dev/preview)
   ```
 
-  The link dialog shows only the first and says „jako Edytujący" — the reader is the one you have to
-  remember, and giving it Editor would hand write rights back to every laptop for that sheet.
+  Never give the reader Editor — that would hand write rights back to every laptop for that sheet.
   `scripts/share-sheets-with-reader.mjs` does the reader half in bulk — from production, over a
   `id<TAB>name` TSV exported from psql: `node scripts/share-sheets-with-reader.mjs sheets.tsv`
   dry-runs, `--apply` grants. It skips a sheet the reader already holds, shouts if the reader was
   given anything above Viewer, and exits non-zero on any failure.
+
+- **Poczta wychodzi tylko z produkcji — bramką jest `EMAIL_HOST`.** Poza produkcją wskazuje na
+  `disabled.invalid` (zarezerwowany TLD, RFC 2606), więc wysyłka pada na DNS; prawdziwy host stoi
+  zakomentowany obok w `.env` i podmienia się go ręcznie na czas pracy nad szablonami. Pusta wartość
+  nie zadziała — `serverEnv` wymaga `.min(1)`. To nie jest kosmetyka: aplikacja jest **klientem**
+  SMTP firmowego serwera, więc mail z localhosta wychodził z tej samej infrastruktury co produkcyjny,
+  z poprawnym SPF/DKIM, do skrzynki odbiorczej. Listy odbiorców żyją w globalu Payloada
+  `notification-recipients`, czyli **w bazie**, więc każdy `db:import` wsypuje prawdziwe adresy
+  pracowników do każdego środowiska i `requireRecipients` nigdy nie zadziała jako ochrona.
+  Pełna mapa efektów wychodzących (co ma bramkę, co jej świadomie nie ma i dlaczego):
+  `context/reference/outgoing-effects-isolation.md` — **przeczytaj przed dodaniem nowej integracji
+  wychodzącej.**
 
 - **The production Vercel Blob store belongs to production only.** Invoice bytes live in Blob, which
   has no versioning and no undelete — and the local DB is a restored prod dump, so `media.filename`

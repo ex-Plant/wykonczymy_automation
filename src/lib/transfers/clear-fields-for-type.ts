@@ -1,5 +1,6 @@
 import {
   canBeSettled,
+  carriesPaymentMethod,
   needsSourceRegister,
   needsTargetRegister,
   needsWorker,
@@ -18,6 +19,7 @@ const EMPTY_VALUE = {
   targetRegister: '',
   worker: '',
   settled: false,
+  paymentMethod: '',
 } as const
 
 export type ConditionalFieldT = keyof typeof EMPTY_VALUE
@@ -27,6 +29,7 @@ const CARRIED_BY: Record<ConditionalFieldT, (type: string) => boolean> = {
   targetRegister: needsTargetRegister,
   worker: needsWorker,
   settled: canBeSettled,
+  paymentMethod: carriesPaymentMethod,
 }
 
 export function staleFieldsForType(type: string): [ConditionalFieldT, '' | false][] {

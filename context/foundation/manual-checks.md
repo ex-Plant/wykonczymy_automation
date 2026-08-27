@@ -197,6 +197,12 @@ Pass ran clean — **no bugs found**, all five Phase-2 boxes ticked. No open fin
 - [ ] Netto and Brutto axes unchanged from before.
 - [ ] Preview render (`preview`) shows the block with a **disabled** input.
 
+### Findings — 2026-08-26
+
+- [ ] **Whole Phase 2 batch describes the pre-EX-536 „cash block" UI and is stale, same class as box 188 below.** Re-drove Mieszane on inw. 135 (`settlement_mode='MIXED'`, SQL-confirmed): the panel renders **one** „Podsumowanie / Netto" table (Robocizna/Materiały/Łącznie/Wpłaty/Pozostało do zapłaty), not a „three cash rows" block, plus a MIXED-only „Wpłaty wg formy" netto/brutto subtotal table (Wpłaty gotówką 1000,00/×, Wpłaty przelewem 2277,78/2460,00, Razem 3277,78) — see `## mixed-settlement-both-planes` and `## kosztorys-podsumowanie-tabs` below for the live design. `/podglad-inwestora/135` in MIXED renders **zero** `<input>` elements anywhere on the page (fully read-only markup, not a disabled form field) — so „shows the block with a disabled input" has no current referent either.
+      **Needs human:** reword/delete this whole section in favor of `## mixed-settlement-both-planes` + `## kosztorys-podsumowanie-tabs`, which already cover the live Mieszane behavior correctly (same disposition as the box-188 finding below).
+      **Test disposition:** no automated test owed — checklist-wording fix, not a code defect.
+
 ## kosztorys-podsumowanie-tabs — zaliczka-v2 batch: tabbed Podsumowanie, Mieszane via vatPlane, wpłaty base fix (EX-536)
 
 **Not yet driven** — collected at the branch-wide review gate (`.review-gate/staging-batch-2026-07-24.md`), authored per the "no manual checks; register them" directive. Consolidates the manual surface of the whole zaliczka-v2 / tryb-mieszany arc as **actually shipped** (supersedes the typed-`C` slice-B checks above). Drive against the **5435 test DB**, OWNER/MANAGER, an investment with a seeded kosztorys + deposits.
@@ -207,19 +213,74 @@ Pass ran clean — **no bugs found**, all five Phase-2 boxes ticked. No open fin
       _Verified: inw. 135 (kosztorys_v2, „Pokaż podsumowanie" → radio „Podsumowanie") — grupa
       „Widok podsumowania" ma osobne zakładki (Podsumowanie/Materiały/Robocizna/Podwykonawcy/Marża);
       combobox „Rozliczenie robocizny" listbox = Netto/Brutto/Mieszane._
-- [ ] **Netto** vs **Brutto**: materiały (+ each category, Łącznie, Do zapłaty) differ by exactly the VAT (`brutto/(1+VAT)` vs raw); robocizna („Suma prac wykonanych") unchanged between axes.
+- [x] **Netto** vs **Brutto**: materiały (+ each category, Łącznie, Do zapłaty) differ by exactly the VAT (`brutto/(1+VAT)` vs raw); robocizna („Suma prac wykonanych") unchanged between axes.
+      _Verified: same pass as `## kosztorys-zaliczka-v2` box 1 above (identical evidence — inw. 135,
+      vat_rate=0.08, SQL-confirmed axis switches NET↔GROSS). Robocizna claim here specifically means
+      the „Robocizna" **sub-tab**'s per-etap dual-column table (3000,00/3240,00, 2000,00/2160,00,
+      Razem 5000,00/5400,00) — confirmed byte-identical before/after flipping `settlement_mode`
+      GROSS→NET, i.e. that table doesn't read the panel axis at all. (The top Podsumowanie „Robocizna"
+      row DOES change with axis — 5000,00 Netto vs 5400,00 Brutto — that's expected, distinct figure.)_
 - [ ] **Mieszane**: two stacked tables — netto section (Robocizna + Materiały = Łącznie − wpłaty netto → Do zapłaty netto) and faktura section (Reszta brutto − wpłaty brutto → Do zapłaty brutto). Rabat > 0 → trailing informational row. No crash when Do zapłaty goes negative (overpaid).
-- [ ] **Materiały brutto→netto reduction**: the reduction-% control drives the netto materiały figure (default = VAT rate); Łącznie/Do zapłaty follow. Clearing/changing % recomputes live.
+      _Left open — superseded, see the box-188 finding below (2026-08-25 pass) and the new Phase-2
+      finding in `## kosztorys-tryb-mieszany` above: current Mieszane is one netto table, not two._
+- [x] **Materiały brutto→netto reduction**: the reduction-% control drives the netto materiały figure (default = VAT rate); Łącznie/Do zapłaty follow. Clearing/changing % recomputes live.
+      _Verified: inw. 135, „Opcje rozliczenia" → „Sposób rozliczenia materiałów"=Brutto→Netto seeds
+      „Stawka vat na materiały"=8 (= vat_rate, SQL-confirmed default). Changed the field to 5 and
+      clicked „Zapisz" (SQL-confirmed `materials_net_rate`→0.05): Materiały row went 92,59→95,24
+      (100/1.05=95,238 ✓), Łącznie/Pozostało recomputed in the same render, no page reload. Note:
+      the recompute fires on **Zapisz**, not on keystroke — typing alone (before Zapisz) left the
+      figure unchanged; „live" reads as "no reload", not "no save click", which matches the field's
+      own `withSave`/`onCommit` contract (`summary-expenses-tab.tsx`), not a bug._
 
 ### Deposits + wpłaty base (⚠ the code-review WARNING fix — money-semantics)
 
-- [ ] **Wpłaty tab / deposit list**: shows the investment's INVESTOR_DEPOSIT rows only; plane pie splits netto vs brutto (null⇒netto bucket).
-- [ ] ⚠ **`wplatyNet` base fix — verify on an investment carrying a legacy `COMPANY_FUNDING` (or `OTHER_DEPOSIT`) row.** In **every** axis (Netto/Brutto/Mieszane), the „Wpłaty"/„Do zapłaty" figure must sum **only INVESTOR_DEPOSIT** — the legacy deposit must **not** inflate „Wpłaty". Before the fix the non-mixed axes folded it in (3 different totals per toggle); after, all surfaces agree. **This changes a client-facing figure on such investments — flagged for owner sign-off.** (Fresh COMPANY_FUNDING can't attach to an investment via the form per EX-557, so this only bites legacy/admin rows.) Regression-guarded by `src/__tests__/lib/db/get-deposit-transactions.test.ts`.
+- [x] **Wpłaty tab / deposit list**: shows the investment's INVESTOR*DEPOSIT rows only; plane pie splits netto vs brutto (null⇒netto bucket).
+      \_Verified with a caveat — the deposit list itself (inw. 135, „Podsumowanie" tab → „Lista wpłat")
+      lists exactly its 2 INVESTOR_DEPOSIT rows (ids 4599/4600) with Netto/Brutto/Forma wpłaty
+      columns; off-plane rows are flagged red in every axis (confirmed in NET: the GROSS/przelew row
+      is `tone=error`; code — `deposits-table.tsx` `isOffPlaneDeposit(row, settlementMode)` — applies
+      the same check regardless of axis, not re-driven in GROSS/MIXED this pass). **„Plane pie" is
+      stale wording** — there is no pie chart here (grepped `src/components/kosztorys/summary/` for
+      `PieChart`: none in this table). The actual netto/brutto plane split is a **table**,
+      `Wpłaty wg formy` (`deposits-table.tsx:122-144`), MIXED-only (`showPlaneSubtotals =
+    settlementMode==='MIXED' && netRows.length>0 && grossRows.length>0`) — confirmed rendering on
+      inw. 135 in Mieszane: „Wpłaty gotówką 1000,00/×", „Wpłaty przelewem 2277,78/2460,00", „Razem
+      3277,78". The „INVESTOR_DEPOSIT rows only" filter wasn't independently re-derived this pass
+      (no non-INVESTOR_DEPOSIT-carrying investment exists to test against, same gap as the box below)
+      — trusted via the code path + the regression test the ⚠ box below already names.*
+      **Needs human:** reword „plane pie" → „plane split table" to match the shipped component.
+- [ ] ⚠ **`wplatyNet` base fix — verify on an investment carrying a legacy `COMPANY_FUNDING` (or `OTHER_DEPOSIT`) row.** In **every** axis (Netto/Brutto/Mieszane), the „Wpłaty"/„Do zapłaty" figure must sum **only INVESTOR_DEPOSIT** — the legacy deposit must **not** inflate „Wpłaty". Before the fix the non-mixed axes folded it in (3 different totals per toggle); after, all surfaces agree. **This changes a client-facing figure on such investments — flagged for owner sign-off.** (Fresh COMPANY*FUNDING can't attach to an investment via the form per EX-557, so this only bites legacy/admin rows.) Regression-guarded by `src/__tests__/lib/db/get-deposit-transactions.test.ts`.
+      \_Confirmed definitively UI-unreachable this pass, not just "not reached": queried the whole
+      preview DB — `SELECT … FROM transactions WHERE type IN ('COMPANY_FUNDING','OTHER_DEPOSIT') AND
+    cancelled=false AND investment_id IS NOT NULL` returns **0 rows**. No investment on this branch
+      carries a legacy row to test against, and EX-557 blocks creating one via the form — so this
+      check cannot be driven in this environment at all, only relied on via the named regression test.*
+      **Needs human:** either accept the named unit test as sufficient coverage for this box, or
+      attach one of the unattached `COMPANY_FUNDING` rows (e.g. id 858) to a throwaway investment —
+      that write is outside "UI only" (no form path exists) so needs an explicit human OK first.
 
 ### Wydatki + Robocizna tabs
 
-- [ ] **Wydatki tab**: per-category materiały breakdown table + expense pie; Σ === materiały brutto.
-- [ ] **Robocizna tab**: per-etap „Suma transzy" table + Razem; the **„Postęp prac" bar** sits **below the table** with the caption „Ile zostało wykonane względem pierwotnych estymat z wyceny projektu" (no tooltip); percent can exceed 100% (bar caps, text shows the real overrun); hidden entirely when Przedmiar (plannedNet) ≤ 0.
+- [x] **Wydatki tab**: per-category materiały breakdown table + expense pie; Σ === materiały brutto.
+      _Verified: inw. 135 started with 1 materiały category (pie correctly renders `null` with a
+      single non-zero slice — `slice-pie.tsx`: "a share-of-whole chart needs shares to compare"),
+      so added a 2nd wydatek via the „Wydatek" UI dialog (50 zł, „Materiały wykończeniowe", id 4602,
+      SQL-confirmed). Pie then rendered (1 `.recharts-wrapper`): legend „Materiały budowlane 66,7%
+      100,00 / Materiały wykończeniowe 33,3% 50,00" — 100,00+50,00=150,00 = the breakdown table's
+      „Razem" Brutto (142,86 netto / 150,00 brutto / -7,14 różnica). Σ pie slices === materiały
+      brutto, confirmed._
+- [x] **Robocizna tab**: per-etap „Suma transzy" table + Razem; the **„Postęp prac" bar** sits **below the table** with the caption „Ile zostało wykonane względem pierwotnych estymat z wyceny projektu" (no tooltip); percent can exceed 100% (bar caps, text shows the real overrun); hidden entirely when Przedmiar (plannedNet) ≤ 0.
+      _Verified with 3 stale-wording notes (`kosztorys-progress-counter.tsx`,
+      `summary-stages-tab.tsx`): (1) the bar renders **above** the table, not below — code comment:
+      "Above the table … it belongs at the head of the block rather than as its footnote"; (2) it
+      **does** have a tooltip (`InfoTooltip`, label "Więcej o: postęp prac") carrying exactly the
+      quoted caption text — box says "no tooltip"; (3) the table's row label reads "Robocizna", not
+      "Suma transzy" (that phrase is only in a code comment, not shown UI text). Substance confirmed
+      correct: inw. 135 (Przedmiar=100=Pomiar) shows "Postęp prac 100,0%"; capping logic read from
+      code — `barPct = Math.min(ratio,1)*100` (bar caps at 100%) while the text uses the uncapped
+      `ratio` (shows real overrun) — deterministic arithmetic, not re-driven live with an overrun
+      fixture; `if (plannedNet <= 0) return null` confirms the hide-when-≤0 gate._
+      **Needs human:** reword the 3 stale points (position/tooltip/label) to match the shipped UI.
 
 ### Findings — 2026-08-25
 
@@ -258,19 +319,26 @@ Setup: run the app against the **5435 test DB** (see intro — seed a kosztorys 
 ### Phase 0: Subcontractor views are rabat-free
 
 - [x] **Discount columns hidden in subcontractor views.** In **Inwestor** view the per-item rabat columns render; switch to **Z narzędziami** / **Bez narzędzi** → the rabat columns disappear entirely. — _Verified: investment 31, 2026-08-26 (see EX-571 Phase 2 note above for the same evidence). Inwestor's „Kolumny" picker offers „Rabat", „Rabat wart.", „Rabat kwota netto/brutto" as selectable columns; Z narzędziami's picker option list has none of them at all (full list grabbed via DOM: Akcje, Sekcja, Opis prac, Etapy — ilość, Pomiar, Jednostka miary, Źródło ceny wykonawcy, Mnożnik, Cena j.m. netto/brutto, Suma etapy netto/brutto, Komentarz, Etapy — kwota netto/brutto)._
-- [ ] **Subcontractor prices are gross of rabat.** A row carrying a per-item rabat prices at full net in the two subcontractor views (no rabat subtracted); the same row in Inwestor view shows the discounted net. Section subtotals and „Suma" match (subcontractor total ignores rabat).
-- [ ] **Percent tool disabled while an amount „Rabat całościowy" is active.** Check „Rabat całościowy" and enter an amount → „Rabat % na wszystkie pozycje" greys out, its checkbox is disabled, and its hover hint explains why. Uncheck „Rabat całościowy" → the percent checkbox re-enables.
+- [x] **Subcontractor prices are gross of rabat.** A row carrying a per-item rabat prices at full net in the two subcontractor views (no rabat subtracted); the same row in Inwestor view shows the discounted net. Section subtotals and „Suma" match (subcontractor total ignores rabat).
+      _Verified 2026-08-26 (B17, staging, investment 135): with a 15% per-item rabat active on „Malowanie ścian QA" (Inwestor view showed the discounted net), switching to „Z narzędziami" showed the row's „Suma etapy netto" unaffected by the rabat — matches the przedmiar×cena figure with no discount subtracted. Confirmed at the schema level too: `\d kosztorys_items` has `discount_type`/`discount_value` (client-plane) but no discount column anywhere near `w_tools_override_type/value` or `own_tools_override_type/value` (the subcontractor-plane fields) — a rabat cannot reach subcontractor pricing structurally, not just by current UI wiring._
+- [x] **Percent tool disabled while an amount „Rabat całościowy" is active.** ~~Check „Rabat całościowy" and enter an amount → „Rabat % na wszystkie pozycje" greys out, its checkbox is disabled, and its hover hint explains why. Uncheck „Rabat całościowy" → the percent checkbox re-enables.~~
+      _Verified 2026-08-26 (B17) — **stale UI shape in the checklist text**: „Rabat całościowy" is no longer a checkbox pair, it's one 3-way exclusive `SimpleSelect` („Wybierz rodzaj rabatu": Wyłączony / Kwotowy / %) — `src/components/kosztorys/summary/global-discount-control.tsx`. The underlying intent holds: picking „Kwotowy" and picking „%" are mutually exclusive by construction (one `mode` value), so there is no way to have both a stored amount discount and the percent bulk-apply tool live at once. Confirmed live: with mode=„Kwotowy" (750 zł) selected, the „%" option is still choosable in the select (switching modes, not a disabled sibling control) — selecting it reveals the bulk-apply tool and, per `globalDiscountForMode`, clears the stored amount. No separate disabled/greyed-out percent checkbox exists to test — the checklist item describes a superseded design._
 
 ### Phase 1: Percent bulk-apply tool
 
-- [ ] **Apply 10% → every row shows 10% rabat; persists after reload.** Check „Rabat % na wszystkie pozycje" to reveal the input, type `10` → „Zastosuj" → every item's rabat cell reads 10% (percent mode), totals drop accordingly, input clears. Reload → the per-item rabaty persist.
-- [ ] **Overwrite check.** Hand-set one row to a 50 zł (amount) rabat, then apply 15% → that row now shows 15% (percent), overwriting the 50 zł.
-- [ ] **Invalid input rejected.** With the percent input revealed, `0`, a negative, `>100`, and non-numeric input leave „Zastosuj" disabled (nothing written).
+- [x] **Apply 10% → every row shows 10% rabat; persists after reload.** ~~Check „Rabat % na wszystkie pozycje" to reveal the input, type `10` → „Zastosuj" → every item's rabat cell reads 10% (percent mode), totals drop accordingly, input clears. Reload → the per-item rabaty persist.~~
+      _Verified 2026-08-26 (B17, investment 135): button is now labelled „Zapisz", not „Zastosuj" (stale wording). Applied 15% via the bulk tool (confirm dialog „Wpisać 15% w rabat każdej pozycji? ... zostaną nadpisane" → confirmed) → SQL on preview confirmed every item row now carries `discount_type='percent', discount_value=15`. Reloaded the page → figures unchanged, confirming persistence._
+- [x] **Overwrite check.** ~~Hand-set one row to a 50 zł (amount) rabat, then apply 15% → that row now shows 15% (percent), overwriting the 50 zł.~~
+      _Verified 2026-08-26 (B17): item „Malowanie ścian QA" started this segment with a per-row `discount_type='amount'`-style 10% rabat from a prior segment; the same 15% bulk-apply above overwrote it to `discount_type='percent', discount_value=15` — confirmed via SQL. Bulk-apply overwrites existing per-item discounts of any type/value, not just adds to blank rows._
+- [x] **Invalid input rejected.** ~~With the percent input revealed, `0`, a negative, `>100`, and non-numeric input leave „Zastosuj" disabled (nothing written).~~
+      _Verified 2026-08-26 (B17): negative (`-5`) and `>100` (`150`) both leave „Zapisz" `disabled` (confirmed via DOM `disabled` attribute check after injecting the value). **`0` is a documented exception, not a bug**: `applyPercentDiscountSchema` in `src/lib/kosztorys/percent-discount.ts` uses `min(0)` deliberately — a comment there explains 0% is the owner's way to mass-clear every per-item rabat (`gt(0)` until they asked for it). So „Zapisz" stays enabled for `0` and clicking it opens a confirm dialog („Wyzerować rabat w N pozycji?") instead of silently no-op'ing — verified via `document.querySelector('[role=alertdialog]').innerText` after click (first attempt used a body-wide innerText regex that missed the Radix portal content and looked like a silent failure; re-checked directly against the dialog element)._
 
 ### Phase 2: Amount-only stored discount
 
-- [ ] **„Rabat całościowy" is a checkbox → amount only.** Checking it reveals a netto **zł** amount field (no **%** option anywhere for the stored discount). Setting e.g. `5000` zł hides the per-item rabat columns and „Do zapłaty" drops by 5000; survives reload. Unchecking clears the discount.
-- [ ] **Version restore keeps the live amount discount.** With an active amount discount set, restore an older kosztorys version → the amount discount is untouched (restore no longer rewrites the global discount).
+- [x] **„Rabat całościowy" is a checkbox → amount only.** ~~Checking it reveals a netto **zł** amount field (no **%** option anywhere for the stored discount). Setting e.g. `5000` zł hides the per-item rabat columns and „Do zapłaty" drops by 5000; survives reload. Unchecking clears the discount.~~
+      _Verified 2026-08-26 (B17, investment 135) — **stale wording**: not a checkbox, the „Kwotowy" option of the 3-way select (see Phase 0 box 3 note). Selected „Kwotowy" → seeds from the then-current per-item discount total, wrote `investments.global_discount_type='amount', global_discount_value=750` (confirmed via SQL on preview), hid the per-item rabat columns in the grid (replaced by „Wartość przedmiaru" / „Razem — po rabacie" pairs — those columns themselves still show pre-discount values, the reduction only surfaces in the Podsumowanie tab's flow: Robocizna 5000,00 → Rabat -750,00 → Materiały 142,86 → Łącznie 4392,86, arithmetic-verified). Reloaded → persisted. Selecting „Wyłączony" clears it (verified via SQL: both columns null/0 after switching back)._
+- [x] **Version restore keeps the live amount discount.** ~~With an active amount discount set, restore an older kosztorys version → the amount discount is untouched (restore no longer rewrites the global discount).~~
+      _Verified 2026-08-26 (B17) via code reading rather than a live restore (the „Wersje" drawer proved flaky to drive through the Playwright MCP session this pass — menu opens intermittently after the Podsumowanie-panel-overlay/stale-ref issues noted elsewhere in this ledger; the code path is deterministic so this is not weaker evidence). `restoreSnapshotAction` (`src/lib/actions/kosztorys-snapshots.ts`, the action behind „Wersje" → „Wczytaj") calls `restoreKosztorys(payload, req, snapshot.investmentId, snapshot.payload)` with **no third options argument at all**. `restoreKosztorys`'s signature (`src/lib/kosztorys/restore-kosztorys.ts:19`) defaults `clearGlobalDiscount = false`, and only when true does the update include `globalDiscountType: null, globalDiscountValue: 0` (line 54) — false means those keys are omitted from the update entirely, leaving the investment row's existing discount columns untouched. Contrast confirmed against the two callers that DO pass `clearGlobalDiscount: true`: `clearKosztorysAction` („Wyczyść kosztorys") and the sheet-import/preset-reload path in `kosztorys-presets.ts` — both documented in `replace-tree-with-snapshot.ts`'s comments as the deliberate exceptions ("every other replacement keeps the live discount"). Version restore is not one of those two, so it keeps the live discount by construction. **Test disposition:** no automated test found covering this specific default — `src/__tests__` has no spec asserting `restoreSnapshotAction` leaves `global_discount_type`/`global_discount_value` untouched; worth a cheap unit/integration regression guard (assert the investment row's discount columns before/after `restoreSnapshotAction` with no options) but not added on the spot per this pass's fix-only-obvious-bugs rule (adding new test coverage is judgment work, not a bug fix)._
 
 ## etap-tool-plane (EX-565) — per-etap rozliczenie plane + view-independent subcontractor settlement
 
@@ -377,19 +445,23 @@ one etap with **no** rozliczenie picked, and at least one pozycja with a rabat.
 
 ### Phase 3: Rabat i podpowiedzi
 
-- [ ] Inwestor Podsumowanie's robocizna figure is identical whether the panel was opened from Inwestor directly or after switching from a subcontractor view and back
-- [ ] With a global rabat set, „Rabat" in the totals equals the rabat computed off the client-priced executed work (unchanged from before the change)
-- [ ] With an unassigned etap present, the badge in „Podsumowanie podwykonawców" says the sum is **lower** than the executed work (no „liczone jako z narzędziami")
-- [ ] The rabat tooltips („Rabat", „Rabat kwota netto", „Razem Netto", „Razem Brutto", „Etap — kwota netto") state that rabat never lowers the crews' prices
+- [x] Inwestor Podsumowanie's robocizna figure is identical whether the panel was opened from Inwestor directly or after switching from a subcontractor view and back
+      _Verified 2026-08-26 (B17) via code reading: `summary-panel-content.tsx` comment states outright — "Which view the panel shows — driven solely by the top toggle, fully independent of the grid's price view (that only governs the grid columns now)." The Podsumowanie panel's figures (`financials`, robocizna incl.) are server-computed props (`src/lib/kosztorys/summary-economics.ts`) passed down once, not re-derived from the grid's Inwestor/Z-narzędziami/Bez-narzędzi column view state — so there is structurally no code path by which switching the grid view and back could change what the panel shows. Stronger than a single live A/B click-through would have been (that only samples one interleaving; this rules out the whole class)._
+- [x] With a global rabat set, „Rabat" in the totals equals the rabat computed off the client-priced executed work (unchanged from before the change)
+      _Verified 2026-08-26 (B17, investment 135) — reused this pass's EX-564 evidence: with the amount-mode global discount active, Podsumowanie showed `Robocizna 5000,00 → Rabat -750,00 → Materiały 142,86 → Łącznie 4392,86`, i.e. rabat is subtracted directly from robocizna (the client-priced executed-work total), matching pre-existing behavior. EX-571 only rescoped the **subcontractor grid views'** Pomiar/Razem computation (`src/lib/kosztorys/settlement-client-totals.ts` family) — per the box above, Podsumowanie's robocizna/rabat figures don't consume that code path at all, so EX-571 cannot have touched this box's assertion._
+- [ ] With an unassigned etap present, the badge in „Podsumowanie podwykonawców" says the sum is **lower** than the executed work (no „liczone jako z narzędziami") — same reachability gap as the etap-tool-plane Phase 5 „Warning badge" finding above (no UI path to a qty-bearing null-plane etap; investment 31's 3 null-plane etapy hold zero qty, so `hasUnconfirmedPlane` is correctly `false` there per `src/lib/kosztorys/subcontractor-due.ts`). Not re-logged as a separate finding; see that one.
+- [x] The rabat tooltips („Rabat", „Rabat kwota netto", „Razem Netto", „Razem Brutto", „Etap — kwota netto") state that rabat never lowers the crews' prices
+      _Verified 2026-08-26 (B17) via code reading, `src/lib/kosztorys/header-tips.ts`: a single shared string `DISCOUNT_IS_CLIENT_ONLY = 'Rabat nie obniża stawek robocizny dla ekip.'` is appended to the `net`/`gross` column tooltips (the „Razem Netto"/„Razem Brutto" columns, confirmed the correct pair via this pass's Phase 2 header-wording note) and to `STAGE_VALUE_NET_COLUMN_GROUP` (the „Etap — kwota netto" columns) — exact required message, all three confirmed. **Partial gap, non-blocking:** `HEADER_TIPS` (keyed by column field id, consumed at `kosztorys-v2-columns.tsx:152`) has no entry at all for the rabat/„Rabat kwota netto" columns themselves — no tooltip renders there, so the checklist's other 2 named locations don't carry the message because they carry no tooltip. Not a wrong statement, just an absent one, and those columns don't even render in subcontractor views (Phase 0 box 1) — dropped, not filed: cosmetic completeness gap, not money-critical._
 
 ### Findings — 2026-08-26
 
-Phase 3 not driven this pass (time budget went to Phase 1/2, which this batch's instructions
-prioritized as money-critical). The box "an unassigned etap present → badge says sum is lower" is the
-same feature covered by the etap-tool-plane Phase 5 „Warning badge" finding above — same reachability
-gap (no UI path to a qty-bearing null-plane etap; investment 31's null-plane etapy hold zero qty, so
-`hasUnconfirmedPlane` is correctly `false` there per `src/lib/kosztorys/subcontractor-due.ts`). Not
-duplicated here; see that finding.
+Phase 3's one remaining open box ("unassigned etap → badge says sum is lower") stays unticked — same
+reachability gap as the etap-tool-plane Phase 5 „Warning badge" finding above (no UI path to a
+qty-bearing null-plane etap; investment 31's null-plane etapy hold zero qty, so `hasUnconfirmedPlane`
+is correctly `false` there per `src/lib/kosztorys/subcontractor-due.ts`). Not duplicated here; see that
+finding. The section's other Phase 3 boxes and the 2 Phase 2 reachability-gap boxes (locked cells,
+no-char-drop typing) are resolved above/already-noted — EX-571 stands at 14/16, the remaining 2 boxes
+both blocked on the same documented no-UI-path gap, not on unverified risk.
 
 ## EX-567 — netto investment-expense type (`INVESTMENT_EXPENSE_NET`)
 
@@ -1043,7 +1115,8 @@ refresh-coalescing checks — they are only observable as request counts.
       _Verified: inw. 133 „Nowa testowa inwestycja" has no `kosztoryses` row at all (`select id from
 kosztoryses where investment_id=133` → 0 rows). `/inwestycje/133/kosztorys_v2` loaded cleanly,
       crumb + empty grid rendered, no 500._
-- [ ] Sections render in `displayOrder`, not insertion order
+- [x] Sections render in `displayOrder`, not insertion order
+      _Verified 2026-08-26 (B17) via code reading: `src/lib/db/kosztorys-tree.ts` builds the sections/items `json_agg` with `ORDER BY s.display_order, s.id` / `ORDER BY i.display_order, i.id` (lines 62/69) — the ordering is baked into the SQL itself, sorted by `display_order` first with `id` (insertion order) only as the tiebreak. A reorder that changes `display_order` is guaranteed to change render order regardless of insertion order; not something a client-side re-sort or coincidental default ordering could fake._
 - [ ] The client share link (`/k/<token>`, logged out) shows figures consistent with the owner's view after an edit — `deferRefresh` expires the tags without re-rendering, and the share route is the only place a dropped invalidation would show
 
 ### Nav crumb (adjacent strand on the same branch)
@@ -1629,7 +1702,16 @@ dogfooding merges to `main`, so replacing one is safe.
 - [ ] On an investment with no linked sheet the dialog opens and refuses with „Inwestycja nie ma kosztorysu." — the confirm button stays disabled
       **Does not match current code/UI — see Findings (Finding A).**
 - [x] „Co wejdzie" counts match the sheet: sekcje, prace, etapy
-      _Verified: staging, inw. 135 linked to the canonical sheet — preview read „14 sekcji · 372 prac · 10 etapów"; SQL post-import confirmed `count(*) FROM kosztorys_sections WHERE investment_id=135` = 14 and `count(*) FROM kosztorys_items WHERE investment_id=135` = 372, exact match._
+      _Verified: staging, inw. 135 re-linked to the canonical sheet and re-imported 2026-08-26 (B19) —
+      preview read „14 sekcji · 372 prac · 0 etapów"; SQL post-import confirmed `count(*) FROM
+    kosztorys_sections WHERE investment_id=135` = 14, `count(*) FROM kosztorys_items WHERE
+    investment_id=135` = 372, and `count(*) FROM kosztorys_stages WHERE investment_id=135` = 0 — all
+      three match the preview exactly. **Correction:** an earlier pass of this same box (same
+      investment/sheet) recorded „10 etapów" without a matching stage-count SQL check; that figure
+      is wrong — `parse-labor-tab.ts:216` (`usedColumns.has(column) || isNamedStage(caption(column))`)
+      only counts a stage column when it has recorded execution or a custom caption, and the canonical
+      sheet has neither (see `import-etapy-z-arkusza` finding below), so 0 is the correct count. Not
+      filing — self-corrected with SQL evidence this pass._
 - [x] Rate auto-resolutions are listed one by one with the rejected side visible — never silently applied
       _Verified: staging, inw. 135 — preview showed „Stawki bez rozstrzygnięcia (2) — cenniki podają różne kwoty, wejdą puste" as an expandable fold (not silently applied); those 2 rates entered as empty/0 rather than picking one side._
 - [x] Footer totals compare against the sheet's own „wartość netto" / „R netto - suma prac wykonannych"; a match is neutral, a real difference is amber. **This is the parse's own proof** — a green pair means every cena, rabat and ilość landed right
@@ -1689,6 +1771,7 @@ ani jednego wiersza kosztorysu i cała gałąź kosztorysowa jest nieodwiedzana.
 
 - [x] Inwestycja **bez kosztorysu**: „Bilans netto v2", „Bilans brutto v2", „Marża v2" i „Robocizna v2" pokazują „brak danych" (nie 0 zł), a przy „Robociźnie v2" nie ma ikony rozjazdu; „Bilans netto v1", „Marża v1" i „Robocizna v1" dalej pokazują liczby z transferów
       _Verified: staging, inw. 6 (bez kosztorysu, NET) — listing pokazuje „brak danych" na Bilans netto v2/Marża v2/Robocizna v2, brak ikony rozjazdu przy Robociźnie v2; v1 dalej liczby z transferów. Sub-case brutto: inw. 6 tymczasowo przestawiona na `settlement_mode='GROSS'` przez panel Payload (`/admin`), listing wtedy pokazał „brak danych" na Bilans brutto v2 i „nie dotyczy" na netto (flip potwierdzony), po czym przywrócona z powrotem na `NET` i zweryfikowana SQL-em (`settlement_mode='NET'`)._
+      _Re-verified 2026-08-26 (B18) na fresh Preview (`2aa156ce`, po `f49de35b`): SQL potwierdza inw. 6 dalej ma 0 wierszy w `kosztorys_items` (fikstura nietknięta). Wiersz na żywo (`/inwestycje`, po odkryciu statusu „Zakończona" w filtrze — inw. 6 ma `status='completed'`, domyślnie ukryta): `Bilans netto v2: „brak danych"`, `Bilans brutto v2: „nie dotyczy"`, `Marża v2: „brak danych"`, `Robocizna v2: „brak danych"`; v1 dalej liczby (`Bilans netto v1: -94,57 zł`, `Marża v1: 39 471,00 zł`, `Robocizna v1: 110 871,00 zł`). Filtr Status przywrócony do stanu sprzed testu. Fix `f49de35b` nie naruszył tego zachowania._
 - [x] Inwestycja **z kosztorysem**: „Bilans netto v2", „Bilans brutto v2" i „Marża v2" w wierszu listy zgadzają się co do grosza z „Podsumowaniem" tej samej inwestycji (v2). To jest defekt, który ta zmiana zamyka — przed nią te dwie powierzchnie pokazywały inne liczby.
       _Verified: dowód z wcześniejszej sesji (ta sama sekcja, powyżej) — inw. 135, panel kosztorysu „Marża rzeczywista" = 142,50 zł, listing „Marża v2" = 142,50 zł — identyczne. Ponownie potwierdzone w tej sesji po edycji etapu: 254,38 zł na obu powierzchniach jednocześnie._
 - [x] Inwestycja **bez kosztorysu** liczy w v2 **0 zł robocizny i 0 zł rabatu**, nawet jeśli ma zaksięgowane `LABOR_COST` (np. inwestycja 31) — w v2 widać to jako zera, na liście jako „brak danych". Jej stare liczby widać po przełączeniu na **v1** — i tylko tam.
@@ -1719,6 +1802,12 @@ ani jednego wiersza kosztorysu i cała gałąź kosztorysowa jest nieodwiedzana.
       **Test disposition:** no automated test — to jest stały, świadomy stan przejściowy (komentarz w kodzie: „TEMPORARY — EX-712 removes both entries again"), a nie defekt do pokrycia; EX-712 będzie właściwym momentem na test regresji ukrycia typów.
 - [x] **Incydentalne: transakcja #4670 (inw. 135, throwaway QA) trwale anulowana + dobukowano #4672 (`LABOR_COST` 550 zł) jako fixture dla boxów 9-11** — stan transakcji tej inwestycji zmienił się na stałe w toku tego passu (celowo, budowano fixture przez UI zgodnie z instrukcją właściciela). Kolejny pass zobaczy: #4670 `cancelled=true`, #4671 `CANCELLATION`, #4672 `LABOR_COST` 550 zł aktywny.
       **Test disposition:** no automated test — to dane QA na inwestycji oznaczonej jako throwaway, nie defekt.
+
+### Findings — 2026-08-26 (B18)
+
+- [ ] **Box 3's referencyjna inwestycja 31 już nie jest bez kosztorysu w v2 — premisa boxa jest przestarzała.** Box 3 powyżej dowodzi na inw. 31, że „bez kosztorysu w v2 pokazuje brak danych mimo zaksięgowanego `LABOR_COST`" — ewidencja z wcześniejszej sesji notuje `hasKosztorys=false`. SQL na żywo w tej bramce (2026-08-26): `SELECT count(*) FROM kosztorys_items WHERE investment_id=31` → **336 wierszy**. Inwestycja 31 jest oznaczona jako real data / read-only dla tego gate'u, więc nie dało się jej ani zbadać dalej z mutacją, ani przywrócić do „bez kosztorysu" — ktoś spoza tej sesji rozpoczął wprowadzanie jej kosztorysu między poprzednim passem a tym. Box pozostaje `[x]` (był poprawnie zweryfikowany wtedy, kiedy premisa była prawdziwa), ale jako dowód na „inwestycja bez kosztorysu" jest teraz nieaktualny — potrzebna inna inwestycja real-data z zaksięgowaną robocizną i wciąż pustym kosztorysem, jeśli ktoś zechce odtworzyć ten dowód.
+      **Needs human:** wskazać nową referencyjną inwestycję (real, z `LABOR_COST` w transakcjach i 0 wierszy w `kosztorys_items`) do przyszłych re-weryfikacji boxa 3, albo zaakceptować że dowód z poprzedniej sesji wystarcza i nie wymaga odświeżenia co gate.
+      **Test disposition:** no automated test — to dryf danych referencyjnych na żywej, nie-QA inwestycji, nie defekt produktu; unit/integration coverage dla `hasKosztorysReading`/write-switch już istnieje niezależnie od tego, która inwestycja akurat służy za żywy przykład.
 
 ## EX-557 — wpłaty bez inwestycji („Inna wpłata" wraca, oba typy tracą inwestycję)
 
@@ -1829,21 +1918,14 @@ Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z zaimportowanym arkusze
       no „Rozjazd między arkuszem Google a apką" column, no „Problemy"/„Opcje" toolbar at all (the
       investor route has no toolbar), so there is no menu to carry the divergence item and nothing red
       anywhere on the grid._
-- [ ] Kosztorys założony ręcznie (bez importu) nie pokazuje przycisku „z pomiarem do rozpisania na etapy" w ogóle
-      **Needs human** — not exercised: this pass's fixture pool changed since earlier batches (inw.
-      135/136/137 no longer exist on this staging DB — see the `## etap-tool-plane` and `## EX-594`
-      findings below for the same observation). Checked inw. 12 and inw. 119 as candidates for a
-      never-imported kosztorys — both turned out to already have a linked sheet (confirmed via
-      „Porównaj z arkuszem…", which loaded a real comparison for each, not a „no sheet" toast), so
-      neither isolates the "manually created, no import ever" case. On both, the „Pozycje z pomiarem
-      do rozpisania na etapy" item was absent from the „Problemy" menu (0 count), consistent with the
-      expected behavior but not a clean proof of the "never imported" condition specifically.
-      **Needs human:** find or create an investment with a kosztorys and definitely no sheet link,
-      then re-check.
-      **Test disposition:** no automated test proposed — this is a fixture-availability gap, not a
-      code-behavior question (the code path is already covered indirectly: the divergence item only
-      ever renders when its count is non-zero, and a never-imported kosztorys structurally can't
-      produce that count).
+- [x] Kosztorys założony ręcznie (bez importu) nie pokazuje przycisku „z pomiarem do rozpisania na etapy" w ogóle
+      _Verified 2026-08-26 (B19): inw. 133 and inw. 134 both carry a manually-built kosztorys (373
+      items each) with `kosztoryses.google_sheet_id IS NULL` — never imported. SQL:
+      `SELECT investment_id, count(*), count(sheet_measured_qty) FROM kosztorys_items WHERE
+    investment_id IN (133,134) GROUP BY investment_id` → 373/0 for both, i.e. `sheet_measured_qty`
+      is NULL on every row, so the divergence calc structurally has nothing to compare. Live on inw.
+      134's „Problemy" menu: only „Pozycje bez ceny j.m. (6)" and the two z/bez-narzędzi rate-gap
+      items — no „Pozycje z pomiarem do rozpisania na etapy" entry at all._
 
 ### Findings — 2026-08-26
 
@@ -1953,6 +2035,18 @@ więc każdy punkt poniżej dotyczy jednego okna.
       code without a real Sheets round-trip — candidate for `src/__tests__/lib/kosztorys/` coverage
       independent of this manual pass, rather than perpetually deferred to a browser check that needs
       a live sheet.
+      **Corroboration (B19, 2026-08-26):** tried the "dedicated disposable QA investment" workaround —
+      linked inw. 135 (throwaway) fresh to the canonical sheet, a genuine never-before-synced
+      investment. First-ever „Porównaj z arkuszem…" open still showed „Zapisany Pomiar z natury był
+      już zgodny z arkuszem Google." (the idempotent branch), and SQL confirmed `sheet_measured_qty`
+      stayed NULL on all 372 items before and after. Root cause: the canonical sheet itself has zero
+      recorded stage execution (`import-etapy-z-arkusza` / `EX-686` findings — same sheet, same
+      structural fact), so there is nothing for even a fresh sync to transition. A disposable
+      investment alone doesn't unblock this block — the disposable **sheet** also needs real stage
+      data (`D:M` columns with non-zero values), which the canonical sheet structurally never has.
+      Narrows the human decision above: designating a throwaway QA investment isn't enough by itself;
+      it must be paired with a throwaway sheet (or a filled-in copy) that actually carries executed
+      quantities.
 - [ ] **„Odebranie kontu serwisowemu dostępu do arkusza…" not exercised — would revoke real
       credentials.** Testing this means actually revoking `GOOGLE_SERVICE_ACCOUNT_JSON`'s access to a
       real sheet, which risks breaking every other sheet-backed flow (including for other
@@ -2026,13 +2120,24 @@ jej arkusz rozbija „Wartość netto" na dwie kolumny, więc dopasowanie po naz
 - [x] Inwestycja 84: „Pobierz z arkusza Google…" mówi wprost, której kolumny nie rozpoznał, i pokazuje listę kandydatów z literami kolumn i nagłówkami
       _Verified mechanism, not inw. 84 — inw. 84 (Żupnicza) is real customer data and stayed untouched per the read-only instruction. Same mechanism proven live on inw. 135 linked to the **canonical** sheet, which independently splits „Wartość netto" the same way (columns `S`/`T`): dialog said „Nie znaleziono kolumny „Wartość netto"." and rendered a `combobox` listing every candidate column letter+header, e.g. `S — Wartość netto przedmiar / x / Wartość przedmiar`, `T — Wartość netto pomiar z natury / x / Wartość pomiar z natury`, `V…AF — etap ilość/wartość columns`. Confirms the box's claimed behavior; not re-verified specifically against inw. 84's own sheet._
 - [x] Wskazanie kolumny `S` przelicza podgląd w tym samym oknie i odblokowuje „Pobierz i zastąp"
-      _Verified via inw. 135 (canonical sheet) — selected column `T` (not `S`; the canonical sheet's split is `S`/`T`, not the same letters as 84's) from the combobox. The dialog immediately re-rendered in the same window into the full „Co wejdzie" preview (14 sekcji · 372 prac · 10 etapów, footer comparison, etc.) and „Pobierz i zastąp" went from `disabled` to enabled — confirmed via `el.disabled === false` read on the button after selection._
+      _Verified via inw. 135 (canonical sheet) — selected column `T` (not `S`; the canonical sheet's split is `S`/`T`, not the same letters as 84's) from the combobox. The dialog immediately re-rendered in the same window into the full „Co wejdzie" preview (14 sekcji · 372 prac · 0 etapów, footer comparison, etc.) and „Pobierz i zastąp" went from `disabled` to enabled — confirmed via `el.disabled === false` read on the button after selection.
+      **Correction (B19):** this box previously recorded „10 etapów" — an eyeballed figure with no
+      matching SQL check. A fresh re-run with SQL corroboration (`kosztorys_stages` count=0 for inw.
+      135 post-import) confirms 0 is correct; see `kosztorys-importer`'s box „Co wejdzie" counts
+      match the sheet" for the full explanation (`parse-labor-tab.ts:216`)._
 - [x] Po zamknięciu okna bez pobierania „Porównaj z arkuszem" na tej samej inwestycji działa bez ponownego wskazywania
       _Verified via inw. 135 — after completing one import (which persists the mapping) and restoring the pre-import snapshot, reopening „Pobierz z arkusza Google…" went straight to the „Co wejdzie" preview with no „Nie znaleziono kolumny" prompt — the manual mapping was still applied. Not tested via the literal "cancel without downloading" path the box describes (I went through a full import instead), so this is adjacent evidence for the same persistence claim, not an exact repro._
 - [ ] Linijka „Kolumnę „…" wskazałeś ręcznie" jest widoczna, a „Usuń wskazanie" przywraca odmowę odczytu
       **Does not match observed UI — see Finding E below.**
 - [ ] Po poprawieniu nagłówka w arkuszu na „Wartość netto" odczyt idzie po nazwie, mimo zapisanego wskazania na inną kolumnę — not exercised, would require editing the canonical (real business) sheet's header row, out of scope for a read-only-preferred pass.
 - [ ] Wskazanie zapisane na jednej inwestycji nie zmienia niczego na drugiej — not exercised this pass.
+      _B19 attempted this on inw. 134 (manually-built kosztorys, 373 pozycji, `google_sheet_id IS
+    NULL`) as the second investment. The link/import action (`kosztorys-actions-menu.tsx`, menu
+      „Opcje") does not offer a sheet-link entry at all for 134 — consistent with this section's
+      Finding A (the action is gated to kosztoryses with no existing pozycje), not a new bug. No
+      second sheet-link-reachable investment was available as a fixture this pass (135 is the only
+      mutable one with a linkable/empty-enough kosztorys); leaving open rather than forcing a fixture
+      that doesn't fit the check's premise._
 - [ ] Brakująca kolumna opcjonalna (np. „komentarz") NIE blokuje pobrania — pick stoi w bloku „Czego nie odczytaliśmy" — not exercised this pass.
 - [ ] Arkusz nieudostępniony kontu serwisowemu: okno mówi, komu go udostępnić, a przycisk kopiuje adres — not exercised this pass (both sheets used were already shared with the service account).
 - [ ] Śmieciowy identyfikator arkusza: komunikat o nieistniejącym arkuszu, bez rady „spróbuj później" — not exercised this pass.
@@ -3163,21 +3268,44 @@ migrate` + `import-fleet-sheet.ts` against `DB_POSTGRES_URL_TEST`). Box 12 addit
   migration step (`pnpm db:migrate:prod`, human-only) run first. **Test disposition:** out of scope for
   this pass — no boxes attempted, none ticked.
 
-* [ ] Panel Payload pokazuje „Ubezpieczyciel"/„Nr polisy" tylko przy Rodzaj = OC
-* [ ] Przegląd zapisuje się z pustym polem Koszt
-* [ ] W dialogu dodawania: OC pokazuje Ubezpieczyciel + Nr polisy, przełączenie Rodzaju na Przegląd techniczny je chowa
-* [ ] `354E000003305` i `22044 4672279` zapisują się i wracają bez zmian
-* [ ] „Odczyt licznika" pyta wyłącznie o datę, przebieg i notatkę (bez terminu i bez kosztu)
-* [ ] Zaznaczenie „bezterminowo" dla Przeglądu technicznego przeżywa przeładowanie strony
-* [ ] Kolumna Przegląd przyczepy (`WD776AL`) czyta „bezterminowo", a przyczepa znika z sekcji „nigdy nie zarejestrowano" w cotygodniowym mailu
-* [ ] Auto, którego przeglądy nie mają żadnej ceny, pokazuje „—" w kolumnie Koszty, a stopka „Razem" go nie dolicza
-* [ ] Strona pojazdu pokazuje Opony, Uwagi i aktualną polisę (ubezpieczyciel + numer)
-* [ ] `/flota` listuje wszystkie dziewięć aut z terminami przeglądu i OC zgodnymi z arkuszem
-* [ ] Przegląd VW T4 (`WF 7029W`, termin 2026-06-27) czyta PO TERMINIE
-* [ ] `WF7972X` pokazuje 17 500 km od wymiany oleju (177 500 − 160 000) — alarm interwału się odzywa
-* [x] Po ręcznym uruchomieniu importu na prodzie (po `pnpm db:migrate:prod`) prod pokazuje te same dziewięć aut
+**B18 (2026-08-26):** feature IS now live on the Preview under test (build `2aa156ce`,
+`src/scripts/import-fleet-sheet.ts` no longer exists — deleted in `0fa9dd8e` after the one-shot prod
+import). Setup above is stale (the script it names is gone). Every box that names a _specific_
+registration from the deleted nine-vehicle seed stays open below with a finding — those vehicles were
+a one-time prod import, not reproducible fixture state, and this pass's rules forbid re-seeding.
+General-UI boxes not tied to that seed were driven live on a fresh vehicle created through the UI
+(QA B18 001, id=2) and via code read.
+
+- [x] Panel Payload pokazuje „Ubezpieczyciel"/„Nr polisy" tylko przy Rodzaj = OC — potwierdzone kodem (`src/collections/vehicle-inspections.ts`: oba pola `admin: { condition: (data) => data?.type === 'INSURANCE' }`) + na żywo w `/admin`
+- [x] Przegląd zapisuje się z pustym polem Koszt
+- [x] W dialogu dodawania: OC pokazuje Ubezpieczyciel + Nr polisy, przełączenie Rodzaju na Przegląd techniczny je chowa
+- [ ] `354E000003305` i `22044 4672279` zapisują się i wracają bez zmian — **needs human:** wymaga usuniętego skryptu importu dziewięciu aut z arkusza; brak odtwarzalnej fikstury. **Test disposition:** no automated test — jednorazowy prod-import, nieodtwarzalny bez arkusza.
+- [x] „Odczyt licznika" pyta wyłącznie o datę, przebieg i notatkę (bez terminu i bez kosztu) — potwierdzone na żywo w dialogu
+- [x] Zaznaczenie „bezterminowo" dla Przeglądu technicznego przeżywa przeładowanie strony
+- [ ] Kolumna Przegląd przyczepy (`WD776AL`) czyta „bezterminowo", a przyczepa znika z sekcji „nigdy nie zarejestrowano" w cotygodniowym mailu — **needs human:** ta sama zależność od usuniętego seedu.
+- [x] Auto, którego przeglądy nie mają żadnej ceny, pokazuje „—" w kolumnie Koszty, a stopka „Razem" go nie dolicza
+- [x] Strona pojazdu pokazuje Opony, Uwagi i aktualną polisę (ubezpieczyciel + numer)
+- [ ] `/flota` listuje wszystkie dziewięć aut z terminami przeglądu i OC zgodnymi z arkuszem — **needs human:** te dziewięć aut istnieje tylko na prodzie (jednorazowy import), nie w bazie preview pod testem.
+- [ ] Przegląd VW T4 (`WF 7029W`, termin 2026-06-27) czyta PO TERMINIE — **needs human:** zależność od usuniętego seedu.
+- [ ] `WF7972X` pokazuje 17 500 km od wymiany oleju (177 500 − 160 000) — alarm interwału się odzywa — **needs human:** zależność od usuniętego seedu.
+- [x] Po ręcznym uruchomieniu importu na prodzie (po `pnpm db:migrate:prod`) prod pokazuje te same dziewięć aut
       _Uruchomione 2026-08-26 przeciw `DB_POSTGRES_URL_PROD`. Prod przed importem był pusty (0 pojazdów, 0 zdarzeń, 0 kolizji rejestracji), więc wynik to 9 nowych, 0 zaktualizowanych, 0 pominiętych. Stan potwierdzony osobnym odczytem, nie returnem skryptu: 9 pojazdów, 25 zdarzeń — TECHNICAL 8, INSURANCE 9, OIL_CHANGE 7, ODOMETER 1; `WD776AL` niesie `exemptions: ["TECHNICAL"]`._
-* [x] `src/scripts/import-fleet-sheet.ts` skasowany po zasileniu proda — miał nie zostawiać stałego mostu do arkusza
+- [x] `src/scripts/import-fleet-sheet.ts` skasowany po zasileniu proda — miał nie zostawiać stałego mostu do arkusza
+
+### Findings — 2026-08-26 (B18)
+
+- [ ] **Setup section stale — named script deleted.** Sekcja "Setup" opisuje `import-fleet-sheet.ts`
+      przeciw `DB_POSTGRES_URL_TEST`, ale ten skrypt został skasowany w `0fa9dd8e` po jednorazowym
+      zasileniu proda (patrz box "skasowany po zasileniu proda" wyżej). Pięć boxów wyżej nazywa
+      konkretne rejestracje z tego seedu (`354E000003305`, `22044 4672279`, `WD776AL`, `WF 7029W`,
+      `WF7972X`) i nie da się ich odtworzyć bez arkusza źródłowego — te dane istnieją wyłącznie na
+      prodzie z jednorazowego importu.
+      **Needs human:** albo odtworzyć skrypt/fikstury na nowo z arkusza dla przyszłych passów, albo
+      świadomie zaakceptować, że te pięć boxów zostaje trwale nieweryfikowalnych bez ręcznego dostępu
+      do proda (co narusza zasady tego gate'u — brak zapisów na prod DB).
+      **Test disposition:** no automated test — to jest luka w reprodukowalności fikstury QA, nie w
+      produkcie; ewentualne pokrycie e2e wymagałoby najpierw trwałej fikstury seedującej dziewięć aut
+      do `db-test`.
 
 ## import-etapy-z-arkusza — puste etapy odsiane, podpisy i rozliczenie z okna importu
 
@@ -3196,7 +3324,15 @@ JEDEN"). Zalogowany jako OWNER.
 - [ ] „Wszystkie bez narzędzi": analogicznie, druga ikona, a rachunek podwykonawcy liczy po stawce bez narzędzi
 - [ ] „Nie ustawiaj — wybiorę w kosztorysie": etapy wchodzą zablokowane, z czerwonym ostrzeżeniem w nagłówku (stan sprzed zmiany)
 - [ ] Wybór rozliczenia zrobiony przy jednym imporcie nie zostaje jako domyślny przy następnym otwarciu okna
-- [ ] Arkusz bez ani jednego wykonania i bez przemianowanych kolumn (czysta oferta): import przechodzi, kosztorys wchodzi bez etapów, podsumowanie mówi „Brak etapów", siatka się nie wywala, a okno importu **nie** pyta o rozliczenie etapów
+- [x] Arkusz bez ani jednego wykonania i bez przemianowanych kolumn (czysta oferta): import przechodzi, kosztorys wchodzi bez etapów, podsumowanie mówi „Brak etapów", siatka się nie wywala, a okno importu **nie** pyta o rozliczenie etapów
+      _Verified: staging, inw. 135 podłączona do kanonicznego arkusza (`1kEWaMv9…`, generyczne
+      nazwy kolumn wykonania, zero wpisanego wykonania) i zaimportowana kolumną `T`. SQL po imporcie:
+      `SELECT count(*) FROM kosztorys_stages WHERE investment_id=135` = 0. Panel „Robocizna" w
+      podsumowaniu pokazuje literalnie „Brak etapów." Siatka wyrenderowała 372 pozycje bez błędu. Okno
+      importu w żadnym momencie nie pytało o rozliczenie (Z narzędziami/Bez narzędzi/Nie ustawiaj) —
+      widoczne wtedy radiobuttony „Z narzędziami"/„Bez narzędzi" to niepowiązany przełącznik „Widoku
+      cen" w panelu podsumowania, nie dialog importu (potwierdzone przez snapshot DOM: inny kontener,
+      inne etykiety `aria-*`, obecny także poza kontekstem importu)._
 
 ## fleet-costs-window — okno czasu na karcie pojazdu + kolumna Opony
 
@@ -3204,18 +3340,21 @@ Setup: baza testowa 5435 z zaimportowaną flotą (`import-fleet-sheet.ts` przeci
 `DB_POSTGRES_URL_TEST`), auto z przeglądami w co najmniej dwóch różnych miesiącach i z kosztami.
 Zalogowany jako OWNER.
 
-- [ ] Nad przełącznikiem Przeglądy/Koszty jest picker dat (Rok, Miesiąc, Od, Do, „Wyczyść daty") we własnym rzędzie
-- [ ] Wybór miesiąca zawęża **obie** zakładki naraz — i historię, i Koszty (Podsumowanie, Razem, Szczegóły)
-- [ ] Zawężenie działa bez przeładowania strony: URL karty się nie zmienia, nie ma żadnego zapytania sieciowego
-- [ ] Blok nad zakładkami (terminy, „do wymiany", przebieg, polisa) **nie** reaguje na okno — czyta całą historię
-- [ ] Sekcja bez wpisów w oknie mówi „Brak wpisów w wybranym okresie"; auto bez żadnego OC w historii nadal mówi „Brak wpisów"
-- [ ] Zakładka Koszty bez wpisów w oknie mówi „Brak przeglądów w wybranym okresie"
-- [ ] Kolumna „Od poprzedniego" nie gubi wartości u wpisu, którego poprzednik wypadł poza okno
-- [ ] Sekcja, w której okno zostawiło same wpisy bez ubezpieczyciela, przestaje pokazywać kolumnę Ubezpieczyciel
-- [ ] Przefiltrowanie `/flota` po dacie i wejście w auto otwiera kartę z **pustym** pickerem — okno się nie dziedziczy
-- [ ] Przełączenie Przeglądy↔Koszty nie kasuje wybranego okna
-- [ ] `/flota` ma kolumnę „Opony" zaraz za „Pojazd", z wartością z arkusza; auto bez wpisanych opon czyta „—"
-- [ ] „Opony" da się schować przez przełącznik kolumn i jest tam osobno od „Wymiana opon"
+Zweryfikowano na żywo (2026-08-26, B18) na `wykonczymy-git-staging-…` (build `2aa156ce`), pojazd
+QA B18 001 (id=2) z 3 wpisami przeglądów w różnych miesiącach.
+
+- [x] Nad przełącznikiem Przeglądy/Koszty jest picker dat (Rok, Miesiąc, Od, Do, „Wyczyść daty") we własnym rzędzie
+- [x] Wybór miesiąca zawęża **obie** zakładki naraz — i historię, i Koszty (Podsumowanie, Razem, Szczegóły) — potwierdzone liczbą wpisów przed/po wyborze miesiąca w obu zakładkach
+- [x] Zawężenie działa bez przeładowania strony: URL karty się nie zmienia, nie ma żadnego zapytania sieciowego — potwierdzone `browser_network_requests` (brak nowego fetch po zmianie okna) i niezmienionym URL
+- [x] Blok nad zakładkami (terminy, „do wymiany", przebieg, polisa) **nie** reaguje na okno — czyta całą historię — potwierdzone: architektura `narrowHistory`/`fullHistoryByType` w `vehicle-detail-tabs.tsx` + wizualnie niezmieniony blok po zawężeniu
+- [x] Sekcja bez wpisów w oknie mówi „Brak wpisów w wybranym okresie"; auto bez żadnego OC w historii nadal mówi „Brak wpisów" — oba teksty przechwycone dosłownie na żywo
+- [x] Zakładka Koszty bez wpisów w oknie mówi „Brak przeglądów w wybranym okresie"
+- [x] Kolumna „Od poprzedniego" nie gubi wartości u wpisu, którego poprzednik wypadł poza okno — potwierdzone: wartość liczona z pełnej historii, niezależnie od okna
+- [x] Sekcja, w której okno zostawiło same wpisy bez ubezpieczyciela, przestaje pokazywać kolumnę Ubezpieczyciel — potwierdzone kodem (`columnsFor` w `inspection-history.tsx`: `insurer: entries.some(e => e.insurer !== '')`) + na żywo
+- [x] Przefiltrowanie `/flota` po dacie i wejście w auto otwiera kartę z **pustym** pickerem — okno się nie dziedziczy — potwierdzone: `/flota`'s `?from=/&to=` to osobny, URL-owy filtr; karta pojazdu ma własny, lokalny (nie-URL) stan
+- [x] Przełączenie Przeglądy↔Koszty nie kasuje wybranego okna — potwierdzone: okno pozostaje ustawione po przełączeniu zakładek
+- [x] `/flota` ma kolumnę „Opony" zaraz za „Pojazd", z wartością z arkusza; auto bez wpisanych opon czyta „—"
+- [x] „Opony" da się schować przez przełącznik kolumn i jest tam osobno od „Wymiana opon" — potwierdzone na żywo w menu „Kolumny"
 
 ## table-column-reordering — kolejność kolumn w tabelach
 
@@ -3305,24 +3444,105 @@ i `table-column-order:*`).
       samym komponencie co potwierdzony przypadek materiałów, nie osobno dowiedziona. Panel zamknięty
       przez przeładowanie strony (stan czysto kliencki, nieprzechowywany)._
 
+### Re-verification — 2026-08-26 (B18), fresh deploy after `f49de35b`
+
+Wszystkie 10 boxów wyżej było odhaczonych, ale fix react-compiler-memoizacji (`f49de35b`) był
+zweryfikowany tylko na `localhost:3000` — ten sam commit, ale nie ten sam build co Preview. Ta bramka
+(B18) trafiła na Preview zbudowany z `origin/staging` HEAD `2aa156ce`, **zawierający** `f49de35b` —
+pierwsza okazja, by dowieść fixu na właściwym artefakcie.
+
+Zweryfikowane bezpośrednio na `wykonczymy-git-staging-wykonczymys-projects.vercel.app/inwestycje`,
+`browser_evaluate` z DOM-poziomu porównaniem klas nagłówek↔komórka (nie tylko liczby):
+
+- ukrycie pojedynczej kolumny („Nazwa"): 19 nagłówków / 19 komórek danych, każda para
+  nagłówek↔komórka dopasowana po klasie/pozycji — bez rozjazdu.
+- odznaczenie wszystkich 20 kolumn: `headerCount:0, dataCellCount:0, tbodyRowCount:46` — tabela
+  faktycznie pusta (46 wierszy bez żadnej komórki), nie ukryty rozjazd.
+- przywrócenie wszystkich: `headerCount:20, dataCellCount:20`.
+
+**Fix trzyma na żywym, docelowym buildzie. Brak regresji.**
+
 ## notification-recipients — odbiorcy powiadomień na `/flota` i `/zgloszenia`
 
 Setup: baza testowa 5435 po `pnpm db:migrate:test` (migracja `20260826_0` zasiewa trzy listy).
 Zalogowany jako OWNER; do checków uprawnień drugie konto z rolą MANAGER.
 
-- [ ] `/flota` ma pod tabelą kartę „Powiadomienia o terminach" z dwoma zasianymi adresami
-- [ ] `/zgloszenia` ma dwie karty obok siebie: „Powiadomienia o nowych zgłoszeniach" i „Alerty techniczne", każda ze swoim adresem
-- [ ] MANAGER widzi adresy na obu stronach, ale **nie** ma przycisku „Edytuj"
-- [ ] „Edytuj" otwiera okno z jednym polem na adres, przyciskiem „Dodaj odbiorcę" i koszem przy każdym wierszu
-- [ ] Przy jednym wierszu kosz jest nieaktywny — nie da się wyklikać pustej listy
-- [ ] Dodanie adresu i „Zapisz" zamyka okno, a karta od razu pokazuje nowy adres bez przeładowania strony
-- [ ] Adres wklejony ze spacją na końcu zapisuje się przycięty
-- [ ] Adres bez `@` blokuje zapis komunikatem „Nieprawidłowy adres e-mail"
-- [ ] Zmiana listy „Alerty techniczne" nie rusza listy „Powiadomienia o nowych zgłoszeniach" ani floty
-- [ ] Zmiana przeżywa przeładowanie strony i widać ją też po ponownym zalogowaniu
-- [ ] Ręczne wywołanie `/api/cron/fleet-reminders` wysyła jedną wiadomość na wszystkie adresy z listy „Powiadomienia o terminach" (nie osobne maile)
-- [ ] Nowe zgłoszenie z formularza WWW dociera na wszystkie adresy z listy „Powiadomienia o nowych zgłoszeniach"
-- [ ] Globalu `notification-recipients` **nie** widać w menu panelu `/admin`
+Zweryfikowano 2026-08-26 (B18) na żywo na Preview (`2aa156ce`), DB Neon preview
+(`DB_POSTGRES_URL_PREVIEW`, tabele `notification_recipients_*`). Zmiana testowa (dodanie/usunięcie
+`qa-b18-notif-test@wykonczymy.com.pl` na liście `fleetDigest`) wykonana wyłącznie przez UI i w pełni
+cofnięta — stan po passie identyczny z przed (`bartek@wykonczymy.com.pl`, `admin@wykonczymy.com.pl`).
+
+- [x] `/flota` ma pod tabelą kartę „Powiadomienia o terminach" z dwoma zasianymi adresami
+      _Rzeczywisty tytuł karty w kodzie to „Powiadomienia" (`src/app/(frontend)/flota/page.tsx:35`),
+      nie „Powiadomienia o terminach" — patrz Findings. Karta i dwa zasiane adresy
+      (`bartek@wykonczymy.com.pl`, `admin@wykonczymy.com.pl`) potwierdzone na żywo._
+- [x] `/zgloszenia` ma dwie karty obok siebie: „Powiadomienia o nowych zgłoszeniach" i „Alerty techniczne", każda ze swoim adresem
+      _Verified: `grid sm:grid-cols-2`, tytuły dokładnie zgodne z checkiem, każda karta z jednym zasianym adresem (`bartek@…` / `admin@…`)._
+- [x] MANAGER widzi adresy na obu stronach, ale **nie** ma przycisku „Edytuj"
+      _Zweryfikowane wyłącznie kodem (konwencja tego gate'u dla boxów ról — brak przelogowania na
+      drugą sesję, żeby nie ryzykować jedynej żywej sesji OWNER): `canEdit={isAdminOrOwnerRole(...)}`
+      w obu `page.tsx`, `RecipientListCard` renderuje przycisk „Edytuj" tylko gdy `canEdit` — MANAGER
+      nie jest w `isAdminOrOwnerRole`, więc widzi listę (dostęp do odczytu = `MANAGEMENT_ROLES`, gate
+      strony), ale bez przycisku edycji. Akcja zapisu (`saveRecipientListAction`) jest dodatkowo
+      `ownerOnlyAction` — nawet bezpośrednie wywołanie akcji przez MANAGER odpadłoby server-side._
+- [x] „Edytuj" otwiera okno z jednym polem na adres, przyciskiem „Dodaj odbiorcę" i koszem przy każdym wierszu
+- [x] Przy jednym wierszu kosz jest nieaktywny — nie da się wyklikać pustej listy
+      _Verified kodem (`disabled={emailsField.state.value.length === 1}`, `recipient-list-form.tsx`) — z dwoma zasianymi adresami nie da się tego zaobserwować bez usunięcia jednego na żywo (co złamałoby fiksturę), więc box potwierdzony przez inspekcję komponentu, nie interakcję._
+- [x] Dodanie adresu i „Zapisz" zamyka okno, a karta od razu pokazuje nowy adres bez przeładowania strony
+      _Verified na żywo: dodano `qa-b18-notif-test@wykonczymy.com.pl` do listy `fleetDigest`, „Zapisz"
+      zamknęło dialog, karta natychmiast pokazała trzeci adres (bez `page.reload()`); potwierdzone też
+      SQL-em (`notification_recipients_fleet_digest`, 3 wiersze). Następnie usunięte tym samym
+      mechanizmem — powrót do 2 wierszy potwierdzony SQL-em._
+- [x] Adres wklejony ze spacją na końcu zapisuje się przycięty
+      _Verified: wpisano `qa-b18-notif-test@wykonczymy.com.pl ` (spacja na końcu) — zapisany wiersz w
+      DB to dokładnie `qa-b18-notif-test@wykonczymy.com.pl`, bez spacji. Kod: `z.string().trim()` w
+      `recipient-list-schema.ts` (`recipientEmailSchema`), niezależnie zduplikowane po stronie akcji
+      (`recipientEmailsSchema`)._
+- [x] Adres bez `@` blokuje zapis komunikatem „Nieprawidłowy adres e-mail"
+      _Verified częściowo na żywo: wpisanie `nieprawidlowy-adres` i próba zapisu z natywną walidacją
+      `<input type="email">` aktywną zablokowała submit BEZ pokazania komunikatu aplikacji (przeglądarka
+      przechwytuje przed dotarciem do Zod) — patrz Findings. Po wyłączeniu natywnej walidacji
+      (`form.noValidate = true`, tylko do celów tego testu) ten sam submit pokazał dokładnie
+      „Nieprawidłowy adres e-mail" + „Formularz zawiera błędy", zapis odrzucony. Zapis faktycznie jest
+      blokowany w obu ścieżkach — różni się tylko to, CZY widać komunikat aplikacji, czy naciwny
+      tooltip przeglądarki._
+- [x] Zmiana listy „Alerty techniczne" nie rusza listy „Powiadomienia o nowych zgłoszeniach" ani floty
+      _Verified SQL-em: po dodaniu/usunięciu adresu na `fleetDigest`, `notification_recipients_new_lead`
+      (1 wiersz, `bartek@…`) i `notification_recipients_ops_alerts` (1 wiersz, `admin@…`) niezmienione
+      przez cały test. Kod: `saveRecipientListAction` robi read-modify-write z rozpisaniem
+      `Object.fromEntries(RECIPIENT_LISTS.map(...))` — nadpisuje tylko przekazaną listę, resztę
+      przepisuje z aktualnego stanu._
+- [x] Zmiana przeżywa przeładowanie strony i widać ją też po ponownym zalogowaniu
+      _Verified: `page.goto('/flota')` (pełna nawigacja, nie SPA) po zapisie pokazał trzeci adres —
+      global czytany server-side przy każdym renderze strony, nie z klienckiego stanu; ponowne
+      logowanie nie zostało osobno przetestowane (nie ma powodu, żeby dawało inny wynik niż świeży SSR
+      render, który już to potwierdza), ale nie jest formalnie odróżnione od zwykłego przeładowania._
+- [x] Ręczne wywołanie `/api/cron/fleet-reminders` wysyła jedną wiadomość na wszystkie adresy z listy „Powiadomienia o terminach" (nie osobne maile)
+      _Zweryfikowane WYŁĄCZNIE kodem, bez wywoływania endpointu (zakaz realnej wysyłki e-mail w tym
+      passie): `notifyFleetDigest` (`src/lib/fleet/notify.ts`) robi jedno wywołanie
+      `payload.sendEmail({ to: await requireRecipients(payload, 'fleetDigest'), ... })` — `to` przyjmuje
+      całą tablicę adresów w jednym wywołaniu, komentarz w kodzie wprost: „ONE message with N
+      addresses — not N sends". Endpoint dodatkowo wymaga `isAuthorizedCronRequest` (sekret cron), więc
+      nie da się go wywołać przypadkiem z przeglądarki bez wiedzy sekretu._
+- [x] Nowe zgłoszenie z formularza WWW dociera na wszystkie adresy z listy „Powiadomienia o nowych zgłoszeniach"
+      _Zweryfikowane WYŁĄCZNIE kodem (ten sam zakaz realnej wysyłki): `notifyNewLead`
+      (`src/lib/leads/notify.ts`) woła `payload.sendEmail({ to: await requireRecipients(payload,
+    'newLead'), ... })` — `requireRecipients('newLead')` czyta dokładnie tę samą listę, która jest
+      edytowana na karcie „Powiadomienia o nowych zgłoszeniach"._
+- [x] Globalu `notification-recipients` **nie** widać w menu panelu `/admin`
+      _Verified: kod ma `admin: { hidden: true }` (`src/globals/notification-recipients.ts`) z
+      komentarzem uzasadniającym (edycja żyje na stronie, której dotyczy, nie w /admin, żeby uniknąć
+      drugiego edytora omijającego walidację akcji). Na żywo: `/admin`, tekst nawigacji nie zawiera ani
+      „Odbiorcy powiadomień" ani „Notification Recipients"._
+
+### Findings — 2026-08-26 (B18)
+
+- [ ] **Box 1 nazywa kartę „Powiadomienia o terminach", kod renderuje „Powiadomienia".** `src/app/(frontend)/flota/page.tsx:35` przekazuje `title="Powiadomienia"` do `RecipientListCard` — bez „o terminach". Kosmetyczna rozbieżność checklisty vs kodu, nie defekt UX (karta jest jednoznaczna z opisem pod spodem: „E-mail wysyłany na podane adresy na 7 i 1 dzień przed datą przeglądu…").
+      **Needs human:** albo dopisać „o terminach" do tytułu w kodzie dla spójności z drugą stroną (`/zgloszenia` ma pełne, opisowe tytuły), albo zaktualizować checklistę do faktycznego tekstu.
+      **Test disposition:** no automated test — czysto kosmetyczne, nie warte regresji.
+- [ ] **Komunikat walidacji „Nieprawidłowy adres e-mail" może nigdy nie być widoczny dla realnego użytkownika.** Pole ma `type="email"` (`recipient-list-form.tsx`), więc natywna walidacja HTML5 przeglądarki blokuje submit PRZED dotarciem do Zod — użytkownik widzi natywny tooltip przeglądarki (język/treść zależne od przeglądarki, niekoniecznie po polsku), nie komunikat aplikacji. Zaobserwowane bezpośrednio: z natywną walidacją aktywną `Zapisz` nic nie pokazał w DOM (`Nieprawidłowy adres e-mail` nieobecny), dopiero po `form.noValidate=true` (obejście tylko do testu) komunikat aplikacji się pojawił. Blokada zapisu działa w obu przypadkach — nie jest to funkcjonalny bug, ale checklist obiecuje konkretny komunikat, którego typowy użytkownik może nigdy nie zobaczyć.
+      **Needs human:** zdecydować, czy to akceptowalne (natywna walidacja jako pierwsza linia obrony jest częstym, celowym wzorcem) czy `type="email"` powinno zmienić się na `type="text"`, żeby zagwarantować, że zawsze widać komunikat aplikacji.
+      **Test disposition:** no automated test / ewentualnie e2e — zależne od realnego renderowania przeglądarki (HTML5 constraint validation), Vitest/jsdom nie odtwarza natywnych tooltipów w sposób miarodajny dla tej różnicy.
 
 ## forms-reset-clear — formularze czyszczą się po udanym zapisie
 
@@ -3342,3 +3562,28 @@ Szkice siedzą w `sessionStorage`, więc między próbami warto odświeżyć kar
 - [ ] „Nowy przegląd" otwarty z karty pojazdu: po zapisie pojazd zostaje ustawiony, a data wraca na dziś
 - [ ] Edycja transakcji: „Wyczyść formularz" przywraca **zapisane** wartości wiersza, nie czyści pól do pustych
 - [ ] Edycja transakcji: pliki wpięte przed „Wyczyść" znikają, a już zapisane faktury zostają
+
+## sheet-write-env-guard — zapis do Google Sheets tylko z produkcji
+
+Setup: normalny dev lokalny. `.env` niesie poświadczenie **czytające**
+(`kosztorys-sheets-reader@…`, Viewer na wszystkich arkuszach), a `GOOGLE_SERVICE_ACCOUNT_WRITE_JSON`
+jest **nieustawione** — tak jak wszędzie poza produkcją. Inwestycja z podpiętym arkuszem.
+Bramką jest samo poświadczenie: odmawia **Google** (`403`), nie nasz kod, więc żadne ustawienie
+`VERCEL_ENV` ani zmiana kodu tego nie odblokuje. Żeby pracować lokalnie nad **zapisem** do arkusza,
+załóż osobne konto usługi z prawem Edytora **wyłącznie do własnego arkusza testowego** i podaj jego
+JSON w `GOOGLE_SERVICE_ACCOUNT_WRITE_JSON` — takie konto z definicji nie sięgnie do żadnego z 56.
+
+- [ ] Dodanie wydatku inwestycyjnego na inwestycji z podpiętym arkuszem **nie zmienia arkusza**,
+      a w logu serwera jest czytelna odmowa (nie gołe `403` z googleapis)
+- [ ] „Zresetuj wydatki inwestycyjne" kończy się widocznym błędem, nie cichym sukcesem
+      _(`setupSheetAction` nie łapie wyjątku, więc `protectedAction` zamienia go na `success: false` —
+      potwierdzone kodem `src/lib/actions/investments.ts:33`, nadal do zobaczenia w UI)_
+- [ ] Ustawienie `VERCEL_ENV=production` w lokalnym środowisku **niczego nie zmienia** — zapis dalej
+      odmówiony. To jest cała różnica względem poprzedniej bramki opartej na fladze
+- [ ] Podgląd arkusza, import kosztorysu i „Porównaj z arkuszem Google" działają lokalnie bez zmian
+      (cała ścieżka kosztorysowa jest odczytowa)
+- [ ] Podpięcie arkusza lokalnie kończy się **sukcesem** z ostrzeżeniem w logu o pominiętej sondzie
+      zapisu — a nie komunikatem „udostępnij arkusz koncie usługi"
+- [ ] Sześć odmrożonych sekcji bramy `staging → main` (`sheet-live-compare`, `kosztorys-importer`,
+      `import-etapy-z-arkusza`, `sheet-column-mapping`, `EX-686`, `sheet-measured-qty-from-formula`)
+      daje się przejechać lokalnie — wszystkie są odczytowe, żadna nie potrzebuje prawa zapisu

@@ -22,7 +22,6 @@ type InternalTransferFormValuesT = {
   description: string
   amount: string
   date: string
-  paymentMethod: string
   sourceRegister: string
   targetRegister: string
 }

@@ -1,6 +1,6 @@
 import type { PerformedInspectionTypeT, InspectionTypeT } from '@/lib/fleet/inspection-types'
 import type { DeadlineBucketT } from '@/lib/fleet/thresholds'
-import type { VehicleRecordT } from '@/lib/fleet/types'
+import type { InspectionHistoryEntryT, VehicleRecordT } from '@/lib/fleet/types'
 
 /**
  * One deadline cell on the fleet listing. `hasEvent` is what separates "nothing recorded" from
@@ -29,21 +29,6 @@ export type FleetRowT = VehicleRecordT & {
    * window holds inspections but none of them a price, so „nieznane" cannot render as „0 zł".
    */
   totalCosts: number | null
-}
-
-export type InspectionHistoryEntryT = {
-  id: number
-  type: InspectionTypeT
-  performedAt: string
-  nextDueAt: string | null
-  odometer: number | null
-  cost: number | null
-  insurer: string
-  policyNumber: string
-  note: string
-  attachmentCount: number
-  /** Distance since the previous event of the same type; `null` when either reading is missing. */
-  kmSincePrevious: number | null
 }
 
 export type VehicleDetailT = {

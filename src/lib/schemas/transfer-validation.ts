@@ -6,6 +6,7 @@ import {
   needsTargetRegister,
   needsExpenseCategory,
   needsWorker,
+  carriesPaymentMethod,
 } from '@/lib/constants/transfers'
 
 // Shared type-dependent refinement helpers, used by every transfer schema: server, client form,
@@ -13,6 +14,7 @@ import {
 
 type TransferFieldsT = {
   type: string
+  paymentMethod?: unknown
   sourceRegister?: unknown
   targetRegister?: unknown
   investment?: unknown
@@ -49,6 +51,11 @@ const transferFieldRules: FieldRuleT[] = [
     invalid: (d) => requiresInvestment(d.type) && !d.investment,
     message: 'Inwestycja jest wymagana dla tego typu transferu',
     path: 'investment',
+  },
+  {
+    invalid: (d) => carriesPaymentMethod(d.type) && !d.paymentMethod,
+    message: 'Metoda płatności jest wymagana',
+    path: 'paymentMethod',
   },
   {
     invalid: (d) => needsWorker(d.type) && !d.worker,

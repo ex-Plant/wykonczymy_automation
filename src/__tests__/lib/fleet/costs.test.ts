@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { sumKnown, summariseCosts, totalCost } from '@/lib/fleet/costs'
 import { INSPECTION_TYPES, type InspectionTypeT } from '@/lib/fleet/inspection-types'
 import { ALL_TIME } from '@/lib/utils/date-range'
-import type { InspectionHistoryEntryT } from '@/types/fleet'
+import type { InspectionHistoryEntryT } from '@/lib/fleet/types'
 
 let nextId = 1
 

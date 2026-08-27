@@ -651,12 +651,14 @@ describe('cancelTransferAction', () => {
           amount: 777,
           date: today,
           description: `Anulowanie transakcji #10\n${VALID_CANCEL_REASON}`,
-          paymentMethod: 'CASH',
           cancelledTransaction: 10,
           createdBy: adminUser.id,
         }),
       }),
     )
+    // The original's method is NOT copied: an anulowanie was never asked how it was paid, and a
+    // borrowed „Gotówka" would answer for it in the column and the filter.
+    expect(mockCreate.mock.calls[0][0].data).not.toHaveProperty('paymentMethod')
   })
 
   it('createdBy as object (populated relation) → extracts id correctly', async () => {
@@ -764,6 +766,57 @@ describe('updateTransferAction', () => {
       )
     },
   )
+
+  // The other half of the same rule: a wpłata booked before the plane existed is missing the figure,
+  // not carrying a wrong one, so the fill-in is the only route there will ever be to supply it.
+  it('a legacy wpłata with no plane takes the one the edit names', async () => {
+    mockFindByID.mockResolvedValueOnce(
+      makeOriginalTransfer({ type: 'INVESTOR_DEPOSIT', vatPlane: null, createdBy: adminUser.id }),
+    )
+
+    const result = await updateTransferAction(
+      10,
+      makeUpdateData({ vatPlane: 'GROSS', netAmount: 400 }),
+    )
+
+    expect(result.success).toBe(true)
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ vatPlane: 'GROSS', netAmount: 400 }),
+      }),
+    )
+  })
+
+  // Gotówka IS the netto — no second kwota to type, and the hook nulls the column for that plane.
+  it('a legacy wpłata filled in as gotówka takes the plane with no netto', async () => {
+    mockFindByID.mockResolvedValueOnce(
+      makeOriginalTransfer({ type: 'INVESTOR_DEPOSIT', vatPlane: null, createdBy: adminUser.id }),
+    )
+
+    const result = await updateTransferAction(10, makeUpdateData({ vatPlane: 'NET' }))
+
+    expect(result.success).toBe(true)
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ vatPlane: 'NET', netAmount: null }),
+      }),
+    )
+  })
+
+  it.each([
+    ['no netto at all', undefined, 'Kwota netto jest wymagana'],
+    ['a netto above the brutto', 900, 'Kwota netto nie może przekraczać kwoty brutto'],
+  ])('refuses a brutto fill-in with %s', async (_label, netAmount, error) => {
+    mockFindByID.mockResolvedValueOnce(
+      makeOriginalTransfer({ type: 'INVESTOR_DEPOSIT', vatPlane: null, createdBy: adminUser.id }),
+    )
+
+    const result = await updateTransferAction(10, makeUpdateData({ vatPlane: 'GROSS', netAmount }))
+
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toBe(error)
+    expect(mockUpdate).not.toHaveBeenCalled()
+  })
 
   it('cancelled transaction → returns error', async () => {
     mockFindByID.mockResolvedValueOnce(makeOriginalTransfer({ cancelled: true }))

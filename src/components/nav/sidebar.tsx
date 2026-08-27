@@ -8,11 +8,15 @@ import { SECTION_LINKS } from '@/lib/constants/sections'
 import { UnreadFleetBadge } from '@/components/nav/unread-fleet-badge'
 import { toastMessage } from '@/lib/utils/toast'
 import { useCurrentUser } from '@/hooks/use-current-user'
-import { Car, FileSpreadsheet, LogOut, Mail, RefreshCw, Shield, Users } from 'lucide-react'
+import { Car, FileSpreadsheet, LogOut, RefreshCw, Users } from 'lucide-react'
 import Link from 'next/link'
 import { useTransition } from 'react'
 
-export function Sidebar() {
+type SidebarPropsT = {
+  openRouterBalance?: React.ReactNode
+}
+
+export function Sidebar({ openRouterBalance }: SidebarPropsT) {
   const user = useCurrentUser()
   const [isPending, startTransition] = useTransition()
   const [isRefreshing, startRefreshTransition] = useTransition()
@@ -32,7 +36,7 @@ export function Sidebar() {
 
   // Roundcube can't auto-login via URL; _user only prefills the username field on its
   // login page (no-op when a Roundcube session is already active).
-  const roundcubeUrl = `https://www.wykonczymy.com.pl/webmail/?_user=${encodeURIComponent(user.email)}`
+  // const roundcubeUrl = `https://www.wykonczymy.com.pl/webmail/?_user=${encodeURIComponent(user.email)}`
 
   return (
     <aside className="border-border bg-background sticky top-0 hidden h-screen w-fit min-w-48 shrink-0 flex-col border-r px-3 pb-3 lg:flex">
@@ -93,7 +97,7 @@ export function Sidebar() {
             <RefreshCw className={isRefreshing ? 'animate-spin' : ''} />
             Odśwież dane
           </Button>
-          <Button size="sm" asChild aria-label="Panel administracyjny">
+          {/* <Button size="sm" asChild aria-label="Panel administracyjny">
             <Link href="/admin" target="_blank">
               <Shield />
               Admin
@@ -104,7 +108,8 @@ export function Sidebar() {
               <Mail />
               Poczta
             </Link>
-          </Button>
+          </Button> */}
+          {openRouterBalance}
           <Button variant="outline" size="sm" onClick={handleLogout} disabled={isPending}>
             <LogOut />
             Wyloguj

@@ -13,7 +13,9 @@ import {
   TRANSFER_TYPE_LABELS,
   showsInvestment,
   isVatPlane,
+  planeFor,
   PAYMENT_METHOD_PLANE_LABELS,
+  carriesPaymentMethod,
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
 import { isAdminOrOwnerRole } from '@/lib/auth/roles'
@@ -48,13 +50,6 @@ type DepositFormPropsT = {
 }
 
 const FORM_ID = 'deposit'
-
-// Gotówka is the no-VAT tor, przelew the invoiced one — so the method IS the plane, and the wpłata
-// is typed on the side it names. Keyed on the type as well, because only a wpłata od inwestora has
-// a plane: every other type renders one kwota, and a GROSS tag on it would demand a brutto field
-// that is not on screen.
-const planeFor = (type: string, paymentMethod: string) =>
-  type === 'INVESTOR_DEPOSIT' && paymentMethod === 'TRANSFER' ? 'GROSS' : 'NET'
 
 export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: DepositFormPropsT) {
   // COMPANY_FUNDING visible only to admin/owner — managers see other deposit types
@@ -145,7 +140,9 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
           : undefined,
       date: value.date,
       type: value.type as CreateTransferFormT['type'],
-      paymentMethod: value.paymentMethod as PaymentMethodT,
+      paymentMethod: carriesPaymentMethod(value.type)
+        ? (value.paymentMethod as PaymentMethodT)
+        : null,
       // Hiding a field does not clear it: the investment is seeded from the URL and vatPlane
       // has a default, so both would ride along on a type that carries neither. The hook
       // would null the investment server-side, but a submitted vatPlane has no such guard.
@@ -220,15 +217,17 @@ export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: Deposi
             here rather than beside them — a przelew already puts two inputs in that row, and a
             third squeezed the labels into two lines. */}
           <div className="flex items-start gap-4">
-            <PaymentMethodField
-              form={form}
-              listeners={{
-                onChange: ({ value }) =>
-                  form.setFieldValue('vatPlane', planeFor(form.getFieldValue('type'), value)),
-              }}
-              fieldClassName="min-w-0 flex-1"
-              labels={currentType === 'INVESTOR_DEPOSIT' ? PAYMENT_METHOD_PLANE_LABELS : undefined}
-            />
+            {carriesPaymentMethod(currentType) && (
+              <PaymentMethodField
+                form={form}
+                listeners={{
+                  onChange: ({ value }) =>
+                    form.setFieldValue('vatPlane', planeFor(form.getFieldValue('type'), value)),
+                }}
+                fieldClassName="min-w-0 flex-1"
+                labels={PAYMENT_METHOD_PLANE_LABELS}
+              />
+            )}
             <DateField form={form} fieldClassName="w-40" />
           </div>
 

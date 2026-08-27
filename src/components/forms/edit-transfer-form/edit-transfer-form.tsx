@@ -12,7 +12,9 @@ import {
   showsInvestment,
   needsExpenseCategory,
   isLaborCost,
-  type PaymentMethodT,
+  canFillVatPlane,
+  planeFor,
+  PAYMENT_METHOD_PLANE_LABELS,
 } from '@/lib/constants/transfers'
 import { editTransferFormSchema } from '@/lib/schemas/transfer-form'
 import type { EditTransferFormValuesT } from './edit-transfer-form-api'
@@ -22,11 +24,13 @@ import type { UpdateTransferFormT } from '@/lib/schemas/transfer'
 import type { TransferRowT } from '@/types/transfers'
 import type { ReferenceDataBaseT } from '@/types/reference-data'
 import { updateTransferAction } from '@/lib/actions/transfers'
+import { planeFillIn, UNANSWERED_PAYMENT_METHOD } from '@/lib/transfers/plane-fill-in'
 import {
   AmountField,
   DateField,
   DescriptionField,
   EntityComboboxField,
+  PaymentMethodField,
 } from '@/components/forms/form-fields'
 import { ExpenseCategoryField } from '@/components/forms/edit-transfer-form/expense-category-field'
 import useCheckFormErrors from '../hooks/use-check-form-errors'
@@ -49,6 +53,8 @@ export function EditTransferForm({
   keepOpen,
 }: EditTransferFormPropsT) {
   const { submit } = useFormSubmit(FORM_ID)
+
+  const fillsPlane = canFillVatPlane(row)
   const { files, isIngesting, inputKey, fileInputProps, reset: resetFiles } = useFilePickIngest()
 
   // A bare reset is right HERE and nowhere else: this form persists no draft, so its `defaultValues`
@@ -63,21 +69,22 @@ export function EditTransferForm({
       description: row.description,
       amount: isLaborCost(row.type) ? String(row.amount) : undefined,
       date: row.date.slice(0, 10),
-      paymentMethod: row.paymentMethod,
+      paymentMethod: fillsPlane ? UNANSWERED_PAYMENT_METHOD : (row.paymentMethod ?? ''),
       investment: row.investmentId ? String(row.investmentId) : '',
       expenseCategory: row.expenseCategoryId ? String(row.expenseCategoryId) : '',
       otherCategory: row.otherCategoryId ? String(row.otherCategoryId ?? '') : '',
       invoiceNote: row.invoiceNote ?? '',
+      netAmount: '',
     } as EditTransferFormValuesT,
     validators: {
-      onSubmit: editTransferFormSchema,
+      onSubmit: editTransferFormSchema(row),
     },
     onSubmit: async ({ value }) => {
       const data: UpdateTransferFormT = {
         description: value.description,
         amount: value.amount ? Number(value.amount) : undefined,
         date: value.date,
-        paymentMethod: value.paymentMethod as PaymentMethodT,
+        ...planeFillIn(row, value.paymentMethod, value.netAmount ?? ''),
         investment: value.investment ? Number(value.investment) : undefined,
         expenseCategory: value.expenseCategory ? Number(value.expenseCategory) : undefined,
         otherCategory: value.otherCategory ? Number(value.otherCategory) : undefined,
@@ -110,6 +117,7 @@ export function EditTransferForm({
   // investment is editable here, so adding one to a correction must reveal the
   // type field without a reload (matches the create form's currentInvestment).
   const currentInvestment = useStore(form.store, (s) => s.values.investment)
+  const currentPaymentMethod = useStore(form.store, (s) => s.values.paymentMethod)
 
   // Removal is immediate (its own action), unlike the rest of this form which applies on „Zapisz" —
   // the file input below only ever ADDS pages, so there is no other way to drop one here.
@@ -134,7 +142,8 @@ export function EditTransferForm({
 
           <DateField form={form} />
 
-          {/* Payment method hidden — only CASH is currently used */}
+          {/* Payment method is otherwise hidden — only CASH is currently used. The one exception is
+              the plane fill-in below. */}
 
           {showsInvestment(row.type) && (
             <EntityComboboxField
@@ -160,10 +169,35 @@ export function EditTransferForm({
             )}
           </form.AppField>
 
-          {/* No plane field here by design (owner, 2026-08-20): retagging a wpłata moves the debt by
-              a VAT's worth, exactly like editing its kwota — which this form already refuses. A
-              transfer has no version history, so the correction path is the one that leaves a trail:
-              anuluj i zaksięguj na nowo. */}
+          {/* Retagging a wpłata that HAS a plane stays refused (owner, 2026-08-20) — that goes the
+              way that leaves a trail, anuluj i zaksięguj na nowo. Offered here only for a legacy row,
+              which rewrites nothing. Asked as the METHOD, because that is what the owner remembers;
+              „Nie określono" is the default so a save about something else cannot answer it. */}
+          {fillsPlane && (
+            <>
+              <PaymentMethodField
+                form={form}
+                label="Forma wpłaty"
+                labels={PAYMENT_METHOD_PLANE_LABELS}
+                leadingOption={
+                  <SelectItem value={UNANSWERED_PAYMENT_METHOD}>Nie określono</SelectItem>
+                }
+              />
+              {planeFor(row.type, currentPaymentMethod) === 'GROSS' && (
+                <form.AppField name="netAmount">
+                  {(field) => (
+                    <field.Input
+                      label="Kwota netto z faktury (PLN)"
+                      placeholder="0.00"
+                      type="number"
+                      showError
+                    />
+                  )}
+                </form.AppField>
+              )}
+            </>
+          )}
+
           <form.AppField name="invoiceNote">
             {(field) => (
               <field.Textarea label="Notatka" placeholder="Wpisz notatkę..." rows={3} showError />

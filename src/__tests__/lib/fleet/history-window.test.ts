@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { emptyHistoryLabel, narrowHistory } from '@/lib/fleet/history-window'
 import { byInspectionType, INSPECTION_TYPES } from '@/lib/fleet/inspection-types'
 import { ALL_TIME } from '@/lib/utils/date-range'
-import type { InspectionHistoryEntryT } from '@/types/fleet'
+import type { InspectionHistoryEntryT } from '@/lib/fleet/types'
 
 const entry = (
   overrides: Partial<InspectionHistoryEntryT> & { performedAt: string },

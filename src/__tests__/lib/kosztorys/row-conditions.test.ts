@@ -65,7 +65,7 @@ describe('the conditions, each on its boundary', () => {
     expect(matches('no-measured-qty', row({ [stageKey(2)]: 3 }))).toBe(false)
   })
 
-  it('„bez ceny j.m." asks the client price, the only one typed by hand', () => {
+  it('„bez ceny j.m. i bez wykonanej pracy" asks the client price, the only one typed by hand', () => {
     expect(matches('no-client-price', row({ clientPrice: 0 }))).toBe(true)
     // A subcontractor override cannot stand in for a missing client price.
     expect(
@@ -75,6 +75,38 @@ describe('the conditions, each on its boundary', () => {
       ),
     ).toBe(true)
     expect(matches('no-client-price', row({ clientPrice: 100 }))).toBe(false)
+  })
+
+  it('„z wykonaną pracą bez ceny j.m." needs work entered AND no price', () => {
+    expect(matches('no-client-price-with-work', row({ clientPrice: 0, [stageKey(2)]: 3 }))).toBe(
+      true,
+    )
+    // Nothing executed — the offer is merely unfinished, which is the other half of the split.
+    expect(matches('no-client-price-with-work', row({ clientPrice: 0 }))).toBe(false)
+    expect(matches('no-client-price-with-work', row({ clientPrice: 100, [stageKey(2)]: 3 }))).toBe(
+      false,
+    )
+    // The przedmiar is irrelevant to both halves: an offered pozycja worked at no price is the same
+    // unbillable row as an unoffered one.
+    expect(
+      matches(
+        'no-client-price-with-work',
+        row({ clientPrice: 0, plannedQty: 5, [stageKey(2)]: 3 }),
+      ),
+    ).toBe(true)
+  })
+
+  // The whole point of splitting rather than adding a third overlapping entry: the two counts in
+  // „Problemy" must partition the priceless pozycje, so none is reported and chased twice.
+  it('splits every priceless pozycja into exactly one of the two cena j.m. problems', () => {
+    const priceless = [row({ clientPrice: 0 }), row({ clientPrice: 0, [stageKey(2)]: 3 })]
+
+    for (const subject of priceless) {
+      expect(
+        Number(matches('no-client-price', subject)) +
+          Number(matches('no-client-price-with-work', subject)),
+      ).toBe(1)
+    }
   })
 
   it('„rozjazd" is the sheet’s pomiar against Σ etapów, silent when the sheet said nothing', () => {
@@ -366,7 +398,7 @@ describe('applyRowConditions — each kind pulls the direction its wording promi
   it('unions two diagnostics rather than intersecting them', () => {
     const divergedRows = [
       row({ id: 5, clientPrice: 100, sheetMeasuredQty: 95, [stageKey(1)]: 55 }),
-      row({ id: 6, clientPrice: 0, sheetMeasuredQty: 40, [stageKey(1)]: 40 }),
+      row({ id: 6, clientPrice: 0 }),
       row({ id: 7, clientPrice: 100, sheetMeasuredQty: 40, [stageKey(1)]: 40 }),
     ]
 
@@ -491,6 +523,17 @@ describe('columnsRevealedBy', () => {
       'price',
       'priceCoeff',
       'priceMode',
+    ])
+  })
+
+  // A problem that claims work was executed has to put that work on screen, or the claim cannot be
+  // checked against the pozycja it narrowed to.
+  it('adds the pomiar to the price cells when the problem is about executed work', () => {
+    expect([...columnsRevealedBy(['no-client-price-with-work'])].sort()).toEqual([
+      'price',
+      'priceCoeff',
+      'priceMode',
+      'stageQtySum',
     ])
   })
 

@@ -2,7 +2,7 @@ import { toWarsawDay } from '@/lib/fleet/days'
 import { PERFORMED_INSPECTION_TYPES, type InspectionTypeT } from '@/lib/fleet/inspection-types'
 import { ALL_TIME, isWithinRange, type DateRangeT } from '@/lib/utils/date-range'
 import { groupInOrder } from '@/lib/utils/group-in-order'
-import type { InspectionHistoryEntryT } from '@/types/fleet'
+import type { InspectionHistoryEntryT } from '@/lib/fleet/types'
 
 export type TypeCostT = {
   type: InspectionTypeT
