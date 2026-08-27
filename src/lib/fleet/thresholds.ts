@@ -40,9 +40,9 @@ export const isMoreUrgent = (bucket: DeadlineBucketT, than: number | null): bool
   than === null || bucket < than
 
 /**
- * How far the car may go on one oil change before the module raises an alarm of its own. This is the
- * fallback for the common case where nobody typed a target into „Następna wymiana przy (km)" — with
- * no target there is nothing to count down to, and the oil would age unwatched.
+ * How far the car may go on one oil change. The only rule — the digest and the app both measure from
+ * the last change against this, so neither can call a car overdue while the other calls it clean
+ * (EX-745).
  */
 export const OIL_CHANGE_INTERVAL_KM = 10_000
 
