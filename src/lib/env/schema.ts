@@ -87,10 +87,11 @@ export const serverSchema = z
       }, 'GOOGLE_SERVICE_ACCOUNT_JSON must be valid JSON with client_email and private_key'),
     KOSZTORYS_TEMPLATE_SHEET_ID: z.string().min(1, 'KOSZTORYS_TEMPLATE_SHEET_ID is required'),
     KOSZTORYS_DRIVE_FOLDER_ID: z.string().optional(),
-    // Comma-separated sheet ids writable outside production; absent means "write nowhere", which is
-    // the safe default. Consumed per-write by sheetWriteRefusal (lib/google/sheet-write-guard.ts),
-    // not by a superRefine — the rule is per-sheet, so it cannot be settled once at parse time.
-    GOOGLE_SHEETS_WRITE_ALLOWLIST: z.string().optional(),
+    // The Editor credential — the ONLY one that can change a sheet, and it exists only in Vercel
+    // Production. Optional here because every other environment is meant to lack it: absence is the
+    // gate, not a misconfiguration. The credential above is a Viewer everywhere, so a machine
+    // holding it cannot write no matter what it sets VERCEL_ENV to — Google refuses, not our code.
+    GOOGLE_SERVICE_ACCOUNT_WRITE_JSON: z.string().optional(),
     // OpenRouter (receipt-scan vision extraction). Referer/app-name are optional attribution
     // headers OpenRouter surfaces on its dashboard; only the key is required to make calls.
     OPENROUTER_API_KEY: z.string().min(1),

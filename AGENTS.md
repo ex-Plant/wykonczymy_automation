@@ -148,18 +148,30 @@ Prefer hand-editing `@package.json` over `pnpm remove` / `pnpm install`. On this
 - The local app points at the docker Postgres on 5433 (`DB_POSTGRES_URL`, db `wykonczymy-db`) — a copy restored from Neon dumps: `pnpm db:dump` (prod → `dumps/dump-latest.sql`, also run by the pre-push hook) and `pnpm db:import` (dump → local). Refreshable, but confirm before wiping it — a restore loses anything entered locally since the last dump.
 - The **E2E suite** runs against an isolated `db-test` container on **5435** (`DB_POSTGRES_URL_TEST`, db `wykonczymy-test`), never the dev DB. Populate/reset its fixtures with `pnpm db:import:test` (same dump → test DB). `pnpm test:e2e` starts the container (`--wait` on its healthcheck) but does **not** import — run `db:import:test` once after a fresh volume or to reset.
 - **A `db-test` reset is three commands, not one: `pnpm db:import:test` → `pnpm seed:kosztorys:test` → `pnpm seed:deposits:test`.** The prod dump carries zero kosztorys rows and not one wpłata brutto, and `pnpm test:parity`'s dataset floor fails closed on both. Without the kosztorys seed every listing figure reads zero robocizny; without the wpłata-brutto seed the whole brutto plane and the legacy bridge (`net_amount IS NULL`, derived at VAT) are zero everywhere — so the guard would pass green having tested neither.
-- **Google Sheets: reads are open everywhere, writes only from production.** `GOOGLE_SERVICE_ACCOUNT_JSON`
-  and `KOSZTORYS_TEMPLATE_SHEET_ID` in `.env` are real working credentials, and the sheet id comes from
-  the DB — every non-production database is a restored prod dump, so localhost, preview and the E2E DB
-  all carry **live client sheet ids**. That is how eight client sheets took 36 foreign rows in
-  2026-08. So `getWritableSheetsClient` (`src/lib/google/sheets.ts`) — the one place in the repo that
-  mints a `spreadsheets`-scoped token — refuses unless `VERCEL_ENV === 'production'` or the sheet id is
-  listed in `GOOGLE_SHEETS_WRITE_ALLOWLIST`, and it throws **before** the first Google API call. A new
-  writing function inherits the gate by needing a client at all, not by remembering a convention;
-  reads take `getReadonlySheetsClient()` and are unaffected. To work on sheet writes locally, put
-  **your own** test sheet's id on the allowlist — never a client's. Repairing a client's sheet happens
-  from production, and there is no other route. Note the allowlist is honoured **outside** production
-  only: a production allow-list would refuse a newly linked sheet.
+- **Google Sheets: two service accounts — reads everywhere, writes only from production.** The sheet
+  id comes from the DB and every non-production database is a restored prod dump, so localhost,
+  preview and the E2E DB all carry **live sheet ids**. That is how eight sheets took 36 foreign rows
+  in 2026-08. The gate is therefore the **credential**, not a flag, because a flag is only as strong
+  as the machine it runs on — and this machine holds production's secrets.
+  `GOOGLE_SERVICE_ACCOUNT_JSON` (`kosztorys-sheets-reader@…`) is a **Viewer** on all 56 sheets and is
+  what `.env`, Preview and Development carry; `GOOGLE_SERVICE_ACCOUNT_WRITE_JSON`
+  (`kosztorys-sheets@…`) is the **Editor** and exists **only in Vercel Production**. So a write from
+  a dev machine is refused by Google (`403`), not by our code — no env var, no `VERCEL_ENV=production`
+  and no code edit can undo that. `getWritableSheetsClient` (`src/lib/google/sheets.ts`) is the one
+  place that mints from the Editor credential and throws a readable sentence when it is absent, so
+  you get an explanation instead of a bare 403; reads take `getReadonlySheetsClient()`.
+  Repairing a sheet happens from production, and there is no other route.
+  **A new sheet gets shared by hand with both addresses — the roles are not interchangeable:**
+
+  ```
+  kosztorys-sheets@wykonczymy-kosztorys-bk.iam.gserviceaccount.com          → Edytujący
+  kosztorys-sheets-reader@wykonczymy-kosztorys-bk.iam.gserviceaccount.com   → Przeglądający
+  ```
+
+  The link dialog shows only the first and says „jako Edytujący" — the reader is the one you have to
+  remember, and giving it Editor would hand write rights back to every laptop for that sheet.
+  `scripts/share-sheets-with-reader.mjs` does the reader half in bulk.
+
 - **The production Vercel Blob store belongs to production only.** Invoice bytes live in Blob, which
   has no versioning and no undelete — and the local DB is a restored prod dump, so `media.filename`
   values are the real invoices. A delete on localhost against the production store therefore destroys

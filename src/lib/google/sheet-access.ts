@@ -2,7 +2,6 @@ import { serverEnv } from '@/lib/env/server'
 import { parseServiceAccountCredentials } from './auth'
 import { getReadonlySheetsClient } from './readonly-sheets-client'
 import { getWritableSheetsClient } from './sheets'
-import { sheetWriteRefusal } from './sheet-write-guard'
 
 // The service-account email — what an owner must share a sheet with for the app
 // to read/sync it. Parsed from the same credential JSON the clients use.
@@ -32,11 +31,10 @@ export function extractSheetId(input: string): string | undefined {
 // no-op write (rewrite the title to itself) under the full `spreadsheets` scope —
 // a Viewer share can read but not write, so this surfaces the gap now.
 //
-// That probe is a real write to someone's document, so it obeys the same environment gate as every
-// other write. Where the gate refuses, the probe is SKIPPED rather than failed: `null` here means
-// „the service account has no access", and returning it for a refusal would send the reader off to
-// re-share a sheet that was never the problem. Linking still works outside production; what it
-// stops proving is Editor rights.
+// That probe is a real write, so it needs the Editor credential — which exists only in production.
+// Everywhere else the probe is SKIPPED, not failed: `null` here means „the service account has no
+// access", and returning it for a missing credential would send the reader off to re-share a sheet
+// that was never the problem. Linking still works locally; what it stops proving is Editor rights.
 export async function verifySheetAccess(spreadsheetId: string): Promise<{ title: string } | null> {
   try {
     const res = await getReadonlySheetsClient().spreadsheets.get({
@@ -45,17 +43,14 @@ export async function verifySheetAccess(spreadsheetId: string): Promise<{ title:
     })
     const title = res.data.properties?.title ?? ''
 
-    const refusal = sheetWriteRefusal(
-      serverEnv.VERCEL_ENV,
-      spreadsheetId,
-      serverEnv.GOOGLE_SHEETS_WRITE_ALLOWLIST,
-    )
-    if (refusal) {
-      console.warn(`[sheet-access] write probe skipped — ${refusal}`)
+    if (!serverEnv.GOOGLE_SERVICE_ACCOUNT_WRITE_JSON) {
+      console.warn(
+        `[sheet-access] write probe skipped for ${spreadsheetId} — no Editor credential outside production`,
+      )
       return { title }
     }
 
-    await getWritableSheetsClient(spreadsheetId).spreadsheets.batchUpdate({
+    await getWritableSheetsClient().spreadsheets.batchUpdate({
       spreadsheetId,
       requestBody: {
         requests: [{ updateSpreadsheetProperties: { properties: { title }, fields: 'title' } }],

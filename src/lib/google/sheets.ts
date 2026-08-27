@@ -1,8 +1,6 @@
 import { google, sheets_v4 } from 'googleapis'
-import { serverEnv } from '@/lib/env/server'
-import { createServiceAccountJWT } from './auth'
+import { createWriteServiceAccountJWT } from './auth'
 import { getReadonlySheetsClient } from './readonly-sheets-client'
-import { sheetWriteRefusal } from './sheet-write-guard'
 import {
   columnLetter,
   colOf,
@@ -42,27 +40,16 @@ export {
 } from './sheet-configs'
 export { buildTabSummary, formulaArgSeparator } from './sheet-summary'
 
-// The only place in the repo that mints a write-scoped Sheets token, which is what makes the
-// environment gate impossible to route around: every write below sits under this call, and a new
-// writing function inherits the gate by needing a client at all — not by remembering a convention.
-// Reads take getReadonlySheetsClient() instead, so the gate never closes off reading.
-export function getWritableSheetsClient(spreadsheetId: string): sheets_v4.Sheets {
-  const refusal = sheetWriteRefusal(
-    serverEnv.VERCEL_ENV,
-    spreadsheetId,
-    serverEnv.GOOGLE_SHEETS_WRITE_ALLOWLIST,
-  )
-  if (refusal) throw new Error(refusal)
-  // A refusal is loud; the allowlist letting a write THROUGH was silent, which is the asymmetry
-  // that hurts — a client's id on the list would first announce itself in the client's sheet.
-  if (serverEnv.VERCEL_ENV !== 'production') {
-    console.warn(
-      `[sheets] WRITING to ${spreadsheetId} outside production (VERCEL_ENV=${serverEnv.VERCEL_ENV ?? 'unset'}) ` +
-        '— allowed only because it is on GOOGLE_SHEETS_WRITE_ALLOWLIST. If this is not YOUR OWN test ' +
-        'sheet, stop and take it off the list.',
-    )
-  }
-  const auth = createServiceAccountJWT(['https://www.googleapis.com/auth/spreadsheets'])
+// The only place in the repo that mints a write-scoped Sheets token, which is what makes the gate
+// impossible to route around: every write below sits under this call, and a new writing function
+// inherits it by needing a client at all — not by remembering a convention. Reads take
+// getReadonlySheetsClient() instead, so the gate never closes off reading.
+//
+// The gate is the CREDENTIAL, not this code. Outside production there is no Editor credential to
+// mint from, and the Viewer one every other environment carries is refused by Google itself. The
+// throw here only turns that into a readable sentence instead of a bare 403 from googleapis.
+export function getWritableSheetsClient(): sheets_v4.Sheets {
+  const auth = createWriteServiceAccountJWT(['https://www.googleapis.com/auth/spreadsheets'])
   return google.sheets({ version: 'v4', auth })
 }
 
@@ -208,7 +195,7 @@ export async function applyTabRowsBatch(
   upserts: TabRowInputT[],
   removeIds: number[] = [],
 ): Promise<{ added: number; updated: number; removed: number }> {
-  const sheets = getWritableSheetsClient(spreadsheetId)
+  const sheets = getWritableSheetsClient()
   const grid = await readGrid(spreadsheetId, cfg)
   const { headerRow, cols } = resolveHeaders(cfg, grid)
   const fields = fieldsOf(cfg)
@@ -320,7 +307,7 @@ export async function setupTab(
   cfg: SheetTabConfigT,
   summaryKeys: string[],
 ): Promise<void> {
-  const sheets = getWritableSheetsClient(spreadsheetId)
+  const sheets = getWritableSheetsClient()
 
   const meta = await sheets.spreadsheets.get({
     spreadsheetId,
