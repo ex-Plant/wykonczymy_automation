@@ -12,7 +12,7 @@ import { emptyHistoryLabel } from '@/lib/fleet/history-window'
 import { INSPECTION_TYPE_LABELS, type InspectionTypeT } from '@/lib/fleet/inspection-types'
 import { formatPLNOrDash } from '@/lib/utils/format-currency'
 import { formatPLDate } from '@/lib/utils/format-date'
-import type { InspectionHistoryEntryT } from '@/types/fleet'
+import type { InspectionHistoryEntryT } from '@/lib/fleet/types'
 
 // Both grids run the same tracks, so the totals and the itemisation line up column for column.
 const COLS = `${SUMMARY_LABEL_COL} ${SUMMARY_VALUE_COL} ${SUMMARY_VALUE_COL}`

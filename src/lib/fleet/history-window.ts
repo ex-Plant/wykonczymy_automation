@@ -1,6 +1,6 @@
 import { byInspectionType, type InspectionTypeT } from '@/lib/fleet/inspection-types'
 import { isWithinRange, type DateRangeT } from '@/lib/utils/date-range'
-import type { InspectionHistoryEntryT } from '@/types/fleet'
+import type { InspectionHistoryEntryT } from '@/lib/fleet/types'
 
 /**
  * Narrow a vehicle's history to a window, per type.

@@ -8,7 +8,7 @@ import { ToggleGroup, type OptionT } from '@/components/ui/toggle-group'
 import { narrowHistory } from '@/lib/fleet/history-window'
 import type { InspectionTypeT } from '@/lib/fleet/inspection-types'
 import { ALL_TIME, type DateRangeT } from '@/lib/utils/date-range'
-import type { InspectionHistoryEntryT } from '@/types/fleet'
+import type { InspectionHistoryEntryT } from '@/lib/fleet/types'
 
 type VehicleViewT = 'inspections' | 'costs'
 
