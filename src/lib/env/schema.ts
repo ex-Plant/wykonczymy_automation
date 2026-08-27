@@ -54,6 +54,15 @@ export const blobTokenRefusal = (
   )
 }
 
+function isServiceAccountJson(raw: string): boolean {
+  try {
+    const parsed = JSON.parse(raw)
+    return typeof parsed?.client_email === 'string' && typeof parsed?.private_key === 'string'
+  } catch {
+    return false
+  }
+}
+
 export const serverSchema = z
   .object({
     DB_POSTGRES_URL: z.string().min(1),
@@ -77,14 +86,21 @@ export const serverSchema = z
     GOOGLE_SERVICE_ACCOUNT_JSON: z
       .string()
       .min(1, 'GOOGLE_SERVICE_ACCOUNT_JSON is required')
-      .refine((raw) => {
-        try {
-          const parsed = JSON.parse(raw)
-          return typeof parsed?.client_email === 'string' && typeof parsed?.private_key === 'string'
-        } catch {
-          return false
-        }
-      }, 'GOOGLE_SERVICE_ACCOUNT_JSON must be valid JSON with client_email and private_key'),
+      .refine(
+        isServiceAccountJson,
+        'GOOGLE_SERVICE_ACCOUNT_JSON must be valid JSON with client_email and private_key',
+      ),
+    // Optional because every other environment is MEANT to lack it — absence is the gate, not a
+    // misconfiguration. Do not make this required. Why the gate is a credential: `lib/google/auth.ts`.
+    // Refined when present: a malformed Editor credential would otherwise pass boot and fail inside
+    // a deferred write that sheets-sync swallows, in the one environment that writes at all.
+    GOOGLE_SERVICE_ACCOUNT_WRITE_JSON: z
+      .string()
+      .optional()
+      .refine(
+        (raw) => raw === undefined || isServiceAccountJson(raw),
+        'GOOGLE_SERVICE_ACCOUNT_WRITE_JSON must be valid JSON with client_email and private_key',
+      ),
     KOSZTORYS_TEMPLATE_SHEET_ID: z.string().min(1, 'KOSZTORYS_TEMPLATE_SHEET_ID is required'),
     KOSZTORYS_DRIVE_FOLDER_ID: z.string().optional(),
     // OpenRouter (receipt-scan vision extraction). Referer/app-name are optional attribution
@@ -99,4 +115,18 @@ export const serverSchema = z
   .superRefine((env, ctx) => {
     const refusal = blobTokenRefusal(env.VERCEL_ENV, env.BLOB_READ_WRITE_TOKEN)
     if (refusal) ctx.addIssue({ code: 'custom', path: ['BLOB_READ_WRITE_TOKEN'], message: refusal })
+
+    // Optional everywhere, mandatory HERE: production is the only environment that writes, and a
+    // failed write is invisible — sheets-sync defers it through after() and swallows the throw. So
+    // deleting this var would not break a request, it would silently stop every transfer from
+    // reaching the owner's sheet. Fail the boot instead.
+    if (env.VERCEL_ENV === 'production' && env.GOOGLE_SERVICE_ACCOUNT_WRITE_JSON === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['GOOGLE_SERVICE_ACCOUNT_WRITE_JSON'],
+        message:
+          'GOOGLE_SERVICE_ACCOUNT_WRITE_JSON is required in production — without it Google Sheets ' +
+          'sync fails silently on every transfer. Set the Editor service-account JSON on Vercel Production.',
+      })
+    }
   })

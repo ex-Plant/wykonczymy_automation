@@ -39,13 +39,22 @@ const baseEnv = {
   CRON_SECRET: 'x',
 }
 
+const WRITER_JSON = JSON.stringify({
+  client_email: 'writer@example.iam.gserviceaccount.com',
+  private_key: 'key',
+})
+
+// Production carries the Editor credential, so a spec about anything ELSE in production has to
+// carry it too — otherwise it fails on the guard below instead of on its own subject.
+const productionEnv = {
+  ...baseEnv,
+  VERCEL_ENV: 'production',
+  GOOGLE_SERVICE_ACCOUNT_WRITE_JSON: WRITER_JSON,
+}
+
 describe('serverSchema — production Blob token guard', () => {
   it('accepts the production store token in production', () => {
-    const result = serverSchema.safeParse({
-      ...baseEnv,
-      BLOB_READ_WRITE_TOKEN: PROD_TOKEN,
-      VERCEL_ENV: 'production',
-    })
+    const result = serverSchema.safeParse({ ...productionEnv, BLOB_READ_WRITE_TOKEN: PROD_TOKEN })
 
     expect(result.success).toBe(true)
   })
@@ -76,7 +85,7 @@ describe('serverSchema — production Blob token guard', () => {
   })
 
   it('rejects the preview store token in production', () => {
-    const result = serverSchema.safeParse({ ...baseEnv, VERCEL_ENV: 'production' })
+    const result = serverSchema.safeParse(productionEnv)
 
     expect(result.success).toBe(false)
     expect(result.error?.issues.map((issue) => issue.path.join('.'))).toContain(
@@ -127,5 +136,60 @@ describe('blobTokenRefusal', () => {
     expect(blobTokenRefusal(undefined, PROD_BLOB_STORE_ID)).toBeNull()
     expect(blobTokenRefusal('production', undefined)).toBeNull()
     expect(blobTokenRefusal(undefined, undefined)).toBeNull()
+  })
+})
+
+// The Editor credential exists only in Vercel Production, which is also the only environment that
+// writes to a sheet — so a malformed value has the fewest eyes on it and the longest silence: it
+// passes boot and dies inside a deferred write that sheets-sync swallows as non-fatal.
+describe('serverSchema — Editor service-account credential', () => {
+  it('accepts its absence, which is every environment but production', () => {
+    const result = serverSchema.safeParse(baseEnv)
+    expect(result.success).toBe(true)
+  })
+
+  it('accepts a credential carrying client_email and private_key', () => {
+    const result = serverSchema.safeParse({
+      ...baseEnv,
+      GOOGLE_SERVICE_ACCOUNT_WRITE_JSON: WRITER_JSON,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('refuses a value that is not JSON', () => {
+    const result = serverSchema.safeParse({
+      ...baseEnv,
+      GOOGLE_SERVICE_ACCOUNT_WRITE_JSON: '{"client_email": truncated',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('refuses JSON missing the private key', () => {
+    const result = serverSchema.safeParse({
+      ...baseEnv,
+      GOOGLE_SERVICE_ACCOUNT_WRITE_JSON: JSON.stringify({
+        client_email: 'writer@example.iam.gserviceaccount.com',
+      }),
+    })
+    expect(result.success).toBe(false)
+  })
+
+  // Optional everywhere, mandatory in production: deleting the var there breaks no request, it just
+  // stops every transfer from reaching the owner's sheet — sheets-sync defers the write and swallows
+  // the throw. Boot is the last place the loss is still visible.
+  it('refuses its absence in production', () => {
+    const { GOOGLE_SERVICE_ACCOUNT_WRITE_JSON: _absent, ...withoutWriter } = productionEnv
+    const result = serverSchema.safeParse({ ...withoutWriter, BLOB_READ_WRITE_TOKEN: PROD_TOKEN })
+
+    expect(result.success).toBe(false)
+    expect(result.error?.issues.map((issue) => issue.path.join('.'))).toContain(
+      'GOOGLE_SERVICE_ACCOUNT_WRITE_JSON',
+    )
+  })
+
+  it('does not demand it on preview, where its absence IS the write gate', () => {
+    const result = serverSchema.safeParse({ ...baseEnv, VERCEL_ENV: 'preview' })
+
+    expect(result.success).toBe(true)
   })
 })

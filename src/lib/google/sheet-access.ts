@@ -1,5 +1,7 @@
-import { google } from 'googleapis'
-import { createServiceAccountJWT, parseServiceAccountCredentials } from './auth'
+import { hasWriteServiceAccountCredentials, parseServiceAccountCredentials } from './auth'
+import { logError } from '@/lib/utils/log-error'
+import { getReadonlySheetsClient } from './readonly-sheets-client'
+import { getWritableSheetsClient } from './writable-sheets-client'
 
 // The service-account email — what an owner must share a sheet with for the app
 // to read/sync it. Parsed from the same credential JSON the clients use.
@@ -28,13 +30,27 @@ export function extractSheetId(input: string): string | undefined {
 // share at link time, then 403 on first sync. So after reading the title we run a
 // no-op write (rewrite the title to itself) under the full `spreadsheets` scope —
 // a Viewer share can read but not write, so this surfaces the gap now.
+//
+// Without the Editor credential the probe is SKIPPED, not failed: `null` here means „the service
+// account has no access", and returning it for a missing credential would send the owner off to
+// re-share a sheet that was never the problem. Linking still works locally; what it stops proving
+// is Editor rights.
 export async function verifySheetAccess(spreadsheetId: string): Promise<{ title: string } | null> {
-  const auth = createServiceAccountJWT(['https://www.googleapis.com/auth/spreadsheets'])
-  const sheets = google.sheets({ version: 'v4', auth })
   try {
-    const res = await sheets.spreadsheets.get({ spreadsheetId, fields: 'properties.title' })
+    const res = await getReadonlySheetsClient().spreadsheets.get({
+      spreadsheetId,
+      fields: 'properties.title',
+    })
     const title = res.data.properties?.title ?? ''
-    await sheets.spreadsheets.batchUpdate({
+
+    if (!hasWriteServiceAccountCredentials()) {
+      logError(
+        `[sheet-access] write probe skipped for ${spreadsheetId} — no Editor credential outside production`,
+      )
+      return { title }
+    }
+
+    await getWritableSheetsClient().spreadsheets.batchUpdate({
       spreadsheetId,
       requestBody: {
         requests: [{ updateSpreadsheetProperties: { properties: { title }, fields: 'title' } }],

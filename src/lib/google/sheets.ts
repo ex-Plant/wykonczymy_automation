@@ -1,5 +1,6 @@
-import { google, sheets_v4 } from 'googleapis'
-import { createServiceAccountJWT } from './auth'
+import { sheets_v4 } from 'googleapis'
+import { getWritableSheetsClient } from './writable-sheets-client'
+import { getReadonlySheetsClient } from './readonly-sheets-client'
 import {
   columnLetter,
   colOf,
@@ -38,11 +39,6 @@ export {
   type TabRowInputT,
 } from './sheet-configs'
 export { buildTabSummary, formulaArgSeparator } from './sheet-summary'
-
-function getClient(): sheets_v4.Sheets {
-  const auth = createServiceAccountJWT(['https://www.googleapis.com/auth/spreadsheets'])
-  return google.sheets({ version: 'v4', auth })
-}
 
 type HeaderMapT = { headerRow: number; cols: Record<string, number> }
 
@@ -88,8 +84,14 @@ function resolveHeaders(cfg: SheetTabConfigT, grid: unknown[][]): HeaderMapT {
 // catch this specifically.
 class MissingTabError extends Error {}
 
-async function readGrid(spreadsheetId: string, cfg: SheetTabConfigT): Promise<unknown[][]> {
-  const sheets = getClient()
+// The client is a parameter because the WRITE path must read with the same account it writes
+// with: two accounts holding the sheet is now the norm, but requiring both for one write would
+// make a sheet shared with only the Editor fail its own sync — silently, behind sheets-sync's catch.
+async function readGrid(
+  spreadsheetId: string,
+  cfg: SheetTabConfigT,
+  sheets: sheets_v4.Sheets = getReadonlySheetsClient(),
+): Promise<unknown[][]> {
   try {
     const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: tabRange(cfg) })
     return (res.data.values ?? []) as unknown[][]
@@ -186,8 +188,8 @@ export async function applyTabRowsBatch(
   upserts: TabRowInputT[],
   removeIds: number[] = [],
 ): Promise<{ added: number; updated: number; removed: number }> {
-  const sheets = getClient()
-  const grid = await readGrid(spreadsheetId, cfg)
+  const sheets = getWritableSheetsClient()
+  const grid = await readGrid(spreadsheetId, cfg, sheets)
   const { headerRow, cols } = resolveHeaders(cfg, grid)
   const fields = fieldsOf(cfg)
 
@@ -298,7 +300,7 @@ export async function setupTab(
   cfg: SheetTabConfigT,
   summaryKeys: string[],
 ): Promise<void> {
-  const sheets = getClient()
+  const sheets = getWritableSheetsClient()
 
   const meta = await sheets.spreadsheets.get({
     spreadsheetId,
@@ -635,7 +637,7 @@ export async function ensureTab(
   // the common already-exists path (every sync after the first) free of that query.
   summaryKeys: string[] | (() => string[] | Promise<string[]>),
 ): Promise<{ created: boolean }> {
-  const sheets = getClient()
+  const sheets = getReadonlySheetsClient()
   const gid = await tabGid(sheets, spreadsheetId, cfg)
   if (gid != null) return { created: false }
   // Tab is absent → setupTab builds it on a fresh (empty) tab, so its internal

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   investmentForType,
+  sourceRegisterForType,
   staleFieldsForType,
 } from '@/lib/transfers/clear-fields-for-type'
 
@@ -32,9 +33,29 @@ describe('investmentForType', () => {
   })
 })
 
+describe('sourceRegisterForType', () => {
+  it('empties the kasa for a type that is not a cash movement', () => {
+    expect(sourceRegisterForType('LABOR_COST', '5', '5')).toBe('')
+  })
+
+  it('keeps the pick when the new type carries a kasa', () => {
+    expect(sourceRegisterForType('INVESTMENT_EXPENSE', '5', '9')).toBe('5')
+  })
+
+  // The blank a detour through a register-less type leaves behind is what makes this refill the
+  // point of the field: without it, pinning a default kasa stops holding the moment the type is
+  // touched twice.
+  it("refills from the user's default once the field is empty again", () => {
+    expect(sourceRegisterForType('INVESTMENT_EXPENSE', '', '9')).toBe('9')
+  })
+
+  it('stays empty when the user has no default kasa', () => {
+    expect(sourceRegisterForType('INVESTMENT_EXPENSE', '', '')).toBe('')
+  })
+})
+
 describe('staleFieldsForType', () => {
-  const patch = (type: string) =>
-    Object.fromEntries(staleFieldsForType(type))
+  const patch = (type: string) => Object.fromEntries(staleFieldsForType(type))
 
   it('empties the fields the type does not carry', () => {
     expect(patch('OTHER')).toEqual({ targetRegister: '', worker: '', settled: false })

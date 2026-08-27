@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Payload } from 'payload'
 import type { MaterialSyncPreviewT } from '@/lib/actions/sheets-sync'
+import { setGoogleCredentialEnv } from '@/__tests__/helpers/google-credentials'
 
 vi.mock('server-only', () => ({}))
 
@@ -103,10 +104,7 @@ const {
 // ── helpers ──────────────────────────────────────────────────────────────
 
 function setEnv() {
-  process.env.GOOGLE_SERVICE_ACCOUNT_JSON = JSON.stringify({
-    client_email: 'test@x.iam.gserviceaccount.com',
-    private_key: '-----BEGIN PRIVATE KEY-----\nx\n-----END PRIVATE KEY-----\n',
-  })
+  setGoogleCredentialEnv()
 }
 
 // Queue the kosztoryses lookup (the FIRST find call inside any action that

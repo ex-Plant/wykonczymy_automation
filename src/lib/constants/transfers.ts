@@ -250,6 +250,12 @@ export const TRANSFER_TYPE_COLORS: Record<TransferTypeT, string> = mapSpecs((s) 
 
 export const EXPENSE_CATEGORY_LABEL = 'Typ wydatku inwestycyjnego'
 
+// Matched by NAME against the `expense-categories` rows, because the collection carries no
+// "is default" flag — roughly 99% of expenses are this one (owner, 2026-08-27), so pre-picking it
+// beats making the user choose every time. Renaming the row in /admin only makes the resolve miss
+// and the field open blank, i.e. today's behaviour — never a wrong category.
+export const DEFAULT_EXPENSE_CATEGORY_NAME = 'Materiały budowlane'
+
 // Single source for the settled INVESTMENT_EXPENSE (material priced into robocizna):
 // label + chart color, shared by the transfers table and the investment stats panel so they never drift.
 // `color` is a chart token (resolved via var(--color-<token>)); chart-pink keeps it distinct from korekta (orange).

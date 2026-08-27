@@ -2,7 +2,8 @@
 
 import { applyMaterialSync } from '@/lib/actions/sheets-sync'
 import { ADMIN_OR_OWNER_ROLES } from '@/lib/auth/roles'
-import { extractSheetId, serviceAccountEmail, verifySheetAccess } from '@/lib/google/sheet-access'
+import { extractSheetId, verifySheetAccess } from '@/lib/google/sheet-access'
+import { writeServiceAccountEmail } from '@/lib/google/auth'
 import { stampAllTabs } from '@/lib/google/app-managed-tabs'
 import { getInvestmentSheet, MISSING_SHEET } from '@/lib/google/sheet-lookup'
 import { isColumnField } from '@/lib/kosztorys/sheet-import/columns'
@@ -52,7 +53,7 @@ export async function addUnlinkedSheetAction(input: string, name?: string) {
           success: false,
           error:
             'Nie można otworzyć tego arkusza. Udostępnij go jako Edytujący dla konta ' +
-            `usługi: ${serviceAccountEmail()} — a następnie spróbuj ponownie.`,
+            `usługi: ${writeServiceAccountEmail()} — a następnie spróbuj ponownie.`,
         }
       }
 
