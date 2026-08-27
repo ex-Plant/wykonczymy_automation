@@ -8,6 +8,7 @@ import { getDb } from '@/lib/db/get-db'
 import { CACHE_TAGS } from '@/lib/cache/tags'
 import { perfStart } from '@/lib/perf'
 import { TRANSFER_TYPES, PAYMENT_METHODS } from '@/lib/constants/transfers'
+import { FIELDS_ONLY_THE_ORIGINAL_CARRIES } from '@/lib/queries/transfer-filters'
 
 type FindTransfersOptsT = PaginationParamsT & {
   where?: Where
@@ -136,9 +137,9 @@ export async function buildCancellationOriginalsMap(
 
 /**
  * A CANCELLATION audit row stores none of the original's relational fields
- * (see cancelTransferAction — only amount/description/paymentMethod are copied),
+ * (see cancelTransferAction — only amount/description are copied),
  * so it renders as all em-dashes. For display, borrow the original's investment /
- * registers / category / worker and stamp `originalType` for the Typ column.
+ * registers / category / worker / payment method and stamp `originalType` for the Typ column.
  *
  * Display-only on purpose: the financial SQL in lib/db queries the DB directly and
  * never sees these merged docs, so this cannot affect register balances — unlike
@@ -154,14 +155,14 @@ export async function enrichCancellationOriginals(
     if (doc.type !== 'CANCELLATION') return doc
     const orig = originalsById.get(doc.cancelledTransaction as number)
     if (!orig) return doc
+    // Driven off the filter's own list, not a second hand-kept copy: the two answer the same
+    // question — display borrows what narrowing re-aims — and this slice caught them out of step,
+    // the metoda having been added to one and forgotten in the other.
     return {
       ...doc,
-      investment: orig.investment ?? null,
-      sourceRegister: orig.sourceRegister ?? null,
-      targetRegister: orig.targetRegister ?? null,
-      expenseCategory: orig.expenseCategory ?? null,
-      otherCategory: orig.otherCategory ?? null,
-      worker: orig.worker ?? null,
+      ...Object.fromEntries(
+        FIELDS_ONLY_THE_ORIGINAL_CARRIES.map((field) => [field, orig[field] ?? null]),
+      ),
       originalType: orig.type ?? null,
     }
   })

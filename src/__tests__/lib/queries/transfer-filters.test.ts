@@ -110,6 +110,14 @@ describe('audit mode → scope through the cancelled original', () => {
     })
   })
 
+  // The method stopped being copied onto the audit row when it became a two-type field, so the
+  // scope has to reach the original — otherwise „anulowania przelewem" answers „Brak danych".
+  it('re-aims a metoda scope at the original', () => {
+    expect(auditWhere({ paymentMethod: { in: ['TRANSFER'] } })).toMatchObject({
+      'cancelledTransaction.paymentMethod': { in: ['TRANSFER'] },
+    })
+  })
+
   it('leaves what the audit row itself carries alone', () => {
     const where = auditWhere({ date: { greater_than_equal: '2026-08-01' }, createdBy: { in: [3] } })
 
