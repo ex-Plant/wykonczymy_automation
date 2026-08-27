@@ -62,7 +62,7 @@ describe('buildSettlementGroups', () => {
 // render un-alarmed beside a slightly overpaid netto.
 describe('the „Pozostało do zapłaty" alarm', () => {
   it('tones each column from its own figure when the planes differ in sign', () => {
-    const groups = build({ amountDue: { net: -100, gross: 130 } })
+    const groups = build({ axis: 'both', amountDue: { net: -100, gross: 130 } })
     expect(rowNamed(groups, 'Pozostało do zapłaty')?.danger).toEqual({ net: false, gross: true })
   })
 
@@ -90,5 +90,24 @@ describe('the strata step', () => {
       ])
       expect(rowNamed(groups, 'Strata')?.line).toEqual({ net: -250, gross: -250 })
     }
+  })
+})
+
+// The row names what the figure IS: once the client has paid past the debt there is nothing left to
+// pay, and „Pozostało do zapłaty: -19 569,05" makes the reader do the sign in their head.
+describe('the nadpłata label', () => {
+  it('names an overpaid settlement „Nadpłata"', () => {
+    expect(build({ amountDue: { net: -100, gross: -123 } })[0]?.rows.at(-1)?.label).toBe('Nadpłata')
+  })
+
+  it('stays a debt while any rendered plane still owes', () => {
+    const groups = build({ axis: 'both', amountDue: { net: -100, gross: 130 } })
+    expect(groups[0]?.rows.at(-1)?.label).toBe('Pozostało do zapłaty')
+  })
+
+  it('is not a nadpłata at zero', () => {
+    expect(build({ amountDue: { net: 0, gross: 0 } })[0]?.rows.at(-1)?.label).toBe(
+      'Pozostało do zapłaty',
+    )
   })
 })

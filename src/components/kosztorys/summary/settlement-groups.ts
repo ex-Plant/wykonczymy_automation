@@ -1,6 +1,6 @@
 import { faceValue, type MoneyPairT } from '@/lib/kosztorys/summary-economics'
 import { roundToCents } from '@/lib/utils/round-to-cents'
-import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
+import { axisShows, type MoneyAxisT } from '@/lib/kosztorys/money-axis'
 import type { SettlementRowT } from '@/components/kosztorys/summary/tables/summary-totals-table'
 
 // The settlement steps as one table. `axis` is the panel's — the tryb decides which money columns
@@ -45,7 +45,7 @@ export function buildSettlementGroups({
     rows.push({ label: 'Strata', line: faceValue(-lossAmount), discount: true })
   }
   rows.push({
-    label: 'Pozostało do zapłaty',
+    label: isOverpaid(amountDue, axis) ? 'Nadpłata' : 'Pozostało do zapłaty',
     line: amountDue,
     bold: true,
     // Per cell: netto and brutto cross zero independently, so a slightly overpaid netto can sit
@@ -55,4 +55,15 @@ export function buildSettlementGroups({
   })
 
   return [{ axis, rows }]
+}
+
+// The debt has flipped: every plane the tryb renders is settled and then some, so the row names what
+// the figure actually is. Requires ALL shown planes — under axis 'both' a negative netto can sit
+// beside a real outstanding brutto, and that is still a debt.
+function isOverpaid(amountDue: MoneyPairT, axis: MoneyAxisT): boolean {
+  const shows = axisShows(axis)
+  const planes: number[] = []
+  if (shows.net) planes.push(amountDue.net)
+  if (shows.gross) planes.push(amountDue.gross)
+  return planes.length > 0 && planes.every((value) => roundToCents(value) < 0)
 }
