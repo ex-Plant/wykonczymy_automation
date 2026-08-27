@@ -31,7 +31,7 @@ export function InvestmentDataTable({ data, presets }: InvestmentDataTablePropsT
     filteredData: statusFiltered,
     selectedStatuses,
     toggleStatus,
-  } = useStatusFilter(data, getStatus)
+  } = useStatusFilter(data, getStatus, 'investments')
 
   const getSearchableText = useCallback(
     (row: InvestmentRowT) => `${row.name} ${row.address} ${row.contactPerson}`,
