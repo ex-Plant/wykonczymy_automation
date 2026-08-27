@@ -13,6 +13,7 @@ import {
   TRANSFER_TYPE_LABELS,
   showsInvestment,
   isVatPlane,
+  planeFor,
   PAYMENT_METHOD_PLANE_LABELS,
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
@@ -48,13 +49,6 @@ type DepositFormPropsT = {
 }
 
 const FORM_ID = 'deposit'
-
-// Gotówka is the no-VAT tor, przelew the invoiced one — so the method IS the plane, and the wpłata
-// is typed on the side it names. Keyed on the type as well, because only a wpłata od inwestora has
-// a plane: every other type renders one kwota, and a GROSS tag on it would demand a brutto field
-// that is not on screen.
-const planeFor = (type: string, paymentMethod: string) =>
-  type === 'INVESTOR_DEPOSIT' && paymentMethod === 'TRANSFER' ? 'GROSS' : 'NET'
 
 export function DepositForm({ referenceData, onSubmitSuccess, keepOpen }: DepositFormPropsT) {
   // COMPANY_FUNDING visible only to admin/owner — managers see other deposit types

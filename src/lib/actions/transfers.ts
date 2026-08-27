@@ -20,10 +20,11 @@ import {
 } from '@/lib/schemas/transfer'
 import type { SessionUserT } from '@/types/auth'
 import { after } from 'next/server'
-import { isLaborCost, needsSourceRegister } from '../constants/transfers'
+import { canFillVatPlane, isLaborCost, needsSourceRegister } from '../constants/transfers'
 import { syncBulkExpensesToSheet } from './sheets-sync'
 import { validateAction, protectedAction } from './run-action'
 import { validateSourceRegister } from './validate-source-register'
+import { getNetAmountError } from '@/lib/utils/validation'
 import { logError } from '@/lib/utils/log-error'
 import { resolveId } from '@/lib/utils/resolve-id'
 import { invoiceIds } from '@/lib/invoices/invoice-field'
@@ -244,9 +245,18 @@ export async function updateTransferAction(
       const { original } = result
 
       // Only LABOR_COST transfers can have their amount edited
-      const { amount, ...fields } = parsed.data
+      const { amount, vatPlane, netAmount, ...fields } = parsed.data
       const newAmount = isLaborCost(original.type) ? amount : undefined
       const amountChanged = newAmount !== undefined && newAmount !== original.amount
+
+      // Narrower than write-once (that is the hook's): whether the edit gets to state a plane at
+      // all, so a booked row's answer is dropped before the write rather than refused by it.
+      const fillsPlane = vatPlane !== undefined && canFillVatPlane(original)
+      if (fillsPlane) {
+        // The hook runs this too — called early so a bad kwota is refused before the write.
+        const netErr = getNetAmountError(netAmount, original.amount, original.type, vatPlane)
+        if (netErr) return { success: false, error: netErr }
+      }
 
       // Moving a zaliczka to another investment orphans its etap tag; the collection's
       // beforeValidate hook clears it, so every write path is covered, not just this action.
@@ -257,6 +267,7 @@ export async function updateTransferAction(
         data: {
           ...fields,
           ...(newAmount !== undefined && { amount: newAmount }),
+          ...(fillsPlane && { vatPlane, netAmount: netAmount ?? null }),
           // Newly picked files are extra pages of the same invoice, so they append — an edit that
           // replaced the list would strand the pages the user never touched.
           ...(invoiceMediaIds?.length && {

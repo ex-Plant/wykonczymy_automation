@@ -367,12 +367,18 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethodT, string> = {
   // CARD: 'Karta',
 }
 
-// On a wpłata od inwestora the method IS the plane (see `planeFor` in the deposit form), so the
-// select names the kwota that is about to be typed. Everywhere else the method is only the tor.
+// On a wpłata od inwestora the method IS the plane (see `planeFor`), so the select names the kwota
+// that is about to be typed. Everywhere else the method is only the tor.
 export const PAYMENT_METHOD_PLANE_LABELS: Record<PaymentMethodT, string> = {
   CASH: 'Gotówka netto',
   TRANSFER: 'Przelew brutto',
 }
+
+// Gotówka is the no-VAT tor, przelew the invoiced one — so the method IS the plane, and the wpłata
+// is typed on the side it names. Keyed on the type too: every other type renders one kwota, and a
+// GROSS tag on it would demand a brutto field that is not on screen.
+export const planeFor = (type: unknown, paymentMethod: unknown): VatPlaneT =>
+  type === 'INVESTOR_DEPOSIT' && paymentMethod === 'TRANSFER' ? 'GROSS' : 'NET'
 
 // EX-536 netto/brutto wpłata bucket. The create form now always sends NET or GROSS (NET preselected),
 // but NULL stays a valid stored state for wpłaty booked before that. Downstream (deposits
@@ -459,6 +465,12 @@ export const carriesNetAmount = (type: unknown, vatPlane: unknown): boolean =>
 // so only a wpłata od inwestora has one — tagged onto any other type it would be a value every
 // settlement predicate reads, with no second kwota on the form to back it.
 export const carriesVatPlane = (type: unknown): boolean => type === 'INVESTOR_DEPOSIT'
+
+// The one row an edit may still tag: a wpłata booked before the plane existed. Named once because
+// three places ask it — the form offering the question, the payload carrying the answer, the action
+// letting it through — and they may not drift apart.
+export const canFillVatPlane = (row: { type?: unknown; vatPlane?: unknown }): boolean =>
+  carriesVatPlane(row.type) && row.vatPlane == null
 
 /**
  * The figure this row bills the investor — the one number every billing surface must read, so the

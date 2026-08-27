@@ -273,20 +273,31 @@ describe('createTransferSchema — vatPlane', () => {
   })
 })
 
-// A plane typed wrong is corrected the way every other immutable figure on a wpłata is: cancel the
-// row and book it again. An edit path would move the wpłata between the two sides of the
-// settlement after the fact, silently rewriting a bilans the client has already seen.
-describe('updateTransferSchema — the plane is not editable', () => {
+// The plane rides along on an edit so a legacy wpłata can be told what it was. What the schema may
+// NOT decide is whether THIS row may take it — write-once needs the stored row, so that gate is the
+// validate hook, with the action deciding whether the answer is sent at all.
+describe('updateTransferSchema — the plane rides along, gated elsewhere', () => {
   const VALID_UPDATE = {
     description: 'edited',
     date: '2026-02-25',
     paymentMethod: 'CASH' as const,
   }
 
-  it('drops a vatPlane submitted with an edit', () => {
+  it('carries a vatPlane submitted with an edit', () => {
     const result = updateTransferSchema.safeParse({ ...VALID_UPDATE, vatPlane: 'GROSS' })
     expect(result.success).toBe(true)
-    expect(result.data).not.toHaveProperty('vatPlane')
+    expect(result.data?.vatPlane).toBe('GROSS')
+  })
+
+  it('rejects a plane that is neither side of the settlement', () => {
+    const result = updateTransferSchema.safeParse({ ...VALID_UPDATE, vatPlane: 'MIXED' })
+    expect(result.success).toBe(false)
+  })
+
+  it('leaves the plane out when the edit does not name one', () => {
+    const result = updateTransferSchema.safeParse(VALID_UPDATE)
+    expect(result.success).toBe(true)
+    expect(result.data?.vatPlane).toBeUndefined()
   })
 })
 

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { getNetAmountError, refineAmount, refineDate } from '@/lib/utils/validation'
+import { canFillVatPlane, planeFor } from '@/lib/constants/transfers'
 import { validateTransferFields } from './transfer-validation'
 
 // The client-side twin of the server schemas in `./transfer.ts`: every transfer-creating and
@@ -51,17 +52,37 @@ export const transferFormSchema = z
     validateTransferFields(data, ctx)
   })
 
-export const editTransferFormSchema = z
-  .object({
-    description: z.string(),
-    amount: z.string().optional(),
-    date: z.string().min(1, 'Data jest wymagana'),
-    paymentMethod: z.string(),
-    investment: z.string(),
-    expenseCategory: z.string(),
-    otherCategory: z.string(),
-    invoiceNote: z.string(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.amount !== undefined) refineAmount(data as { amount: string; type?: string }, ctx)
-  })
+// A factory: the netto rule is keyed on the wpłata's brutto and type, which are facts about the row,
+// not inputs. Taking the row is what lets this share the server's `getNetAmountError` without
+// mirroring server data back into form state as fields no input renders.
+export const editTransferFormSchema = (row: {
+  type: string
+  amount: number
+  vatPlane: string | null
+}) =>
+  z
+    .object({
+      description: z.string(),
+      amount: z.string().optional(),
+      date: z.string().min(1, 'Data jest wymagana'),
+      paymentMethod: z.string(),
+      investment: z.string(),
+      expenseCategory: z.string(),
+      otherCategory: z.string(),
+      invoiceNote: z.string(),
+      // The netto off the faktura, asked for only while filling in a legacy wpłata's missing plane.
+      netAmount: z.string().optional(),
+    })
+    .superRefine((data, ctx) => {
+      if (data.amount !== undefined)
+        refineAmount({ ...data, amount: data.amount, type: row.type }, ctx)
+      // The method IS the plane, so „jak zapłacił" is what decides whether a netto is owed.
+      if (!canFillVatPlane(row)) return
+      const netErr = getNetAmountError(
+        data.netAmount ? Number(data.netAmount) : undefined,
+        row.amount,
+        row.type,
+        planeFor(row.type, data.paymentMethod),
+      )
+      if (netErr) ctx.addIssue({ code: 'custom', message: netErr, path: ['netAmount'] })
+    })
