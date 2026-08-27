@@ -115,4 +115,18 @@ export const serverSchema = z
   .superRefine((env, ctx) => {
     const refusal = blobTokenRefusal(env.VERCEL_ENV, env.BLOB_READ_WRITE_TOKEN)
     if (refusal) ctx.addIssue({ code: 'custom', path: ['BLOB_READ_WRITE_TOKEN'], message: refusal })
+
+    // Optional everywhere, mandatory HERE: production is the only environment that writes, and a
+    // failed write is invisible — sheets-sync defers it through after() and swallows the throw. So
+    // deleting this var would not break a request, it would silently stop every transfer from
+    // reaching the owner's sheet. Fail the boot instead.
+    if (env.VERCEL_ENV === 'production' && env.GOOGLE_SERVICE_ACCOUNT_WRITE_JSON === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['GOOGLE_SERVICE_ACCOUNT_WRITE_JSON'],
+        message:
+          'GOOGLE_SERVICE_ACCOUNT_WRITE_JSON is required in production — without it Google Sheets ' +
+          'sync fails silently on every transfer. Set the Editor service-account JSON on Vercel Production.',
+      })
+    }
   })

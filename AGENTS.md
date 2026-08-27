@@ -163,7 +163,10 @@ Prefer hand-editing `@package.json` over `pnpm remove` / `pnpm install`. On this
   you get an explanation instead of a bare 403; reads take `getReadonlySheetsClient()`. The only
   other holder of the Editor credential is `scripts/share-sheets-with-reader.mjs`, which mints a
   **Drive** token — a strictly broader power, since it can change who may edit a sheet.
-  Repairing a sheet happens from production, and there is no other route.
+  Repairing a sheet happens from production, and there is no other route. The var is **optional in
+  the schema everywhere but production**, where its absence fails the boot (`env/schema.ts`
+  `superRefine`) — elsewhere the absence IS the gate, but on production deleting it would break no
+  request and silently stop every transfer from reaching the owner's sheet.
   **A new sheet gets shared by hand with both addresses — the roles are not interchangeable:**
 
   ```
