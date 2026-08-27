@@ -10,6 +10,7 @@ import { useFormSubmit } from '@/components/forms/hooks/use-form-submit'
 import { useRegisterBalance } from '@/components/forms/hooks/use-register-balance'
 import { useInvestmentFromUrl } from '@/components/forms/hooks/use-investment-from-url'
 import {
+  DEFAULT_EXPENSE_CATEGORY_NAME,
   TRANSACTION_TRANSFER_TYPES,
   TRANSFER_TYPE_LABELS,
   billsNetAmount,
@@ -24,8 +25,13 @@ import {
 } from '@/lib/constants/transfers'
 import { createBulkTransferAction } from '@/lib/actions/transfers'
 import { mapLineItem } from '@/components/forms/expense-form/map-line-item'
+import { resolveExpenseCategoryId } from '@/components/forms/expense-form/resolve-expense-category-id'
 import { restorableType } from '@/components/forms/expense-form/draft-type'
-import { investmentForType, staleFieldsForType } from '@/lib/transfers/clear-fields-for-type'
+import {
+  investmentForType,
+  sourceRegisterForType,
+  staleFieldsForType,
+} from '@/lib/transfers/clear-fields-for-type'
 import {
   makeLineItem,
   type BulkExpenseFormValuesT,
@@ -33,6 +39,10 @@ import {
 import { positionalFiles } from '@/lib/invoices/row-file-positions'
 import { submitWithInvoicePageRows } from '@/lib/invoices/submit-with-invoice-pages'
 import { toastMessage } from '@/lib/utils/toast'
+import {
+  getDefaultCashRegister,
+  getUserDefaultCashRegisterId,
+} from '@/lib/utils/default-cash-register'
 import {
   bulkExpenseFormSchema,
   type CreateBulkExpenseFormT,
@@ -94,13 +104,21 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
     reset: resetInvoiceFiles,
   } = useInvoiceIngest({ recoveredFiles, storedLineItems: storedValues?.lineItems })
 
+  const defaultExpenseCategory = resolveExpenseCategoryId(
+    DEFAULT_EXPENSE_CATEGORY_NAME,
+    referenceData.expenseCategories,
+  )
+
   function handleReset() {
-    form.reset(blankValues)
+    // Not plain `blankValues`: that snapshot is frozen at first render, so a default kasa pinned
+    // from inside this dialog (the button below the kasa field) would be undone by „Wyczyść" until
+    // the dialog was closed and reopened.
+    form.reset({ ...blankValues, sourceRegister: getDefaultCashRegister(referenceData) })
     // Fresh id so the row remounts and its uncontrolled FileInput drops the native FileList no reset
     // reaches. Set apart from the reset above, not folded into it: reset adopts whatever it is given
     // as the new defaults, and the next render would swap the stale row back in. Meta-free, or the
     // draft listener re-persists what was just cleared.
-    form.setFieldValue('lineItems', [makeLineItem()], {
+    form.setFieldValue('lineItems', [makeLineItem({ expenseCategory: defaultExpenseCategory })], {
       dontUpdateMeta: true,
       dontRunListeners: true,
     })
@@ -121,12 +139,12 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
     date: today(),
     type: 'INVESTMENT_EXPENSE',
     paymentMethod: 'CASH',
-    sourceRegister: '',
+    sourceRegister: getDefaultCashRegister(referenceData),
     targetRegister: '',
     investment: investmentFromUrl,
     worker: '',
     settled: false,
-    lineItems: [makeLineItem()],
+    lineItems: [makeLineItem({ expenseCategory: defaultExpenseCategory })],
   }))
 
   const initialValues = storedValues
@@ -234,6 +252,14 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
       'investment',
       investmentForType(type, form.getFieldValue('investment'), investmentFromUrl),
     )
+    form.setFieldValue(
+      'sourceRegister',
+      sourceRegisterForType(
+        type,
+        form.getFieldValue('sourceRegister'),
+        getDefaultCashRegister(referenceData),
+      ),
+    )
     // The kasa may have just been blanked above, so the balance beside it no longer describes it.
     resetRegisterBalance()
   }
@@ -289,6 +315,8 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
             registerBalance={registerBalance}
             isRegisterBalanceLoading={isRegisterBalanceLoading}
             fetchRegisterBalance={fetchRegisterBalance}
+            showSaveAsDefault
+            defaultCashRegisterId={getUserDefaultCashRegisterId(referenceData)}
           />
         )}
 
@@ -326,6 +354,7 @@ export function ExpenseForm({ referenceData, onSubmitSuccess, keepOpen }: Transf
             generationProgress={generationProgress}
             transferType={currentType}
             referenceData={referenceData}
+            defaultExpenseCategory={defaultExpenseCategory}
           />
         )}
       </FieldGroup>
