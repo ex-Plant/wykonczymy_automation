@@ -45,3 +45,14 @@ export function investmentForType(
 ): string {
   return showsInvestment(type) ? current || fromUrl : ''
 }
+
+// Same fallback shape, for the same reason: a detour through a type that carries no kasa blanks the
+// field, and coming back would otherwise leave the user re-picking the kasa their profile already
+// names as default.
+export function sourceRegisterForType(
+  type: string,
+  current: string | undefined,
+  fallback: string,
+): string {
+  return needsSourceRegister(type) ? current || fallback : ''
+}
