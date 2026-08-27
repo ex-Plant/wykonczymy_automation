@@ -160,22 +160,25 @@ Prefer hand-editing `@package.json` over `pnpm remove` / `pnpm install`. On this
   and no code edit can undo that. `getWritableSheetsClient`
   (`src/lib/google/writable-sheets-client.ts`) is the one place **in the app** that mints a
   write-scoped **Sheets** token, and it throws a readable sentence when the credential is absent so
-  you get an explanation instead of a bare 403; reads take `getReadonlySheetsClient()`. The only
+  you get an explanation instead of a bare 403; reads take `getReadonlySheetsClient()`, which is
+  readonly by SCOPE — on production it carries the Editor account, so one share covers a sheet. The only
   other holder of the Editor credential is `scripts/share-sheets-with-reader.mjs`, which mints a
   **Drive** token — a strictly broader power, since it can change who may edit a sheet.
   Repairing a sheet happens from production, and there is no other route. The var is **optional in
   the schema everywhere but production**, where its absence fails the boot (`env/schema.ts`
   `superRefine`) — elsewhere the absence IS the gate, but on production deleting it would break no
   request and silently stop every transfer from reaching the owner's sheet.
-  **A new sheet gets shared by hand with both addresses — the roles are not interchangeable:**
+  **A new sheet needs ONE share for production — Edytujący for the Editor account.** Production
+  reads with the Editor credential too (`getReadonlySheetsClient` mints its readonly-scoped token
+  from the write credential wherever that credential exists), so the reader share is what a sheet
+  needs to be readable from **localhost / Preview / the E2E DB**, never from production:
 
   ```
-  kosztorys-sheets@wykonczymy-kosztorys-bk.iam.gserviceaccount.com          → Edytujący
-  kosztorys-sheets-reader@wykonczymy-kosztorys-bk.iam.gserviceaccount.com   → Przeglądający
+  kosztorys-sheets@wykonczymy-kosztorys-bk.iam.gserviceaccount.com          → Edytujący   (produkcja)
+  kosztorys-sheets-reader@wykonczymy-kosztorys-bk.iam.gserviceaccount.com   → Przeglądający (dev/preview)
   ```
 
-  The link dialog shows only the first and says „jako Edytujący" — the reader is the one you have to
-  remember, and giving it Editor would hand write rights back to every laptop for that sheet.
+  Never give the reader Editor — that would hand write rights back to every laptop for that sheet.
   `scripts/share-sheets-with-reader.mjs` does the reader half in bulk — from production, over a
   `id<TAB>name` TSV exported from psql: `node scripts/share-sheets-with-reader.mjs sheets.tsv`
   dry-runs, `--apply` grants. It skips a sheet the reader already holds, shouts if the reader was
