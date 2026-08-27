@@ -34,6 +34,12 @@ const doc = (invoice: TransferDocT['invoice']): TransferDocT => ({
 })
 
 describe('mapTransferRow', () => {
+  it('maps a row booked without a method to null, not to a label', () => {
+    const row = mapTransferRow({ ...doc([]), paymentMethod: undefined }, emptyLookups())
+
+    expect(row.paymentMethod).toBeNull()
+  })
+
   it('carries every page onto the row', () => {
     const row = mapTransferRow(doc([11, 22]), emptyLookups())
 

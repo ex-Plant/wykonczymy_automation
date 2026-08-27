@@ -401,3 +401,42 @@ describe('validateTransfer — vatPlane', () => {
     expect(validateTransfer(args).vatPlane).toBeNull()
   })
 })
+
+describe('validateTransfer — paymentMethod', () => {
+  it.each(['INVESTOR_DEPOSIT', 'INVESTMENT_EXPENSE_NET'])('keeps the method on %s', (type) => {
+    const data = { ...VALID_DATA[type], paymentMethod: 'TRANSFER' }
+    expect(validateTransfer(hookArgs(data)).paymentMethod).toBe('TRANSFER')
+  })
+
+  it.each(['INVESTOR_DEPOSIT', 'INVESTMENT_EXPENSE_NET'])(
+    'refuses %s with no method at all',
+    (type) => {
+      const data = { ...VALID_DATA[type], paymentMethod: undefined }
+      expect(() => validateTransfer(hookArgs(data))).toThrow(/Payment method is required/)
+    },
+  )
+
+  // The whole point of the nullable column: „Gotówka" must mean the owner answered gotówka, so a
+  // method smuggled onto a type nobody was asked about never reaches the filter.
+  it.each(['INVESTMENT_EXPENSE', 'REGISTER_TRANSFER', 'OTHER_DEPOSIT', 'LABOR_COST', 'OTHER'])(
+    'strips a method smuggled onto %s',
+    (type) => {
+      const data = { ...VALID_DATA[type], paymentMethod: 'CASH' }
+      expect(validateTransfer(hookArgs(data)).paymentMethod).toBeNull()
+    },
+  )
+
+  // The stripping is scoped to writes that NAME a method. A legacy row booked with one keeps it
+  // through an edit about something else — the type is frozen after create, so there is no type
+  // change to tidy up after, and an unconditional null would rewrite history on every save.
+  it('leaves a stored method alone when the update does not name one', () => {
+    const args = hookArgs(
+      { description: 'edited' },
+      {
+        operation: 'update',
+        originalDoc: { ...VALID_DATA.REGISTER_TRANSFER, paymentMethod: 'CASH' },
+      },
+    )
+    expect(validateTransfer(args).paymentMethod).toBeUndefined()
+  })
+})

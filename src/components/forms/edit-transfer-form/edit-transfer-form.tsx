@@ -69,7 +69,7 @@ export function EditTransferForm({
       description: row.description,
       amount: isLaborCost(row.type) ? String(row.amount) : undefined,
       date: row.date.slice(0, 10),
-      paymentMethod: fillsPlane ? UNANSWERED_PAYMENT_METHOD : row.paymentMethod,
+      paymentMethod: fillsPlane ? UNANSWERED_PAYMENT_METHOD : (row.paymentMethod ?? ''),
       investment: row.investmentId ? String(row.investmentId) : '',
       expenseCategory: row.expenseCategoryId ? String(row.expenseCategoryId) : '',
       otherCategory: row.otherCategoryId ? String(row.otherCategoryId ?? '') : '',

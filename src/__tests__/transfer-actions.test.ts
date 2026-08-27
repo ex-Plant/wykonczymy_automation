@@ -651,12 +651,14 @@ describe('cancelTransferAction', () => {
           amount: 777,
           date: today,
           description: `Anulowanie transakcji #10\n${VALID_CANCEL_REASON}`,
-          paymentMethod: 'CASH',
           cancelledTransaction: 10,
           createdBy: adminUser.id,
         }),
       }),
     )
+    // The original's method is NOT copied: an anulowanie was never asked how it was paid, and a
+    // borrowed „Gotówka" would answer for it in the column and the filter.
+    expect(mockCreate.mock.calls[0][0].data).not.toHaveProperty('paymentMethod')
   })
 
   it('createdBy as object (populated relation) → extracts id correctly', async () => {

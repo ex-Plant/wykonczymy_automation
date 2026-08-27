@@ -131,9 +131,11 @@ export const Transfers: CollectionConfig = {
       access: { update: () => false },
     },
     {
+      // Null on every type but a wpłata od inwestora and a wydatek inwestycyjny netto — the two the
+      // forms ask it on (`carriesPaymentMethod`, enforced in the validate hook, which nulls it
+      // everywhere else). Not `required`: rows booked before that carry a method nobody chose.
       name: 'paymentMethod',
       type: 'select',
-      required: true,
       label: { en: 'Payment Method', pl: 'Metoda płatności' },
       options: [...PAYMENT_METHODS],
     },

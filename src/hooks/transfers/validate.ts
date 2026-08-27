@@ -11,6 +11,7 @@ import {
   canBeSettled,
   carriesNetAmount,
   carriesVatPlane,
+  carriesPaymentMethod,
 } from '@/lib/constants/transfers'
 import { getAmountError, getNetAmountError } from '@/lib/utils/validation'
 
@@ -54,6 +55,7 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
   const worker = resolved('worker')
   const expenseCategory = resolved('expenseCategory')
   const vatPlane = resolved('vatPlane')
+  const paymentMethod = resolved('paymentMethod')
 
   // CANCELLATION rows skip all normal validation — relational fields are null
   if (type === 'CANCELLATION') {
@@ -164,6 +166,17 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
 
   if (!carriesVatPlane(type)) {
     d.vatPlane = null
+  }
+
+  // Nulled here so the transfers filter can be trusted whatever wrote the row (admin panel, REST, a
+  // script). Gated on presence, unlike every strip above it, because this is the one stripped field
+  // whose legacy rows legitimately hold a value the rule now forbids — the migration deliberately
+  // did not backfill them — so an unconditional null would rewrite history on an unrelated edit.
+  // The others have no such history and stay unconditional.
+  if (carriesPaymentMethod(type)) {
+    if (!paymentMethod) errors.push('Payment method is required for this transfer type.')
+  } else if ('paymentMethod' in d) {
+    d.paymentMethod = null
   }
 
   if (needsExpenseCategory(type, !!investment) && !expenseCategory) {

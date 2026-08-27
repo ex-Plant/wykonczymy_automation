@@ -58,7 +58,12 @@ describe('staleFieldsForType', () => {
   const patch = (type: string) => Object.fromEntries(staleFieldsForType(type))
 
   it('empties the fields the type does not carry', () => {
-    expect(patch('OTHER')).toEqual({ targetRegister: '', worker: '', settled: false })
+    expect(patch('OTHER')).toEqual({
+      targetRegister: '',
+      worker: '',
+      settled: false,
+      paymentMethod: '',
+    })
   })
 
   it('empties the kasa for a type that is not a cash movement', () => {
@@ -66,11 +71,22 @@ describe('staleFieldsForType', () => {
   })
 
   it('leaves the kasa and the settled flag alone where the type carries them', () => {
-    expect(patch('INVESTMENT_EXPENSE')).toEqual({ targetRegister: '', worker: '' })
+    expect(patch('INVESTMENT_EXPENSE')).toEqual({
+      targetRegister: '',
+      worker: '',
+      paymentMethod: '',
+    })
   })
 
   it('unsets settled when the new type cannot be settled', () => {
     expect(patch('INVESTMENT_EXPENSE_NET')).toHaveProperty('settled', false)
+  })
+
+  // The one home for „blank what this type does not carry": a method picked on the netto wydatek
+  // must not ride along after a switch, or it reaches the row a type change made silent.
+  it('keeps the metoda where the type carries it', () => {
+    expect(patch('INVESTMENT_EXPENSE_NET')).not.toHaveProperty('paymentMethod')
+    expect(patch('INVESTOR_DEPOSIT')).not.toHaveProperty('paymentMethod')
   })
 
   it('keeps the worker on a payout', () => {

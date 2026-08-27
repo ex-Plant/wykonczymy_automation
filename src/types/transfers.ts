@@ -26,7 +26,8 @@ export type TransferRowT = {
   // expense type). null on every type that bills at `amount`.
   netAmount: number | null
   type: TransferTypeT
-  paymentMethod: PaymentMethodT
+  // null on every type that never asks it — see `carriesPaymentMethod`.
+  paymentMethod: PaymentMethodT | null
   date: string
   sourceRegisterId: number | null
   sourceRegisterName: string

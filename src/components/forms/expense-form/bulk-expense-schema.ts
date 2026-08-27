@@ -98,7 +98,7 @@ export const createBulkExpenseSchema = z
   .object({
     date: z.string().min(1, 'Data jest wymagana'),
     type: z.enum(TRANSFER_TYPES),
-    paymentMethod: z.enum(PAYMENT_METHODS),
+    paymentMethod: z.enum(PAYMENT_METHODS).nullish(),
     sourceRegister: z.number().optional(),
     targetRegister: z.number().optional(),
     investment: z.number().optional(),

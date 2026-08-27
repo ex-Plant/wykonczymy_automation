@@ -11,7 +11,7 @@ import type { TransferRowT } from '@/types/transfers'
 export const UNANSWERED_PAYMENT_METHOD = 'UNANSWERED'
 
 export type PlaneFillInT = {
-  paymentMethod: PaymentMethodT
+  paymentMethod?: PaymentMethodT
   vatPlane?: VatPlaneT
   netAmount?: number
 }
@@ -25,13 +25,16 @@ export type PlaneFillInT = {
  * gotówka tagged brutto. Pre-select a side and a save that came to attach a faktura freezes a guess.
  */
 export function planeFillIn(
-  row: Pick<TransferRowT, 'type' | 'vatPlane' | 'paymentMethod'>,
+  row: Pick<TransferRowT, 'type' | 'vatPlane'>,
   answer: string,
   netAmount: string,
 ): PlaneFillInT {
   if (!canFillVatPlane(row) || answer === UNANSWERED_PAYMENT_METHOD) {
-    // Left as booked — this asks how the client paid, it never claims the stored value was wrong.
-    return { paymentMethod: row.paymentMethod }
+    // Says NOTHING about the method — this asks how the client paid, it never claims the stored
+    // value was wrong. Naming it would be worse than a no-op: an unchanged value still counts as a
+    // write, and the collection hook nulls a method on every type that does not carry one, so an
+    // edit about something else would wipe what a legacy row was booked with.
+    return {}
   }
 
   const vatPlane = planeFor(row.type, answer)

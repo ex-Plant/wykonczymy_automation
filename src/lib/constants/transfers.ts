@@ -466,6 +466,14 @@ export const carriesNetAmount = (type: unknown, vatPlane: unknown): boolean =>
 // settlement predicate reads, with no second kwota on the form to back it.
 export const carriesVatPlane = (type: unknown): boolean => type === 'INVESTOR_DEPOSIT'
 
+// Does this row STORE a payment method? Asked only where it answers something: on a wpłata od
+// inwestora the method IS the plane (`planeFor`), and on a wydatek inwestycyjny netto it records how
+// the faktura was paid. Every other type stores null rather than a preselected „Gotówka" nobody
+// chose — the column and the filter are read as answers, so a default would make „Gotówka" mean
+// „gotówka albo nikt nie pytał" and the filter untrustworthy.
+export const carriesPaymentMethod = (type: unknown): boolean =>
+  type === 'INVESTOR_DEPOSIT' || type === 'INVESTMENT_EXPENSE_NET'
+
 // The one row an edit may still tag: a wpłata booked before the plane existed. Named once because
 // three places ask it — the form offering the question, the payload carrying the answer, the action
 // letting it through — and they may not drift apart.

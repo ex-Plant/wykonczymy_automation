@@ -626,3 +626,31 @@ describe('schema parity — valid payloads', () => {
     })
   }
 })
+
+describe('createTransferSchema — paymentMethod', () => {
+  const NET_EXPENSE = {
+    ...VALID_SERVER_PAYLOADS.INVESTMENT_EXPENSE,
+    type: 'INVESTMENT_EXPENSE_NET',
+    netAmount: 80,
+  }
+
+  it.each([
+    ['INVESTOR_DEPOSIT', VALID_SERVER_PAYLOADS.INVESTOR_DEPOSIT],
+    ['INVESTMENT_EXPENSE_NET', NET_EXPENSE],
+  ])('rejects %s with no method — the two types the form asks it on', (_type, payload) => {
+    const result = createTransferSchema.safeParse({ ...payload, paymentMethod: null })
+    expect(result.success).toBe(false)
+    expect(result.error?.issues.some((i) => i.path[0] === 'paymentMethod')).toBe(true)
+  })
+
+  it.each(['INVESTMENT_EXPENSE', 'REGISTER_TRANSFER', 'PAYOUT', 'OTHER_DEPOSIT'])(
+    'accepts %s with no method at all',
+    (type) => {
+      const result = createTransferSchema.safeParse({
+        ...VALID_SERVER_PAYLOADS[type],
+        paymentMethod: null,
+      })
+      expect(result.success).toBe(true)
+    },
+  )
+})

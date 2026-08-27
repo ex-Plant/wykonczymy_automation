@@ -164,7 +164,10 @@ const allColumns = [
   col.accessor('paymentMethod', {
     id: 'paymentMethod',
     header: 'Metoda',
-    cell: (info) => PAYMENT_METHOD_LABELS[info.getValue() as PaymentMethodT] ?? info.getValue(),
+    cell: (info) => {
+      const method = info.getValue() as PaymentMethodT | null
+      return method ? PAYMENT_METHOD_LABELS[method] : '—'
+    },
   }),
   col.accessor('workerName', {
     id: 'worker',

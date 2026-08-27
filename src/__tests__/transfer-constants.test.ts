@@ -26,6 +26,7 @@ import {
   canBeSettled,
   carriesNetAmount,
   carriesVatPlane,
+  carriesPaymentMethod,
   canFillVatPlane,
   isLaborCost,
   isCancellationType,
@@ -146,6 +147,10 @@ const HELPERS: Record<string, { fn: HelperFn; trueFor: string[] }> = {
     // The tag names which side of the settlement a wpłata pays, so only a wpłata od inwestora
     // has one — every other type stores null and validate.ts strips a smuggled plane.
     trueFor: ['INVESTOR_DEPOSIT'],
+  },
+  carriesPaymentMethod: {
+    fn: carriesPaymentMethod,
+    trueFor: ['INVESTOR_DEPOSIT', 'INVESTMENT_EXPENSE_NET'],
   },
 }
 
