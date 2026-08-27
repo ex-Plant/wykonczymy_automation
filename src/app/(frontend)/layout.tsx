@@ -11,6 +11,7 @@ import { ToastContainer } from 'react-toastify'
 import { getCurrentUserJwt } from '@/lib/auth/get-current-user-jwt'
 import { Navigation } from '@/components/nav/navigation'
 import { Sidebar } from '@/components/nav/sidebar'
+import { NavOpenRouterBalance } from '@/components/nav/nav-openrouter-balance'
 import { AppFooter } from '@/components/nav/app-footer'
 import { CurrentUserProvider } from '@/hooks/use-current-user'
 import { Loader } from '@/components/ui/loader/loader'
@@ -50,7 +51,13 @@ async function AuthenticatedShell({ children, investmentCrumb }: FrontendLayoutP
   return (
     <CurrentUserProvider user={user}>
       <div className="flex h-screen">
-        <Sidebar />
+        <Sidebar
+          openRouterBalance={
+            <Suspense fallback={null}>
+              <NavOpenRouterBalance />
+            </Suspense>
+          }
+        />
         <div className="flex flex-1 flex-col">
           <Navigation user={user} investmentCrumb={investmentCrumb} />
           {/* transform-gpu forces a compositing layer: Safari otherwise fails to

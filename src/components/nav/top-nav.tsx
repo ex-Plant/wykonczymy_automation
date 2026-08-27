@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { DepositDialog } from '@/components/dialogs/deposit-dialog'
 import { InternalTransferDialog } from '@/components/dialogs/internal-transfer-dialog'
 import { ExpenseDialog } from '@/components/dialogs/expense-dialog'
-import { NavOpenRouterBalance } from '@/components/nav/nav-openrouter-balance'
 import type { ReferenceDataT } from '@/types/reference-data'
 
 type TopNavPropsT = {
@@ -21,9 +20,6 @@ export function TopNav({ referenceData, investmentCrumb }: TopNavPropsT) {
       </div>
       <Suspense fallback={null}>{investmentCrumb}</Suspense>
       <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-        <Suspense fallback={null}>
-          <NavOpenRouterBalance />
-        </Suspense>
         {referenceData && (
           <>
             <DepositDialog referenceData={referenceData} />
