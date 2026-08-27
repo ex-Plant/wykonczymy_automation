@@ -235,5 +235,6 @@ natychmiast otwiera kanał na żywy arkusz").
 - [x] `GOOGLE_SERVICE_ACCOUNT_WRITE_JSON` wyłącznie na Vercel Production
 - [x] `.env`, Preview i Development na koncie czytającym
 - [x] Klucz Edytora zdjęty z maszyny (kopie `.env.bak-*` zredagowane, kopie w `/tmp` wymazane)
-- [ ] `GOOGLE_SERVICE_ACCOUNT_JSON` na Production podmienione na konto czytające — **dopiero po
-      wdrożeniu kodu**, inaczej deploy w międzyczasie odciąłby produkcji zapis
+- [x] `GOOGLE_SERVICE_ACCOUNT_JSON` na Production podmienione na konto czytające — 2026-08-27, po
+      wejściu kodu na `main` (`924a5b25`, PR #57) i zielonym deployu produkcji; redeploy
+      `qvrwvz5wj`. Development i Preview nietknięte.

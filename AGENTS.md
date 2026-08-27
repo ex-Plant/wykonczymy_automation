@@ -181,6 +181,18 @@ Prefer hand-editing `@package.json` over `pnpm remove` / `pnpm install`. On this
   dry-runs, `--apply` grants. It skips a sheet the reader already holds, shouts if the reader was
   given anything above Viewer, and exits non-zero on any failure.
 
+- **Poczta wychodzi tylko z produkcji — bramką jest `EMAIL_HOST`.** Poza produkcją wskazuje na
+  `disabled.invalid` (zarezerwowany TLD, RFC 2606), więc wysyłka pada na DNS; prawdziwy host stoi
+  zakomentowany obok w `.env` i podmienia się go ręcznie na czas pracy nad szablonami. Pusta wartość
+  nie zadziała — `serverEnv` wymaga `.min(1)`. To nie jest kosmetyka: aplikacja jest **klientem**
+  SMTP firmowego serwera, więc mail z localhosta wychodził z tej samej infrastruktury co produkcyjny,
+  z poprawnym SPF/DKIM, do skrzynki odbiorczej. Listy odbiorców żyją w globalu Payloada
+  `notification-recipients`, czyli **w bazie**, więc każdy `db:import` wsypuje prawdziwe adresy
+  pracowników do każdego środowiska i `requireRecipients` nigdy nie zadziała jako ochrona.
+  Pełna mapa efektów wychodzących (co ma bramkę, co jej świadomie nie ma i dlaczego):
+  `context/reference/outgoing-effects-isolation.md` — **przeczytaj przed dodaniem nowej integracji
+  wychodzącej.**
+
 - **The production Vercel Blob store belongs to production only.** Invoice bytes live in Blob, which
   has no versioning and no undelete — and the local DB is a restored prod dump, so `media.filename`
   values are the real invoices. A delete on localhost against the production store therefore destroys
