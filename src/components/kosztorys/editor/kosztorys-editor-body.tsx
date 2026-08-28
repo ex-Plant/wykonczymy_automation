@@ -10,6 +10,7 @@ import { DynamicDataSheetGrid } from 'react-datasheet-grid'
 import { KosztorysTotalsPanel } from '@/components/kosztorys/summary/kosztorys-totals-panel'
 import { KosztorysTotalsPanelToggle } from '@/components/kosztorys/summary/kosztorys-totals-panel-toggle'
 import { KosztorysEditorToolbar } from '@/components/kosztorys/editor/toolbar/kosztorys-editor-toolbar'
+import { BrandLogo } from '@/components/ui/brand-logo'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useKosztorysEditor } from '@/components/kosztorys/editor/use-kosztorys-editor'
@@ -238,8 +239,11 @@ export function KosztorysEditorBody({
         )}
       >
         {preview ? (
-          <header className="flex items-center justify-between gap-2 border-b px-3 py-2">
-            <h1 className="truncate text-base font-medium">{investmentName}</h1>
+          <header className="flex items-center justify-between gap-2 border-b px-5 py-5">
+            <div className="flex min-w-0 items-center gap-4">
+              <BrandLogo height={80} priority className="shrink-0" />
+              <h1 className="truncate text-base font-medium">{investmentName}</h1>
+            </div>
             <div className="flex shrink-0 items-center gap-2">
               {/* The panel's open state is persisted per person, not per view, so without this the
                   client view inherits whatever the toolbar last left and can never fold it back. */}

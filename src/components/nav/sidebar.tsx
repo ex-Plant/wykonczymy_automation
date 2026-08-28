@@ -1,5 +1,6 @@
 'use client'
 
+import { BrandLogo } from '@/components/ui/brand-logo'
 import { Button } from '@/components/ui/button'
 import { logoutAction } from '@/lib/actions/auth'
 import { refreshDataAction } from '@/lib/actions/refresh'
@@ -40,9 +41,8 @@ export function Sidebar({ openRouterBalance }: SidebarPropsT) {
 
   return (
     <aside className="border-border bg-background sticky top-0 hidden h-screen w-fit min-w-48 shrink-0 flex-col border-r px-3 pb-3 lg:flex">
-      {/* Logo + badge — matches top bar min-h-14 */}
-      <Link href="/" className={`mx-auto mb-4`}>
-        <h1 className="text-md leading-14 font-semibold">Wykończymy 🚧</h1>
+      <Link href="/" className="mx-auto flex items-center py-5">
+        <BrandLogo height={80} priority />
       </Link>
       {/* Navigation */}
       <nav className="flex flex-col gap-1">
