@@ -9,8 +9,8 @@ Mail o wymianie oleju i badge w UI liczyły termin **z dwóch różnych reguł**
 (preferuje ręcznie wpisany `nextDueOdometer`), badge ze sztywnego `OIL_CHANGE_INTERVAL_KM`.
 Rozjazd szedł w obie strony — mail bez badge'a i badge bez maila.
 
-Trwała zasada: \* \*jeden termin ma jedną regułę**, a guardem jest spec liczący **obie powierzchnie
-z jednego zestawu danych\*\* — dwa osobne specki, każdy zielony na własnej regule, są dokładnie tym,
+Trwała zasada: **jeden termin ma jedną regułę**, a guardem jest spec liczący **obie powierzchnie
+z jednego zestawu danych** — dwa osobne specki, każdy zielony na własnej regule, są dokładnie tym,
 co ten defekt przepuściło.
 
 ## Edycja komórek liczbowych w kosztorysie
