@@ -118,3 +118,104 @@ describe.skipIf(!ENV_READY)('users beforeDelete guard (DB)', () => {
     expect(await workerExists()).toBe(false)
   })
 })
+
+// A worker whose only transaction is cancelled is deletable — but only because this fixture holds no
+// kasa: `cash_registers.owner_id` is NOT NULL, so a real employee stays blocked by that probe.
+describe.skipIf(!ENV_READY)('users beforeDelete guard — cancelled rows (DB)', () => {
+  let payload: Payload
+  let db: Awaited<ReturnType<typeof getDb>>
+  let workerId: number
+  let transactionId: number
+  // Hoisted: once its author is deleted the row's `created_by_id` is NULL, so `purgeFixtureUsers`
+  // has no fixture reference left to find it by — teardown must know the id.
+  let authoredId: number | undefined
+
+  beforeAll(async () => {
+    const { getPayload } = await import('payload')
+    const config = (await import('@payload-config')).default
+    payload = await getPayload({ config })
+    db = await getDb(payload)
+    await purgeFixtureUsers(db)
+
+    const worker = await payload.create({
+      collection: 'users',
+      data: {
+        name: 'Pracownik Anulowanej Wypłaty',
+        role: 'EMPLOYEE',
+        email: 'users-delete-guard-cancelled@test.local',
+        password: 'test-password-123',
+      },
+      context: { skipRevalidation: true },
+    })
+    workerId = Number(worker.id)
+
+    const inserted = await db.execute(sql`
+      INSERT INTO transactions (description, amount, date, type, payment_method, worker_id, cancelled)
+      VALUES ('delete-guard cancelled payout', 500, now(),
+        'PAYOUT'::enum_transactions_type, 'CASH', ${workerId}, true)
+      RETURNING id
+    `)
+    transactionId = Number((inserted.rows[0] as { id: number }).id)
+  })
+
+  afterAll(async () => {
+    if (transactionId) await db.execute(sql`DELETE FROM transactions WHERE id = ${transactionId}`)
+    if (authoredId) await db.execute(sql`DELETE FROM transactions WHERE id = ${authoredId}`)
+    await purgeFixtureUsers(db)
+  })
+
+  // `createdBy` is the half the `worker` case doesn't reach: A books a transfer, B cancels it, and
+  // the CANCELLATION row names B — so A is left holding authorship of a cancelled row and nothing else.
+  it('deletes a worker whose only reference is authorship of a cancelled row', async () => {
+    const author = await payload.create({
+      collection: 'users',
+      data: {
+        name: 'Autor Anulowanej Transakcji',
+        role: 'EMPLOYEE',
+        email: 'users-delete-guard-author@test.local',
+        password: 'test-password-123',
+      },
+      context: { skipRevalidation: true },
+    })
+    const authorId = Number(author.id)
+
+    const inserted = await db.execute(sql`
+      INSERT INTO transactions (description, amount, date, type, payment_method, created_by_id, cancelled)
+      VALUES ('delete-guard cancelled authored', 300, now(),
+        'OTHER'::enum_transactions_type, 'CASH', ${authorId}, true)
+      RETURNING id
+    `)
+    authoredId = Number((inserted.rows[0] as { id: number }).id)
+
+    await payload.delete({
+      collection: 'users',
+      id: authorId,
+      overrideAccess: true,
+      context: { skipRevalidation: true },
+    })
+
+    const row = await db.execute(
+      sql`SELECT created_by_id FROM transactions WHERE id = ${authoredId}`,
+    )
+    expect(row.rows.length).toBe(1)
+    expect((row.rows[0] as { created_by_id: number | null }).created_by_id).toBeNull()
+  })
+
+  it('deletes a worker whose only transactions are cancelled, orphaning them', async () => {
+    await payload.delete({
+      collection: 'users',
+      id: workerId,
+      overrideAccess: true,
+      context: { skipRevalidation: true },
+    })
+
+    const worker = await db.execute(sql`SELECT 1 FROM users WHERE id = ${workerId}`)
+    expect(worker.rows.length).toBe(0)
+
+    const transaction = await db.execute(
+      sql`SELECT worker_id FROM transactions WHERE id = ${transactionId}`,
+    )
+    expect(transaction.rows.length).toBe(1)
+    expect((transaction.rows[0] as { worker_id: number | null }).worker_id).toBeNull()
+  })
+})

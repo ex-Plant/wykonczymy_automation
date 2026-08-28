@@ -1,7 +1,7 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, Where } from 'payload'
 import { isAdminOrOwner, isAdminOrOwnerOrManager } from '@/access'
 import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
-import { makePreventDelete } from '@/hooks/prevent-delete'
+import { excludingCancelled, makePreventDelete } from '@/hooks/prevent-delete'
 import { DEFAULT_COEFFS, DEFAULT_VAT } from '@/lib/kosztorys/constants'
 import {
   SETTLEMENT_MODE_ADMIN_OPTIONS,
@@ -16,12 +16,12 @@ const STATUS_OPTIONS = [
 
 // For LABOR_COST / RABAT / LOSS an orphaned transaction is terminal: they carry no source register
 // either, so a row stripped of `investment_id` is reachable from no investment and no kasa at all.
-// Cancelled rows count — they are the audit trail, and orphaning them erases it just as thoroughly.
+// Cancelled rows are exempt — see `excludingCancelled`.
 const preventDeleteWithTransactions = makePreventDelete({
   probes: [
     {
       collection: 'transactions',
-      where: (id) => ({ investment: { equals: id } }),
+      where: (id): Where => excludingCancelled({ investment: { equals: id } }),
       label: 'transakcje',
     },
   ],

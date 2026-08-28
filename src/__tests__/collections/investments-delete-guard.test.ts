@@ -61,3 +61,52 @@ describe.skipIf(!ENV_READY)('investments beforeDelete guard (DB)', () => {
     expect(await investmentExists()).toBe(false)
   })
 })
+
+// The relaxation's whole point is that the orphan is harmless AND still visible, so asserting only
+// „the delete succeeded" would miss half of it — the transaction row must survive the cascade.
+describe.skipIf(!ENV_READY)('investments beforeDelete guard — cancelled rows (DB)', () => {
+  let payload: Payload
+  let db: Awaited<ReturnType<typeof getDb>>
+  let investmentId: number
+  let transactionId: number
+
+  beforeAll(async () => {
+    const { getPayload } = await import('payload')
+    const config = (await import('@payload-config')).default
+    payload = await getPayload({ config })
+    db = await getDb(payload)
+
+    investmentId = await createTestInvestment(payload, 'delete-guard-cancelled')
+
+    const inserted = await db.execute(sql`
+      INSERT INTO transactions (description, amount, date, type, payment_method, investment_id, cancelled)
+      VALUES ('delete-guard cancelled labor cost', 1000, now(),
+        'LABOR_COST'::enum_transactions_type, 'TRANSFER', ${investmentId}, true)
+      RETURNING id
+    `)
+    transactionId = (inserted.rows[0] as { id: number }).id
+  })
+
+  // The `it` body is what deletes the investment, so a regressed guard would throw before it and
+  // strand the row in the shared 5435 DB — where the golden master then reads it as dataset drift.
+  afterAll(async () => {
+    if (transactionId) await db.execute(sql`DELETE FROM transactions WHERE id = ${transactionId}`)
+    if (investmentId) {
+      const investment = await db.execute(sql`SELECT 1 FROM investments WHERE id = ${investmentId}`)
+      if (investment.rows.length > 0) await deleteTestInvestment(payload, investmentId)
+    }
+  })
+
+  it('deletes an investment whose only transactions are cancelled, orphaning them', async () => {
+    await deleteTestInvestment(payload, investmentId)
+
+    const investment = await db.execute(sql`SELECT 1 FROM investments WHERE id = ${investmentId}`)
+    expect(investment.rows.length).toBe(0)
+
+    const transaction = await db.execute(
+      sql`SELECT investment_id FROM transactions WHERE id = ${transactionId}`,
+    )
+    expect(transaction.rows.length).toBe(1)
+    expect((transaction.rows[0] as { investment_id: number | null }).investment_id).toBeNull()
+  })
+})

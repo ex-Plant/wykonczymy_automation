@@ -8,7 +8,7 @@ import {
 import { forgotPasswordEmailHTML } from '@/lib/email/forgot-password-template'
 import type { CollectionConfig, Where } from 'payload'
 import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
-import { makePreventDelete } from '@/hooks/prevent-delete'
+import { excludingCancelled, makePreventDelete } from '@/hooks/prevent-delete'
 import { ROLES, ROLE_LABELS } from '@/lib/auth/roles'
 
 // Block a hard delete while a FIGURE or its audit trail still names this person: a wypłata whose
@@ -22,13 +22,20 @@ const preventDeleteWithReferences = makePreventDelete({
   probes: [
     {
       collection: 'transactions',
-      where: (id): Where => ({
-        or: [
-          { worker: { equals: id } },
-          { createdBy: { equals: id } },
-          { updatedBy: { equals: id } },
-        ],
-      }),
+      // Cancelled rows are exempt — see `excludingCancelled`. The other three probes have no such
+      // notion, and `cash-registers.owner_id` is NOT NULL, so anyone holding a kasa stays blocked.
+      // Authorship is exempted with the rest, not just `worker`: the delete is what erases the name,
+      // so refusing it over a cancelled row's `createdBy` preserves no identity — it only makes the
+      // account undeletable. A cancelled row's „Utworzone przez" going empty is the cost, and it is
+      // the same cost the row's live siblings would impose by blocking the delete outright.
+      where: (id): Where =>
+        excludingCancelled({
+          or: [
+            { worker: { equals: id } },
+            { createdBy: { equals: id } },
+            { updatedBy: { equals: id } },
+          ],
+        }),
       label: 'transakcje',
     },
     {

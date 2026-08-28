@@ -2,7 +2,7 @@ import type { CollectionConfig, CollectionBeforeValidateHook, Where } from 'payl
 import { isAdminOrOwner, isAdminOrOwnerField, isAdminOrOwnerOrManager, isManager } from '@/access'
 import { isAdminOrOwnerRole } from '@/lib/auth/roles'
 import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
-import { makePreventDelete } from '@/hooks/prevent-delete'
+import { excludingCancelled, makePreventDelete } from '@/hooks/prevent-delete'
 
 /** Managers can only create AUXILIARY registers — force the type. */
 const enforceAuxiliaryForManager: CollectionBeforeValidateHook = ({ data, req }) => {
@@ -10,13 +10,16 @@ const enforceAuxiliaryForManager: CollectionBeforeValidateHook = ({ data, req })
   return data
 }
 
+// Cancelled rows are exempt — see `excludingCancelled`. Kasa balances are computed, never stored
+// (`lib/db/sum-transfers.ts`), and every one of those sums already skips cancelled rows.
 const preventDeleteWithTransactions = makePreventDelete({
   probes: [
     {
       collection: 'transactions',
-      where: (id): Where => ({
-        or: [{ sourceRegister: { equals: id } }, { targetRegister: { equals: id } }],
-      }),
+      where: (id): Where =>
+        excludingCancelled({
+          or: [{ sourceRegister: { equals: id } }, { targetRegister: { equals: id } }],
+        }),
       label: 'transakcje',
     },
   ],
