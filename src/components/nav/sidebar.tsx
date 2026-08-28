@@ -68,7 +68,9 @@ export function Sidebar({ openRouterBalance }: SidebarPropsT) {
   return (
     <aside
       className={cn(
-        'border-border bg-background sticky top-0 hidden h-screen shrink-0 flex-col border-r pb-3 lg:flex',
+        // z-40: the handle overhangs into the page, and the kosztorys v2 grid paints its frozen
+        // columns at z-30 — without a stacking context above that, the pill disappears under them.
+        'border-border bg-background sticky top-0 z-40 hidden h-screen shrink-0 flex-col border-r pb-3 lg:flex',
         collapsed ? 'w-14 px-2' : 'w-fit min-w-48 px-3',
       )}
     >
@@ -88,7 +90,7 @@ export function Sidebar({ openRouterBalance }: SidebarPropsT) {
         </button>
       </SimpleTooltip>
       <Link href="/" className="mx-auto flex items-center py-3">
-        <BrandLogo height={collapsed ? 36 : 80} priority />
+        <BrandLogo height={collapsed ? 36 : 54} priority />
       </Link>
       {/* Navigation */}
       <nav className="flex flex-col gap-1">
