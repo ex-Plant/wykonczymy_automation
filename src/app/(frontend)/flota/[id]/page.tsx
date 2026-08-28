@@ -39,8 +39,6 @@ export default async function VehicleDetailPage({ params }: DynamicPagePropsT) {
     <PageWrapper
       title={vehicle.registration}
       description={`${vehicle.make} ${vehicle.model}${vehicle.year ? ` · ${vehicle.year}` : ''}`}
-      backHref="/flota"
-      backLabel="Flota"
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-4">

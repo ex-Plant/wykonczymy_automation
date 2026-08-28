@@ -52,7 +52,7 @@ export default async function UserDetailPage({ params, searchParams }: DynamicPa
   const payoutsTotal = typeDistribution.find((row) => row.type === 'PAYOUT')?.total ?? 0
 
   return (
-    <PageWrapper title={worker.name} backHref="/pracownicy" backLabel="Pracownicy">
+    <PageWrapper title={worker.name}>
       <EditWorkerDialog worker={worker} cashRegisters={refData.cashRegisters} />
       <InfoList items={infoFields} />
       <SignedMoneyDisplay amount={payoutsTotal} label="Wypłaty" />

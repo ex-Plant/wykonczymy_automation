@@ -26,7 +26,7 @@ export async function ManagerDashboard({ searchParams }: ManagerDashboardPropsT)
   console.log(`[PERF] ManagerDashboard fetchManagerDashboardData ${step()}ms`)
 
   return (
-    <PageWrapper title="Pulpit" backHref="">
+    <PageWrapper title="Pulpit">
       <UserRegisterStats cashRegisters={visibleRegisters} showAllRegisters={isAdminOrOwner} />
 
       {/* Recent transactions */}
