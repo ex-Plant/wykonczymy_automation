@@ -241,13 +241,13 @@ export function KosztorysEditorBody({
         {preview ? (
           <header className="flex items-center justify-between gap-2 border-b px-5 py-5">
             <div className="flex min-w-0 items-center gap-4">
-              <BrandLogo height={80} priority className="shrink-0" />
+              <BrandLogo height={54} priority className="shrink-0" />
               <h1 className="truncate text-base font-medium">{investmentName}</h1>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               {/* The panel's open state is persisted per person, not per view, so without this the
                   client view inherits whatever the toolbar last left and can never fold it back. */}
-              <KosztorysTotalsPanelToggle size="default" disabled={subtotals.length === 0} />
+              <KosztorysTotalsPanelToggle size="lg" disabled={subtotals.length === 0} />
             </div>
           </header>
         ) : (

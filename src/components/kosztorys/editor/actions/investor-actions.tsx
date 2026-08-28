@@ -106,10 +106,7 @@ export function InvestorPreviewMenuItem() {
     <DropdownMenuItem asChild>
       <Link href={`/podglad-inwestora/${investmentId}`} target="_blank">
         <Eye />
-        <MenuItemBody
-          label="Widok inwestora"
-          description="Zobacz kosztorys tak, jak widzi go inwestor."
-        />
+        <MenuItemBody label="Podgląd" description="Zobacz kosztorys tak, jak widzi go inwestor." />
       </Link>
     </DropdownMenuItem>
   )

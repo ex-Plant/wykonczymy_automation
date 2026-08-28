@@ -16,7 +16,7 @@ export function KosztorysTotalsPanelToggle({
   size = 'sm',
   disabled = false,
 }: {
-  size?: 'sm' | 'default'
+  size?: 'sm' | 'default' | 'lg'
   disabled?: boolean
 }) {
   const [totalsOpen, setTotalsOpen] = useTotalsPanelOpen()

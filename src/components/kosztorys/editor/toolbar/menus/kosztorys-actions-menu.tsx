@@ -19,11 +19,7 @@ import { ClearKosztorysMenuItem } from '@/components/kosztorys/editor/actions/cl
 import { SavePresetMenuItem } from '@/components/kosztorys/editor/actions/save-preset-action'
 import { ReloadPresetMenuItem } from '@/components/kosztorys/editor/actions/reload-preset-action'
 import { SheetCompareMenuItem } from '@/components/kosztorys/editor/actions/sheet-compare-action'
-import {
-  ClientViewSettingsMenuItem,
-  InvestorPreviewMenuItem,
-  ShareMenuItem,
-} from '@/components/kosztorys/editor/actions/investor-actions'
+import { KosztorysInvestorMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-investor-menu'
 import { SaveVersionDialog } from '@/components/kosztorys/editor/dialogs/save-version-dialog'
 import { ClearKosztorysDialog } from '@/components/kosztorys/editor/dialogs/clear-kosztorys-dialog'
 import { SavePresetDialog } from '@/components/kosztorys/editor/dialogs/save-preset-dialog'
@@ -39,6 +35,7 @@ export function KosztorysActionsMenu() {
 
   return (
     <KosztorysActionsProvider>
+      <KosztorysInvestorMenu />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button size="sm" variant="outline">
@@ -47,11 +44,6 @@ export function KosztorysActionsMenu() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-80">
-          <DropdownMenuLabel>Inwestor</DropdownMenuLabel>
-          <InvestorPreviewMenuItem />
-          <ClientViewSettingsMenuItem />
-          <ShareMenuItem />
-          <DropdownMenuSeparator />
           <DropdownMenuLabel>Edycja</DropdownMenuLabel>
           <DropdownMenuItem onSelect={undo} disabled={!canUndo}>
             <Undo2 />
