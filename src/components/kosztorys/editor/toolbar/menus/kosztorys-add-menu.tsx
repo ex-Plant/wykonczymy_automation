@@ -40,13 +40,11 @@ export function KosztorysAddMenu() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
-          {/* No section is preselected: any default lands the praca somewhere the user isn't
-              looking, which is the whole reason this is a picker. The pozycja count disambiguates —
-              section names are not unique.
-              With nothing to pick from, the submenu is dropped rather than offered empty: a chevron
-              opening onto nothing reads as a broken menu. A new sekcja is born with its first
-              pozycja inside (handleAddSection), so on an empty rozpiska „Praca" delivers exactly
-              what it says — it just has to create the sekcja that holds it. */}
+          {/* No section is preselected — any default lands the praca where the user isn't looking,
+              which is the whole reason this is a picker. Names are not unique, so the pozycja count
+              (as on the section band) is what tells two „Łazienka" apart. With nothing to pick from
+              the submenu is dropped rather than offered empty; „Praca" then goes through
+              handleAddSection, which mints a section WITH its first pozycja inside. */}
           {subtotals.length === 0 ? (
             <DropdownMenuItem onSelect={handleAddSection}>
               <Hammer />
