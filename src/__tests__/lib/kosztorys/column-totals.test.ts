@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { columnTotalsForRows } from '@/lib/kosztorys/column-totals'
-import { stageKey, stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
+import { stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import type { KosztorysTreeT } from '@/lib/kosztorys/types'
 import { baseItem, makeTree } from '@/__tests__/helpers/kosztorys-tree'
@@ -60,12 +60,9 @@ const totals = (rowSet = rows, view: 'client' | 'w_tools' = 'client') =>
   columnTotalsForRows(rowSet, tree.stages, view, tree.vatRate)
 
 describe('columnTotalsForRows', () => {
-  it('totals the etap axis: per-etap qty, its sum, and per-etap wartość netto/brutto', () => {
+  it('totals the etap axis by wartość netto/brutto only', () => {
     const all = totals()
 
-    expect(all.get(stageKey(100))).toBe(7)
-    expect(all.get(stageKey(101))).toBe(5)
-    expect(all.get('stageQtySum')).toBe(12)
     // Each etap's wartość is its qty share of the rows it touched, so the two must add back up to the
     // executed total — the reconciliation the sheet's per-etap block exists for.
     const stageNetSum =
@@ -108,16 +105,13 @@ describe('columnTotalsForRows', () => {
     expect(client.get('plannedGross')).toBeCloseTo((client.get('plannedNet') ?? 0) * 1.08, 10)
     expect(subcontractor.has('plannedNet')).toBe(false)
     expect(subcontractor.has('plannedGross')).toBe(false)
-    // The qty is typed, not priced, so it survives the view switch.
-    expect(subcontractor.get('plannedQty')).toBe(15)
   })
 
   it('drops an out-of-view etap from the axis rather than totalling a hidden column', () => {
     const subcontractor = totals(rows, 'w_tools')
 
-    expect(subcontractor.has(stageKey(100))).toBe(true)
-    expect(subcontractor.has(stageKey(101))).toBe(false)
-    expect(subcontractor.get('stageQtySum')).toBe(7)
+    expect(subcontractor.has(stageValueNetKey(100))).toBe(true)
+    expect(subcontractor.has(stageValueNetKey(101))).toBe(false)
   })
 
   // A rabat globalny is a single subtraction the summary panel makes once, and it suppresses each
@@ -141,6 +135,6 @@ describe('columnTotalsForRows', () => {
 
     expect(empty.get('net')).toBe(0)
     expect(empty.get('remaining')).toBe(0)
-    expect(empty.get('stageQtySum')).toBe(0)
+    expect(empty.get('discountAmount')).toBe(0)
   })
 })
