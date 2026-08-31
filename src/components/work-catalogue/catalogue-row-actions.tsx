@@ -31,10 +31,10 @@ export function CatalogueRowActions({ item, categorySuggestions }: PropsT) {
   }
 
   return (
-    <div className="flex items-center justify-end gap-2">
+    <div className="flex items-center justify-end gap-1">
       <EditCatalogueItemDialog item={item} categorySuggestions={categorySuggestions} />
 
-      <Button size="sm" variant="destructive" onClick={() => setConfirming(true)}>
+      <Button size="xs" variant="destructive" onClick={() => setConfirming(true)}>
         <Trash2 />
         Usuń
       </Button>

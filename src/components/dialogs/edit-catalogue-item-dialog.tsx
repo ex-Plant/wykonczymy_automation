@@ -23,7 +23,7 @@ export function EditCatalogueItemDialog({
       formId={formId}
       showKeepOpen={false}
       trigger={
-        <Button size="sm" variant="outline" aria-label="Edytuj pozycję katalogu">
+        <Button size="xs" variant="outline" aria-label="Edytuj pozycję katalogu">
           <Pencil />
           <span>Edytuj</span>
         </Button>
