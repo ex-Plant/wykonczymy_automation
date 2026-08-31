@@ -1,4 +1,5 @@
-import 'server-only'
+// No `server-only` here (half of src/lib/db skips it too): the katalog seed script runs `getPreset`
+// under tsx, where that import throws.
 import { sql } from '@payloadcms/db-vercel-postgres'
 import {
   SNAPSHOT_SCHEMA_VERSION,

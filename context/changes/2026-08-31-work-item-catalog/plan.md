@@ -515,13 +515,13 @@ wsadzie katalog jest zwykłymi danymi produkcyjnymi i obowiązują zasady bez wy
 
 #### Automated
 
-- [x] 2.1 Spec akcji katalogu (kolizja klucza, ignorowanie klucza z drutu)
+- [x] 2.1 Spec akcji katalogu (kolizja klucza, ignorowanie klucza z drutu) — 64722e73
 
 ### Phase 3: Zasilenie katalogu z szablonu-wzoru
 
 #### Automated
 
-- [ ] 3.1 Spec zasilenia (dedup, reguła najczęstszej wartości, kategoria, stawki)
+- [x] 3.1 Spec zasilenia (dedup, reguła najczęstszej wartości, kategoria, stawki)
 
 ### Phase 4: „Dodaj → Praca z katalogu…"
 
