@@ -71,7 +71,7 @@ export function getWorkCatalogueColumns({
 
     col.accessor((row) => shareOf(row.wToolsRate, row.clientPrice), {
       id: 'wToolsShare',
-      header: '% z narzędziami',
+      header: '% ceny klienta z narzędziami',
       meta: { align: 'right', tooltip: SHARE_TOOLTIP },
       cell: (info) => share(info.getValue()),
     }),
@@ -85,7 +85,7 @@ export function getWorkCatalogueColumns({
 
     col.accessor((row) => shareOf(row.ownToolsRate, row.clientPrice), {
       id: 'ownToolsShare',
-      header: '% bez narzędzi',
+      header: '% ceny klienta bez narzędzi',
       meta: { align: 'right', tooltip: SHARE_TOOLTIP },
       cell: (info) => share(info.getValue()),
     }),
