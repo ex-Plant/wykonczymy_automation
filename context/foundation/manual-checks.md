@@ -3587,3 +3587,32 @@ JSON w `GOOGLE_SERVICE_ACCOUNT_WRITE_JSON` — takie konto z definicji nie sięg
 - [ ] Sześć odmrożonych sekcji bramy `staging → main` (`sheet-live-compare`, `kosztorys-importer`,
       `import-etapy-z-arkusza`, `sheet-column-mapping`, `EX-686`, `sheet-measured-qty-from-formula`)
       daje się przejechać lokalnie — wszystkie są odczytowe, żadna nie potrzebuje prawa zapisu
+
+## work-item-catalog — „Katalog prac"
+
+Setup: baza testowa 5435 po `pnpm db:import:test` + `pnpm seed:kosztorys:test`, migracja katalogu
+zaaplikowana lokalnie, zalogowany jako OWNER. Zasilenie katalogu (`src/scripts/seed-work-catalogue.ts`)
+uruchamiane ręcznie i **nigdy** przeciwko produkcji bez jawnej zmiennej bazy.
+
+- [ ] `/admin` pokazuje kolekcję „Katalog prac" i pozwala dodać wpis
+- [ ] Próba dodania drugiego wpisu o tym samym opisie i j.m. jest odrzucona
+- [ ] Dodanie, edycja i usunięcie pozycji działają, lista odświeża się bez przeładowania strony
+- [ ] Wyszukiwarka znajduje pracę wpisaną bez ogonków i z inną wielkością liter
+- [ ] Próba dodania duplikatu pokazuje komunikat, a nie błąd aplikacji
+- [ ] Tryb próbny na szablonie „kosztorys wzrór test" pokazuje 191 pozycji i 9 rozbieżności
+- [ ] Po `--apply` ekran katalogu listuje 191 pozycji z sensownymi kategoriami
+- [ ] Powtórne uruchomienie tworzy 0 nowych pozycji
+- [ ] Wsad na preview daje ten sam wynik co lokalnie, a ekran katalogu na stagingu to potwierdza
+- [ ] Uruchomienie bez jawnej zmiennej bazy trafia w lokalnego Dockera, a nie w produkcję
+- [ ] Wstawienie trzech prac naraz ląduje na końcu wybranej sekcji, w kolejności zaznaczenia
+- [ ] Wstawiona praca pokazuje cenę i obie stawki z katalogu, przedmiar 0
+- [ ] Praca ze stawką powyżej 80% ceny klienta wchodzi, a ostrzeżenie się pokazuje
+- [ ] W widoku inwestora menu „Dodaj" nie istnieje
+- [ ] Zapis pracy z rozpiski tworzy pozycję widoczną na ekranie katalogu, z poprawnymi stawkami
+- [ ] Zapis pracy, która w katalogu już jest, proponuje nadpisanie i pokazuje obie wersje liczb
+- [ ] W widoku inwestora pozycji „Zapisz do katalogu…" nie ma
+- [ ] Raport „Porównaj z katalogiem" na kosztorysie wczytanym ze starego szablonu pokazuje sensowne rozjazdy
+- [ ] Raport na kosztorysie złożonym w całości z katalogu pokazuje same zgodne pozycje
+- [ ] Podpowiedzi przy „brak w katalogu" trafiają w rzeczywiste odpowiedniki
+- [ ] Kolumny „% z narzędziami" / „% bez narzędzi" pokazują udział stawki w „Cenie j.m.", a powyżej 80% świecą na czerwono
+- [ ] Sortowanie po kolumnie procentowej ustawia najdroższe prace na górze

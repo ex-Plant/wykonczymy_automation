@@ -539,4 +539,4 @@ wsadzie katalog jest zwykłymi danymi produkcyjnymi i obowiązują zasady bez wy
 
 #### Automated
 
-- [x] 6.1 Spec porównania (tolerancja, rozjazd stawki, kubełek „brak", podpowiedzi)
+- [x] 6.1 Spec porównania (tolerancja, rozjazd stawki, kubełek „brak", podpowiedzi) — 384d30cf
