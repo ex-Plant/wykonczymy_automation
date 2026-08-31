@@ -521,13 +521,13 @@ wsadzie katalog jest zwykłymi danymi produkcyjnymi i obowiązują zasady bez wy
 
 #### Automated
 
-- [x] 3.1 Spec zasilenia (dedup, reguła najczęstszej wartości, kategoria, stawki)
+- [x] 3.1 Spec zasilenia (dedup, reguła najczęstszej wartości, kategoria, stawki) — 23bf2fc9
 
 ### Phase 4: „Dodaj → Praca z katalogu…"
 
 #### Automated
 
-- [ ] 4.1 Spec wstawiania (różne display_order, kolejność, stawki jako kwoty, ostrzeżenie 80%)
+- [x] 4.1 Spec wstawiania (różne display_order, kolejność, stawki jako kwoty, ostrzeżenie 80%)
 
 ### Phase 5: „Zapisz do katalogu…" z menu wiersza
 

@@ -1,8 +1,45 @@
 // No `server-only` here: the katalog seed script runs these helpers under tsx, where it throws
 // (same reason as kosztorys-descriptions.ts).
 import { sql } from '@payloadcms/db-vercel-postgres'
-import type { CatalogueSeedItemT } from '@/lib/kosztorys/work-catalogue/types'
+import type { CatalogueSeedItemT, WorkCatalogueItemT } from '@/lib/kosztorys/work-catalogue/types'
 import type { DbExecutorT } from './get-db'
+
+export function toCatalogueItem(row: Record<string, unknown>): WorkCatalogueItemT {
+  return {
+    id: Number(row.id),
+    description: row.description as string,
+    category: (row.category as string | null) ?? null,
+    unit: row.unit as string,
+    clientPrice: Number(row.client_price),
+    wToolsRate: Number(row.w_tools_rate),
+    ownToolsRate: Number(row.own_tools_rate),
+    matchKey: row.match_key as string,
+  }
+}
+
+/**
+ * The cennik rows named by id, returned in the CALLER's order — the wstawianie writes them in the
+ * order the user ticked them, and SQL has no opinion about that order.
+ */
+export async function listCatalogueItemsByIds(
+  db: DbExecutorT,
+  ids: readonly number[],
+): Promise<WorkCatalogueItemT[]> {
+  if (ids.length === 0) return []
+  const result = await db.execute(sql`
+    SELECT id, description, category, unit, client_price, w_tools_rate, own_tools_rate, match_key
+    FROM work_catalogue_items
+    WHERE id IN (${sql.join(
+      ids.map((id) => sql`${id}`),
+      sql.raw(', '),
+    )})
+  `)
+  const byId = new Map(result.rows.map((row) => [Number(row.id), toCatalogueItem(row)]))
+  return ids.flatMap((id) => {
+    const item = byId.get(id)
+    return item ? [item] : []
+  })
+}
 
 /** Every klucz already in the cennik — what the seed subtracts before proposing anything. */
 export async function listCatalogueMatchKeys(db: DbExecutorT): Promise<Set<string>> {

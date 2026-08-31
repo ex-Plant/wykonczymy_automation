@@ -947,6 +947,29 @@ export function useKosztorysEditor({
     router.refresh()
   }
 
+  // The twin of handleAppendedSections for prace inserted into an EXISTING sekcja. It cannot append
+  // to the array's end: the grid walks rows in order to build its section bands, so a row parked past
+  // a later section would open a second band for a section that already has one. Each row therefore
+  // goes through applyAddItem, which lands it after the last row of its own sekcja — and folding them
+  // in order keeps the katalog's selection order, since each new row becomes the next one's anchor.
+  function handleAppendedCatalogueItems(slice: KosztorysTreeT['sections'][number]) {
+    const appended = treeToRows({
+      sections: [slice],
+      stages,
+      progress: [],
+      globalCoeffs: tree.globalCoeffs,
+      vatRate: tree.vatRate,
+      settlementMode: tree.settlementMode,
+      materialsNetRate: tree.materialsNetRate,
+      globalDiscount,
+      revision: tree.revision,
+    })
+    for (const row of appended) prevById.current.set(row.id, row)
+    setRows((rs) => appended.reduce(applyAddItem, rs))
+    unfoldSection(slice.id)
+    router.refresh()
+  }
+
   async function handleRemoveSection(sectionId: number) {
     // The summary confirms before calling here (EX-477); a populated section cascade-deletes its
     // items + stage_progress server-side, guarded only by the confirm dialog, not a block.
@@ -1164,6 +1187,7 @@ export function useKosztorysEditor({
     handleAddItem,
     handleAddSection,
     handleAppendedSections,
+    handleAppendedCatalogueItems,
     handleAddStage,
     handleGlobalCoeffChange,
     handleVatChange,

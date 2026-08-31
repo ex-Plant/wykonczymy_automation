@@ -1,6 +1,17 @@
 'use server'
 
+import { z } from 'zod'
+import { getDb } from '@/lib/db/get-db'
+import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
+import { listCatalogueItemsByIds } from '@/lib/db/work-catalogue'
 import { catalogueKey } from '@/lib/kosztorys/work-catalogue/catalogue-key'
+import {
+  appendCatalogueItems,
+  type AppendedCatalogueSliceT,
+} from '@/lib/kosztorys/work-catalogue/append-catalogue-items'
+import { getWorkCatalogue } from '@/lib/queries/work-catalogue'
+import type { WorkCatalogueItemT } from '@/lib/kosztorys/work-catalogue/types'
+import type { ActionResultT } from '@/types/action'
 import {
   workCatalogueItemSchema,
   type WorkCatalogueItemDataT,
@@ -89,5 +100,49 @@ export async function deleteCatalogueItemAction(id: number) {
       return { success: true }
     },
     ['workCatalogue'],
+  )
+}
+
+// The cennik for the editor's picker — fetch-on-open, same cached read the /katalog-prac screen uses
+// server-side, so both share one cache entry.
+export async function listWorkCatalogueAction(): Promise<ActionResultT<WorkCatalogueItemT[]>> {
+  return protectedAction('listWorkCatalogueAction', async () => {
+    const data = await getWorkCatalogue()
+    return { success: true, data }
+  })
+}
+
+const insertCatalogueItemsSchema = z.object({
+  sectionId: z.number().int().positive(),
+  catalogueItemIds: z.array(z.number().int().positive()).min(1, 'Wybierz co najmniej jedną pracę'),
+})
+
+// „Dodaj → Praca z katalogu…". The client sends ONLY ids: every number that lands in the rozpiska is
+// re-read from the cennik server-side, so a tampered payload cannot price a praca.
+export async function insertCatalogueItemsAction(
+  sectionId: number,
+  catalogueItemIds: number[],
+): Promise<ActionResultT<AppendedCatalogueSliceT>> {
+  return protectedAction(
+    'insertCatalogueItemsAction',
+    async ({ payload }) => {
+      const parsed = validateAction(insertCatalogueItemsSchema, { sectionId, catalogueItemIds })
+      if (!parsed.success) return parsed
+
+      const db = await getDb(payload)
+      const items = await listCatalogueItemsByIds(db, parsed.data.catalogueItemIds)
+      if (items.length !== parsed.data.catalogueItemIds.length)
+        return { success: false, error: 'Część wybranych prac nie istnieje już w katalogu.' }
+
+      const created = await withPayloadTransaction(
+        payload,
+        (req) => appendCatalogueItems(payload, req, parsed.data.sectionId, items),
+        { skipRevalidation: true },
+      )
+      if (!created) return { success: false, error: 'Nie znaleziono sekcji' }
+
+      return { success: true, data: created }
+    },
+    ['kosztorysItems'],
   )
 }

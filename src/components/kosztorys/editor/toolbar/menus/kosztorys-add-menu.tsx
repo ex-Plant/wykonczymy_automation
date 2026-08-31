@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { FolderPlus, Hammer, LibraryBig, Plus } from 'lucide-react'
+import { FolderPlus, Hammer, LibraryBig, ListChecks, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -12,6 +12,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { AddItemsFromCatalogueDialog } from '@/components/kosztorys/editor/dialogs/add-items-from-catalogue-dialog'
 import { AddSectionsFromPresetDialog } from '@/components/kosztorys/editor/dialogs/add-sections-from-preset-dialog'
 import { planeIcon } from '@/components/kosztorys/editor/plane-icons'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
@@ -24,11 +25,13 @@ export function KosztorysAddMenu() {
     handleAddItem,
     handleAddSection,
     handleAppendedSections,
+    handleAppendedCatalogueItems,
     handleAddStage,
   } = useKosztorysEditorContext()
   // Owned here, OUTSIDE the dropdown content: the menu unmounts on close, so a dialog rendered inside
   // it would unmount before it could open. The item only flips this flag.
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [cataloguePickerOpen, setCataloguePickerOpen] = useState(false)
 
   return (
     <>
@@ -82,6 +85,14 @@ export function KosztorysAddMenu() {
             <FolderPlus />
             Sekcja
           </DropdownMenuItem>
+          {/* Only with a sekcja to land in — the picker's whole first step is choosing one, and an
+              empty kosztorys has none to offer. */}
+          {subtotals.length > 0 && (
+            <DropdownMenuItem onSelect={() => setCataloguePickerOpen(true)}>
+              <ListChecks />
+              Praca z katalogu…
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onSelect={() => setPickerOpen(true)}>
             <LibraryBig />
             Sekcja z szablonu…
@@ -93,6 +104,12 @@ export function KosztorysAddMenu() {
         open={pickerOpen}
         onOpenChange={setPickerOpen}
         onAppended={handleAppendedSections}
+      />
+      <AddItemsFromCatalogueDialog
+        sections={subtotals}
+        open={cataloguePickerOpen}
+        onOpenChange={setCataloguePickerOpen}
+        onInserted={handleAppendedCatalogueItems}
       />
     </>
   )

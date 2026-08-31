@@ -4,6 +4,7 @@ import config from '@payload-config'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { CACHE_TAGS } from '@/lib/cache/tags'
 import { getDb } from '@/lib/db/get-db'
+import { toCatalogueItem } from '@/lib/db/work-catalogue'
 import type { WorkCatalogueItemT } from '@/lib/kosztorys/work-catalogue/types'
 
 // The whole cennik, in one argument-free cache entry — the katalog is global and a few hundred rows,
@@ -18,16 +19,7 @@ export const getWorkCatalogue = unstable_cache(
       FROM work_catalogue_items
       ORDER BY category NULLS LAST, description
     `)
-    return result.rows.map((row) => ({
-      id: Number(row.id),
-      description: row.description as string,
-      category: (row.category as string | null) ?? null,
-      unit: row.unit as string,
-      clientPrice: Number(row.client_price),
-      wToolsRate: Number(row.w_tools_rate),
-      ownToolsRate: Number(row.own_tools_rate),
-      matchKey: row.match_key as string,
-    }))
+    return result.rows.map(toCatalogueItem)
   },
   ['work-catalogue'],
   { tags: [CACHE_TAGS.workCatalogue] },
