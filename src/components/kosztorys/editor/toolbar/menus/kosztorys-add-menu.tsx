@@ -42,23 +42,34 @@ export function KosztorysAddMenu() {
         <DropdownMenuContent align="start">
           {/* No section is preselected: any default lands the praca somewhere the user isn't
               looking, which is the whole reason this is a picker. The pozycja count disambiguates —
-              section names are not unique. */}
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger disabled={subtotals.length === 0}>
+              section names are not unique.
+              With nothing to pick from, the submenu is dropped rather than offered empty: a chevron
+              opening onto nothing reads as a broken menu. A new sekcja is born with its first
+              pozycja inside (handleAddSection), so on an empty rozpiska „Praca" delivers exactly
+              what it says — it just has to create the sekcja that holds it. */}
+          {subtotals.length === 0 ? (
+            <DropdownMenuItem onSelect={handleAddSection}>
               <Hammer />
               Praca
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              {subtotals.map((section) => (
-                <DropdownMenuItem
-                  key={section.sectionId}
-                  onSelect={() => handleAddItem(section.sectionId)}
-                >
-                  {section.sectionName} ({section.itemCount} poz.)
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Hammer />
+                Praca
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {subtotals.map((section) => (
+                  <DropdownMenuItem
+                    key={section.sectionId}
+                    onSelect={() => handleAddItem(section.sectionId)}
+                  >
+                    {section.sectionName} ({section.itemCount} poz.)
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
           {/* Plane is forced at creation — each etap plane is its own top-level item, so there is no
               plane-less „Etap" and no new stage is ever unconfirmed. The worker is deliberately NOT
               forced the same way: an unassigned etap is a legitimate resting state (it earns its own

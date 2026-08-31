@@ -20,7 +20,9 @@ razie ostatnia" znika.
   (`src/lib/kosztorys/delete-policy.ts:28`) kasuje sekcję kaskadowo przy usunięciu ostatniej pozycji,
   a nowa sekcja powstaje od razu z jedną pozycją. Lista z `subtotals` jest więc zawsze kompletna.
 - `DropdownMenuSubContent` (`src/components/ui/dropdown-menu.tsx:215`) nie ma ani `max-h`, ani
-  `overflow-y-auto` — `DropdownMenuContent` (linia 36) ma oba. Przy kilkudziesięciu sekcjach podmenu
+  `overflow-y-auto` — `DropdownMenuContent` (linia 36) ma oba. `DropdownMenuSubTrigger` nie ma z kolei
+  stylów `data-[disabled]`, które niosą `Item` i `CheckboxItem`, więc `disabled` na nim nic nie
+  wyszarza (ujawnione w przeglądarce po fazie 2). Przy kilkudziesięciu sekcjach podmenu
   wyjedzie poza viewport bez możliwości przewinięcia.
 - Menu jest renderowane wyłącznie w widoku właściciela (klient nie ma paska narzędzi), więc `preview`
   nie wchodzi w grę.
@@ -29,7 +31,7 @@ razie ostatnia" znika.
 
 „Dodaj → Praca ▸" rozwija listę sekcji z licznikiem pozycji; kliknięcie sekcji dokleja do niej pustą
 pracę i rozwija ją, dokładnie jak dziś. Żadna sekcja nie jest wyróżniona jako domyślna. Przy braku
-sekcji wyzwalacz „Praca" jest wyszarzony — jak obecnie. Długa lista sekcji przewija się w miejscu.
+sekcji podmenu w ogóle się nie renderuje, a „Praca" zakłada pierwszą sekcję razem z pozycją w środku. Długa lista sekcji przewija się w miejscu.
 
 ### Key Discoveries:
 
@@ -103,8 +105,8 @@ Zamiana zgadywanki na jawny wybór sekcji w istniejącym `DropdownMenu`.
 Etykieta sekcji niesie licznik pozycji, bo nazwy sekcji nie są unikalne i sama nazwa nie rozstrzyga,
 o którą chodzi.
 
-**Contract**: `DropdownMenuSubTrigger` „Praca" z ikoną `Hammer`, wyłączony gdy `subtotals.length === 0`
-(dzisiejsze zachowanie przy pustej rozpisce); `DropdownMenuSubContent` z jednym
+**Contract**: `DropdownMenuSubTrigger` „Praca" z ikoną `Hammer`, renderowany tylko gdy `subtotals.length > 0`;
+przy pustej rozpisce w jego miejsce idzie zwykły `DropdownMenuItem` wołający `handleAddSection`; `DropdownMenuSubContent` z jednym
 `DropdownMenuItem` na sekcję, `key={sectionId}`, etykieta `„<sectionName> (<itemCount> poz.)"`,
 `onSelect={() => handleAddItem(s.sectionId)}`. Import `DropdownMenuSub` / `SubTrigger` / `SubContent`
 z `@/components/ui/dropdown-menu`; `collapsedSectionIds` wypada z destrukturyzacji kontekstu.
@@ -125,7 +127,8 @@ Pozostałe pozycje menu (etapy, sekcja, sekcja z szablonu) bez zmian.
 - Wybór sekcji dokleja pustą pracę na jej końcu i rozwija tę sekcję — także wtedy, gdy była zwinięta.
 - Wybór sekcji innej niż ostatnia i innej niż jedyna rozwinięta trafia dokładnie tam, gdzie wskazano
   (regresja na heurystykę), i utrzymuje się po odświeżeniu strony.
-- Przy rozpisce bez sekcji wyzwalacz „Praca" jest wyszarzony.
+- Przy rozpisce bez sekcji „Praca" nie ma strzałki podmenu i jednym kliknięciem zakłada pierwszą
+  sekcję z pozycją w środku.
 - Nawigacja klawiaturą: strzałka w prawo otwiera podmenu, Enter dodaje pracę do podświetlonej sekcji.
 
 ---
