@@ -11,6 +11,10 @@ Cztery kąty (`reuse` / `simplification` / `efficiency` / `altitude`) przeszedł
 
 ## Findings
 
+Przed przycięciem: 3 fixed, 1 deferred (EX-752), 2 dismissed, 2 dropped · 0 open.
+Findingi „fixed" wycięte przy archiwizacji — ich trwałym zapisem są commity 815a3097 / d33de2ed /
+831d5c3d; zostaje to, czego git nie niesie: decyzje o nierobieniu.
+
 - [x] fixed · comment-noise · `kosztorys-add-menu.tsx:43` · sześciolinijkowy komentarz nad „Praca"
       skrócony do pięciu i odchudzony — treść trzymająca uzasadnienie (brak domyślnej sekcji,
       po co licznik, czemu nie puste podmenu) zostaje, narracja wypada

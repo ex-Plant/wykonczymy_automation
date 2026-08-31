@@ -1,10 +1,10 @@
 ---
 change_id: add-item-section-picker
 title: Wybór sekcji przed dodaniem pracy z menu „Dodaj"
-status: implemented
+status: archived
 created: 2026-08-31
 updated: 2026-08-31
-archived_at: null
+archived_at: 2026-08-31T17:30:00Z
 branch: null
 worktree: null
 ---

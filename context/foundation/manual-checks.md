@@ -3587,21 +3587,3 @@ JSON w `GOOGLE_SERVICE_ACCOUNT_WRITE_JSON` — takie konto z definicji nie sięg
 - [ ] Sześć odmrożonych sekcji bramy `staging → main` (`sheet-live-compare`, `kosztorys-importer`,
       `import-etapy-z-arkusza`, `sheet-column-mapping`, `EX-686`, `sheet-measured-qty-from-formula`)
       daje się przejechać lokalnie — wszystkie są odczytowe, żadna nie potrzebuje prawa zapisu
-
-## add-item-section-picker
-
-### Faza 1: Podmenu przewija się jak menu główne
-
-- [ ] Rozpiska z kilkudziesięcioma sekcjami: podmenu „Praca" mieści się w oknie i przewija się
-      kółkiem oraz strzałkami, ostatnia sekcja jest osiągalna
-- [ ] Pozostałe podmenu w aplikacji wyglądają bez zmian przy krótkiej liście
-
-### Faza 2: „Praca ▸ wybór sekcji"
-
-- [ ] „Dodaj → Praca" pokazuje wszystkie sekcje rozpiski, w kolejności rozpiski, z licznikiem pozycji
-- [ ] Wybór sekcji dokleja pustą pracę na jej końcu i rozwija tę sekcję — także wtedy, gdy była zwinięta
-- [ ] Wybór sekcji innej niż ostatnia i innej niż jedyna rozwinięta trafia dokładnie tam, gdzie
-      wskazano, i utrzymuje się po odświeżeniu strony
-- [ ] Przy rozpisce bez sekcji „Praca" nie ma strzałki podmenu i jednym kliknięciem zakłada pierwszą
-      sekcję z pozycją w środku
-- [ ] Nawigacja klawiaturą: strzałka w prawo otwiera podmenu, Enter dodaje pracę do podświetlonej sekcji
