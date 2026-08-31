@@ -15,9 +15,6 @@ Przed przycięciem: 3 fixed, 1 deferred (EX-752), 2 dismissed, 2 dropped · 0 op
 Findingi „fixed" wycięte przy archiwizacji — ich trwałym zapisem są commity 815a3097 / d33de2ed /
 831d5c3d; zostaje to, czego git nie niesie: decyzje o nierobieniu.
 
-- [x] fixed · comment-noise · `kosztorys-add-menu.tsx:43` · sześciolinijkowy komentarz nad „Praca"
-      skrócony do pięciu i odchudzony — treść trzymająca uzasadnienie (brak domyślnej sekcji,
-      po co licznik, czemu nie puste podmenu) zostaje, narracja wypada
 - [x] dropped · reuse · `kosztorys-add-menu.tsx:67` · „(n poz.)" renderuje się w trzech miejscach
       (`section-header-cell.tsx:113`, `add-sections-from-preset-dialog.tsx:219`, tutaj) — helper na
       interpolację jednego stringa miałby parametry równe swojemu ciału, a każdy z trzech ma inny
@@ -31,14 +28,6 @@ Findingi „fixed" wycięte przy archiwizacji — ich trwałym zapisem są commi
 - [x] dismissed · efficiency · `kosztorys-add-menu.tsx:60` · `subtotals.map` renderuje się przy
       każdym otwarciu menu; `subtotals` to istniejące memo nad pełnym zbiorem, lista sekcji jest
       rzędu dziesiątek, brak gorącej ścieżki
-- [x] fixed · verify · `ui/dropdown-menu.tsx:204` · `DropdownMenuSubTrigger` nie miał stylów
-      `data-[disabled]`, które niosą `Item` i `CheckboxItem`, więc `disabled` na podmenu niczego nie
-      wyszarzało (ujawnione przez właściciela w przeglądarce) — poprawione w prymitywie, 831d5c3d
-      test: no automated test · — czysta klasa CSS w prymitywie; asercja na string klas testowałaby
-      implementację, nie zachowanie
-- [x] fixed · verify · `kosztorys-add-menu.tsx:49` · pusta rozpiska pokazywała strzałkę podmenu nad
-      listą, z której nic nie dało się wybrać — bez sekcji podmenu nie renderuje się wcale, 831d5c3d
-      test: no automated test · — gałąź JSX bez modelu; ryzyko przeniesione do EX-752
 - [x] deferred · gate · slice ma ryzyko browserowe (client → server action → DB), E2E odroczone
       i zgłoszone jako **EX-752** (`e2e-backlog`, projekt Wykonczymy)
       test: no automated test przy shipowaniu · e2e — dyspozycja zapisana w issue
