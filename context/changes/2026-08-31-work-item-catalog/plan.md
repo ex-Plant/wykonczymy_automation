@@ -533,10 +533,10 @@ wsadzie katalog jest zwykłymi danymi produkcyjnymi i obowiązują zasady bez wy
 
 #### Automated
 
-- [x] 5.1 Spec zapisu (stawka z globalnych współczynników, kolizja, nadpisanie w miejscu)
+- [x] 5.1 Spec zapisu (stawka z globalnych współczynników, kolizja, nadpisanie w miejscu) — e71c67aa
 
 ### Phase 6: Raport „Porównaj z katalogiem"
 
 #### Automated
 
-- [ ] 6.1 Spec porównania (tolerancja, rozjazd stawki, kubełek „brak", podpowiedzi)
+- [x] 6.1 Spec porównania (tolerancja, rozjazd stawki, kubełek „brak", podpowiedzi)

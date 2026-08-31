@@ -1,0 +1,147 @@
+import { describe, it, expect } from 'vitest'
+import { buildCatalogueComparison } from '@/lib/kosztorys/work-catalogue/build-catalogue-comparison'
+import { catalogueKey } from '@/lib/kosztorys/work-catalogue/catalogue-key'
+import type { KosztorysItemT } from '@/lib/kosztorys/types'
+import type { WorkCatalogueItemT } from '@/lib/kosztorys/work-catalogue/types'
+
+// The report is allowed to be wrong in only one direction: it may never invent a rozjazd. Everything
+// asserted here is about that — grosz noise is not a difference, a stawka is compared even when the
+// cena agrees, and a praca the cennik has never heard of is a hole, not a disagreement.
+const SETTINGS = { wToolsCoeff: 0.65, ownToolsCoeff: 0.5 }
+
+let nextId = 1
+
+const item = (overrides: Partial<KosztorysItemT> = {}): KosztorysItemT => ({
+  id: nextId++,
+  sectionId: 1,
+  displayOrder: 0,
+  description: 'Malowanie ścian',
+  unit: 'm2',
+  plannedQty: 10,
+  sheetMeasuredQty: null,
+  discountType: null,
+  discountValue: 0,
+  clientPrice: 100,
+  wToolsOverrideType: null,
+  wToolsOverrideValue: 0,
+  ownToolsOverrideType: null,
+  ownToolsOverrideValue: 0,
+  note: null,
+  ...overrides,
+})
+
+const entry = (overrides: Partial<WorkCatalogueItemT> = {}): WorkCatalogueItemT => {
+  const description = overrides.description ?? 'Malowanie ścian'
+  const unit = overrides.unit ?? 'm2'
+  return {
+    id: 1,
+    description,
+    category: null,
+    unit,
+    clientPrice: 100,
+    wToolsRate: 65,
+    ownToolsRate: 50,
+    matchKey: catalogueKey(description, unit),
+    ...overrides,
+  }
+}
+
+describe('buildCatalogueComparison', () => {
+  it('nie robi rozjazdu z różnicy poniżej tolerancji groszowej', () => {
+    const result = buildCatalogueComparison([item({ clientPrice: 100.002 })], [entry()], SETTINGS)
+
+    expect(result.matching).toBe(1)
+    expect(result.diffs).toHaveLength(0)
+  })
+
+  it('raportuje rozjazd samej stawki podwykonawcy przy zgodnej cenie', () => {
+    const result = buildCatalogueComparison([item()], [entry({ wToolsRate: 80 })], SETTINGS)
+
+    expect(result.matching).toBe(0)
+    expect(result.diffs).toHaveLength(1)
+    expect(result.diffs[0].figures.map((figure) => figure.label)).toEqual(['Stawka z narzędziami'])
+    expect(result.diffs[0].figures[0].kosztorys).toBeCloseTo(65, 6)
+    expect(result.diffs[0].figures[0].delta).toBeCloseTo(-15, 6)
+  })
+
+  it('porównuje stawkę nadpisaną kwotowo, nie wyliczoną z współczynnika', () => {
+    const result = buildCatalogueComparison(
+      [item({ wToolsOverrideType: 'amount', wToolsOverrideValue: 65 })],
+      [entry()],
+      SETTINGS,
+    )
+
+    expect(result.diffs).toHaveLength(0)
+    expect(result.matching).toBe(1)
+  })
+
+  it('sortuje rozjazdy od największej różnicy', () => {
+    const result = buildCatalogueComparison(
+      [
+        item({ description: 'Mała różnica', clientPrice: 105 }),
+        item({ description: 'Duża różnica', clientPrice: 300 }),
+      ],
+      [
+        entry({
+          description: 'Mała różnica',
+          clientPrice: 100,
+          wToolsRate: 68.25,
+          ownToolsRate: 52.5,
+        }),
+        entry({
+          description: 'Duża różnica',
+          clientPrice: 100,
+          wToolsRate: 195,
+          ownToolsRate: 150,
+        }),
+      ],
+      SETTINGS,
+    )
+
+    expect(result.diffs.map((diff) => diff.description)).toEqual(['Duża różnica', 'Mała różnica'])
+  })
+
+  it('praca spoza katalogu ląduje w missing, nigdy w diffs', () => {
+    const result = buildCatalogueComparison(
+      [item({ description: 'Nieznana praca', clientPrice: 999 })],
+      [entry()],
+      SETTINGS,
+    )
+
+    expect(result.diffs).toHaveLength(0)
+    expect(result.missing.map((row) => row.description)).toEqual(['Nieznana praca'])
+  })
+
+  it('ta sama nazwa w innej jednostce to brak w katalogu, nie rozjazd', () => {
+    const result = buildCatalogueComparison([item({ unit: 'szt' })], [entry()], SETTINGS)
+
+    expect(result.diffs).toHaveLength(0)
+    expect(result.missing).toHaveLength(1)
+  })
+
+  it('podpowiada najbliższą nazwę z katalogu', () => {
+    const result = buildCatalogueComparison(
+      [item({ description: 'Gładzie gipsowe', unit: 'm2' })],
+      [entry({ description: 'Gładź gipsowa' })],
+      SETTINGS,
+    )
+
+    expect(result.missing[0].hint).toBe('Gładź gipsowa')
+  })
+
+  it('nie podpowiada, gdy nic nie jest dostatecznie podobne', () => {
+    const result = buildCatalogueComparison(
+      [item({ description: 'Montaż drzwi przesuwnych' })],
+      [entry({ description: 'Malowanie ścian' })],
+      SETTINGS,
+    )
+
+    expect(result.missing[0].hint).toBeNull()
+  })
+
+  it('pomija pozycje bez opisu', () => {
+    const result = buildCatalogueComparison([item({ description: '   ' })], [entry()], SETTINGS)
+
+    expect(result).toEqual({ matching: 0, diffs: [], missing: [] })
+  })
+})

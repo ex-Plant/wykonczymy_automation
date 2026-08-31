@@ -10,11 +10,16 @@ import {
   listCatalogueItemsByIds,
 } from '@/lib/db/work-catalogue'
 import { toCatalogueCandidate } from '@/lib/kosztorys/work-catalogue/item-to-catalogue'
+import {
+  buildCatalogueComparison,
+  type CatalogueComparisonT,
+} from '@/lib/kosztorys/work-catalogue/build-catalogue-comparison'
 import { catalogueKey } from '@/lib/kosztorys/work-catalogue/catalogue-key'
 import {
   appendCatalogueItems,
   type AppendedCatalogueSliceT,
 } from '@/lib/kosztorys/work-catalogue/append-catalogue-items'
+import { getKosztorysTree } from '@/lib/queries/kosztorys'
 import { getWorkCatalogue } from '@/lib/queries/work-catalogue'
 import type {
   CatalogueSavePreviewT,
@@ -227,4 +232,29 @@ export async function saveItemToCatalogueAction(itemId: number, mode: 'new' | 'o
     },
     ['workCatalogue'],
   )
+}
+
+// „Porównaj z katalogiem" — a read, and only a read: it says where the rozpiska and the cennik
+// disagree and writes nothing either way. Both sides come from their own cached reads, so opening
+// the report costs one tree read and nothing else.
+export async function compareWithCatalogueAction(
+  investmentId: number,
+): Promise<ActionResultT<CatalogueComparisonT>> {
+  return protectedAction('compareWithCatalogueAction', async () => {
+    const [tree, catalogue] = await Promise.all([
+      getKosztorysTree(investmentId),
+      getWorkCatalogue(),
+    ])
+    const items = tree.sections.flatMap((section) =>
+      section.items.map((item) => ({ ...item, sectionName: section.name })),
+    )
+
+    return {
+      success: true,
+      data: buildCatalogueComparison(items, catalogue, {
+        wToolsCoeff: tree.globalCoeffs.wTools,
+        ownToolsCoeff: tree.globalCoeffs.ownTools,
+      }),
+    }
+  })
 }

@@ -20,6 +20,7 @@ export function SheetReportDialog<DataT>({
   loaded,
   data,
   error,
+  loadingText = 'Czytam arkusz Google…',
   actions,
   children,
 }: {
@@ -33,6 +34,9 @@ export function SheetReportDialog<DataT>({
   // on („udostępnij arkusz", „powiąż arkusz w ustawieniach") outlives a toast, and the window is
   // already open saying the read failed.
   error: string | null
+  // The wait line. Defaulted rather than required because the sheet windows are what this frame was
+  // written for; a report reading something else must say what it is reading.
+  loadingText?: string
   actions?: ReactNode
   children: (data: DataT) => ReactNode
 }) {
@@ -42,7 +46,7 @@ export function SheetReportDialog<DataT>({
         <DialogHeader title={title} description={description} />
 
         {!loaded ? (
-          <p className="text-muted-foreground text-sm">Czytam arkusz Google…</p>
+          <p className="text-muted-foreground text-sm">{loadingText}</p>
         ) : !data ? (
           <p className="text-destructive text-sm">
             {error ?? 'Nie udało się odczytać arkusza Google.'}

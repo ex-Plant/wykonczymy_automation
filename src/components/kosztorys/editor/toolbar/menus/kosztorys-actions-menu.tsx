@@ -19,12 +19,14 @@ import { ClearKosztorysMenuItem } from '@/components/kosztorys/editor/actions/cl
 import { SavePresetMenuItem } from '@/components/kosztorys/editor/actions/save-preset-action'
 import { ReloadPresetMenuItem } from '@/components/kosztorys/editor/actions/reload-preset-action'
 import { SheetCompareMenuItem } from '@/components/kosztorys/editor/actions/sheet-compare-action'
+import { CatalogueCompareMenuItem } from '@/components/kosztorys/editor/actions/catalogue-compare-action'
 import { KosztorysInvestorMenu } from '@/components/kosztorys/editor/toolbar/menus/kosztorys-investor-menu'
 import { SaveVersionDialog } from '@/components/kosztorys/editor/dialogs/save-version-dialog'
 import { ClearKosztorysDialog } from '@/components/kosztorys/editor/dialogs/clear-kosztorys-dialog'
 import { SavePresetDialog } from '@/components/kosztorys/editor/dialogs/save-preset-dialog'
 import { ReloadFromPresetDialog } from '@/components/kosztorys/editor/dialogs/reload-from-preset-dialog'
 import { SheetCompareDialog } from '@/components/kosztorys/editor/dialogs/sheet-compare-dialog'
+import { CatalogueCompareDialog } from '@/components/kosztorys/editor/dialogs/catalogue-compare-dialog'
 import { KosztorysClientViewDialog } from '@/components/kosztorys/editor/dialogs/kosztorys-client-view-dialog'
 import { KosztorysShareDialog } from '@/components/kosztorys/editor/dialogs/kosztorys-share-dialog'
 
@@ -69,6 +71,9 @@ export function KosztorysActionsMenu() {
           <DropdownMenuLabel>Szablony</DropdownMenuLabel>
           <SavePresetMenuItem />
           <ReloadPresetMenuItem />
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>Katalog prac</DropdownMenuLabel>
+          <CatalogueCompareMenuItem />
           {/* Both entries can only answer „Inwestycja nie ma kosztorysu." without a linked sheet. */}
           {hasSheet && (
             <>
@@ -89,6 +94,7 @@ export function KosztorysActionsMenu() {
       <SaveVersionDialog />
       <SavePresetDialog />
       <SheetCompareDialog />
+      <CatalogueCompareDialog />
       <ReloadFromPresetDialog />
       <ClearKosztorysDialog />
       <KosztorysClientViewDialog />

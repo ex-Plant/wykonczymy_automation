@@ -31,7 +31,7 @@ describe.skipIf(!ENV_READY)('saveItemToCatalogueAction (DB)', () => {
   let db: Awaited<ReturnType<typeof getDb>>
   let investmentId: number
   let sectionId: number
-  let coeffs = DEFAULT_COEFFS
+  let coeffs: { wTools: number; ownTools: number } = DEFAULT_COEFFS
   let suffix = ''
   const createdSections: number[] = []
   const ctx = { context: { skipRevalidation: true } }
@@ -93,10 +93,16 @@ describe.skipIf(!ENV_READY)('saveItemToCatalogueAction (DB)', () => {
     }
   })
 
-  async function createItem(
-    description: string,
-    overrides: Record<string, unknown> = {},
-  ): Promise<number> {
+  type ItemOverridesT = {
+    displayOrder?: number
+    clientPrice?: number
+    wToolsOverrideType?: string
+    wToolsOverrideValue?: number
+    ownToolsOverrideType?: string
+    ownToolsOverrideValue?: number
+  }
+
+  async function createItem(description: string, overrides: ItemOverridesT = {}): Promise<number> {
     const created = await payload.create({
       collection: 'kosztorys-items',
       data: {
@@ -107,6 +113,7 @@ describe.skipIf(!ENV_READY)('saveItemToCatalogueAction (DB)', () => {
         unit: 'm2',
         plannedQty: 3,
         clientPrice: 100,
+        discountValue: 0,
         ...overrides,
       },
       overrideAccess: true,
