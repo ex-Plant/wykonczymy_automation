@@ -11,7 +11,5 @@ declare module '@tanstack/react-table' {
     tooltip?: string
     /** Tailwind min-w-* utility class applied to the header and cell. */
     minWidth?: string
-    /** Lets a long header label wrap instead of widening the column to fit it on one line. */
-    headerWrap?: boolean
   }
 }

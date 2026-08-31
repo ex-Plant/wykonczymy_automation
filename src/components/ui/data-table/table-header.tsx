@@ -16,16 +16,13 @@ export function TableHeader<T>({ headerGroups }: { headerGroups: HeaderGroup<T>[
             const align = header.column.columnDef.meta?.align
             const tooltip = header.column.columnDef.meta?.tooltip
             const minWidth = header.column.columnDef.meta?.minWidth
-            const headerWrap = header.column.columnDef.meta?.headerWrap
             const rawHeader = header.column.columnDef.header
 
             // The header itself is the trigger, matching the kosztorys grid — no (i) icon competing
             // for width with the sort arrow. Radix closes the tip on pointerdown, so the click that
             // sorts also dismisses it instead of leaving it hanging over the re-sorted table.
             const content = (
-              <span
-                className={cn('inline-flex items-center gap-1', !headerWrap && 'whitespace-nowrap')}
-              >
+              <span className="inline-flex items-center gap-1 whitespace-nowrap">
                 {header.isPlaceholder ? null : flexRender(rawHeader, header.getContext())}
                 {canSort && <SortIcon sorted={sorted} />}
               </span>
@@ -37,7 +34,6 @@ export function TableHeader<T>({ headerGroups }: { headerGroups: HeaderGroup<T>[
                 className={cn(
                   'text-muted-foreground px-3 py-2 text-left text-sm font-medium',
                   align === 'right' && 'text-right',
-                  headerWrap && 'max-w-32 align-bottom',
                   align === 'center' && 'text-center',
                   canSort && 'cursor-pointer select-none',
                   minWidth,

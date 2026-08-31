@@ -9,6 +9,7 @@ import FormFooter from '@/components/forms/form-components/form-footer'
 import { UNIT_SUGGESTIONS } from '@/lib/kosztorys/constants'
 import { useWorkCatalogueItemFormStore } from '@/stores/form-stores'
 import {
+  toMoney,
   workCatalogueItemFormSchema,
   type WorkCatalogueItemDataT,
   type WorkCatalogueItemFormValuesT,
@@ -32,8 +33,6 @@ type WorkCatalogueItemFormPropsT = {
 
 // Matches `Input`, so the two comboboxes read as fields you can type into rather than as captions.
 const COMBOBOX_FIELD = 'border-input bg-background h-9 w-full rounded-md border px-3'
-
-const toNumber = (value: string) => Number(value.replace(',', '.').trim())
 
 export function WorkCatalogueItemForm({
   formId,
@@ -61,9 +60,9 @@ export function WorkCatalogueItemForm({
       description: value.description,
       category: value.category,
       unit: value.unit,
-      clientPrice: toNumber(value.clientPrice),
-      wToolsRate: toNumber(value.wToolsRate),
-      ownToolsRate: toNumber(value.ownToolsRate),
+      clientPrice: toMoney(value.clientPrice),
+      wToolsRate: toMoney(value.wToolsRate),
+      ownToolsRate: toMoney(value.ownToolsRate),
     }),
   })
 

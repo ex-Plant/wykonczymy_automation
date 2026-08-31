@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { SnapshotPayloadT, SnapshotSettingsT } from '@/lib/kosztorys/snapshot-format'
 import type { KosztorysItemT, KosztorysSectionT } from '@/lib/kosztorys/types'
 import { catalogueKey } from '@/lib/kosztorys/work-catalogue/catalogue-key'
-import { buildCatalogueSeed } from '@/lib/kosztorys/work-catalogue/seed-from-preset'
+import { buildCatalogueSeed } from '@/lib/kosztorys/work-catalogue/build-catalogue-seed'
 
 const SETTINGS: SnapshotSettingsT = { wToolsCoeff: 0.6, ownToolsCoeff: 0.5, vatRate: 0.23 }
 

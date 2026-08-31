@@ -13,7 +13,7 @@ import config from '../payload.config'
 import { getDb } from '../lib/db/get-db'
 import { getPreset } from '../lib/db/presets'
 import { insertCatalogueItems, listCatalogueMatchKeys } from '../lib/db/work-catalogue'
-import { buildCatalogueSeed } from '../lib/kosztorys/work-catalogue/seed-from-preset'
+import { buildCatalogueSeed } from '../lib/kosztorys/work-catalogue/build-catalogue-seed'
 
 const PRESET = Number(process.env.PRESET)
 const APPLY = process.argv.includes('--apply')

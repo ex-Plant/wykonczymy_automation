@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SimpleTooltip } from '@/components/ui/tooltip'
@@ -19,15 +18,13 @@ type PropsT = {
 export function CatalogueRowActions({ item, categorySuggestions }: PropsT) {
   const [confirming, setConfirming] = useState(false)
   const [pending, startTransition] = useTransition()
-  const router = useRouter()
 
   const onDelete = () => {
     startTransition(async () => {
       const res = await deleteCatalogueItemAction(item.id)
-      if (!res.success) return toastMessage(res.error, 'error')
+      if (!res.success) return toastMessage(res.error ?? 'Nie udało się usunąć pozycji', 'error')
       toastMessage('Usunięto pozycję z katalogu.', 'success')
       setConfirming(false)
-      router.refresh()
     })
   }
 

@@ -1,4 +1,8 @@
-import type { SubcontractorOverrideTypeT } from '@/lib/kosztorys/types'
+import type {
+  KosztorysItemT,
+  KosztorysSectionT,
+  SubcontractorOverrideTypeT,
+} from '@/lib/kosztorys/types'
 
 // The catalogue row as every reader sees it. Both stawki are frozen ZŁOTÓWKI, never współczynniki:
 // a coefficient would silently re-price the praca against the target investment's global coeffs the
@@ -15,7 +19,6 @@ export type WorkCatalogueItemT = {
   matchKey: string
 }
 
-// One catalogue row as the seed proposes it — the shape minus the id the database mints.
 export type CatalogueSeedItemT = Omit<WorkCatalogueItemT, 'id'>
 
 // One occurrence of a klucz inside the szablon, kept only so a rozbieżność can be shown with the
@@ -60,4 +63,51 @@ export type CatalogueSourceItemT = {
 export type CatalogueSavePreviewT = {
   candidate: CatalogueSeedItemT
   existing: WorkCatalogueItemT | null
+}
+
+export type CatalogueFigureDiffT = {
+  label: string
+  kosztorys: number
+  catalogue: number
+  delta: number
+}
+
+export type CataloguePriceDiffT = {
+  itemId: number
+  description: string
+  unit: string
+  figures: CatalogueFigureDiffT[]
+  // The largest of this praca's rozbieżności — what the list sorts by, so the biggest money is read
+  // first rather than found.
+  maxDelta: number
+}
+
+export type CatalogueMissingT = {
+  itemId: number
+  section: string
+  description: string
+  unit: string
+  // The closest cennik opis, or nothing. DISPLAY ONLY — this never matches, never prices anything
+  // and never decides which kubełek a praca lands in; it exists so „brak w katalogu" on a praca that
+  // IS there under a slightly different name is recognisable as such.
+  hint: string | null
+}
+
+export type CatalogueComparisonT = {
+  matching: number
+  diffs: CataloguePriceDiffT[]
+  missing: CatalogueMissingT[]
+}
+
+// The sekcja rides along for the report only — the cennik is global, so it takes no part in the
+// matching.
+export type CatalogueComparisonItemT = KosztorysItemT & { sectionName?: string }
+
+export type CatalogueComparisonSettingsT = { wToolsCoeff: number; ownToolsCoeff: number }
+
+// The created rows in the nested shape `getKosztorysTree` yields, so the grid can build its rows
+// without a refetch — same contract as `AppendedSliceT`, one section instead of many.
+export type AppendedCatalogueSliceT = {
+  section: KosztorysSectionT & { items: KosztorysItemT[] }
+  warnings: string[]
 }

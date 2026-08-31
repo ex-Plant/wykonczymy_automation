@@ -44,10 +44,9 @@ type PropsT = {
   // Insert + move have no meaning against a sorted view — array position no longer mirrors
   // display_order — so they go dead while any sort is on, whatever its scope.
   sortActive: boolean
-  // `catalogueItemId` rather than a callback: the dialog reads every figure it shows from the
-  // server by that id, so the menu has nothing to hand it but the pozycja. Absent (read-only view)
-  // → no „Zapisz do katalogu…" entry.
-  item: OrderActionsT & { onRemove: () => void; catalogueItemId?: number }
+  // The POZYCJA's id, not a catalogue row's — an id rather than a callback because the dialog reads
+  // every figure it shows from the server by it. Absent (read-only view) → no „Zapisz do katalogu…".
+  item: OrderActionsT & { onRemove: () => void; savableItemId?: number }
   // Absent (read-only view) → the whole „Sekcja" group is hidden.
   section?: SectionActionsT
 }
@@ -88,7 +87,7 @@ export function KosztorysRowActionsMenu({ sortActive, item, section }: PropsT) {
               only thing saying whether „Przesuń w górę" moves the row or the whole section. */}
           <DropdownMenuLabel>Praca</DropdownMenuLabel>
           {orderItems(item)}
-          {item.catalogueItemId !== undefined && (
+          {item.savableItemId !== undefined && (
             <DropdownMenuItem onSelect={() => setCatalogueSaveOpen(true)}>
               <BookmarkPlus />
               Zapisz do katalogu…
@@ -129,9 +128,9 @@ export function KosztorysRowActionsMenu({ sortActive, item, section }: PropsT) {
         onCancel={() => setPendingRemoval(null)}
       />
       {/* Mounted only while open: the menu renders once per row, and the dialog fetches on mount. */}
-      {catalogueSaveOpen && item.catalogueItemId !== undefined && (
+      {catalogueSaveOpen && item.savableItemId !== undefined && (
         <SaveItemToCatalogueDialog
-          itemId={item.catalogueItemId}
+          itemId={item.savableItemId}
           open
           onOpenChange={setCatalogueSaveOpen}
         />

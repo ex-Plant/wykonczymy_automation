@@ -7,7 +7,7 @@ import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kos
 import { MenuItemBody } from '@/components/kosztorys/editor/actions/menu-item-body'
 import { useKosztorysActions } from '@/components/kosztorys/editor/actions/kosztorys-actions-context'
 import { compareWithCatalogueAction } from '@/lib/actions/work-catalogue'
-import type { CatalogueComparisonT } from '@/lib/kosztorys/work-catalogue/build-catalogue-comparison'
+import type { CatalogueComparisonT } from '@/lib/kosztorys/work-catalogue/types'
 
 export type CatalogueCompareActionT = {
   open: boolean

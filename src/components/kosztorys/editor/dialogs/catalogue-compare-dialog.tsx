@@ -17,9 +17,9 @@ import { useKosztorysActions } from '@/components/kosztorys/editor/actions/koszt
 import { formatPLN } from '@/lib/utils/format-currency'
 
 /**
- * „Porównaj z katalogiem" — the rozpiska read against the global cennik. Renders a record it does not
- * compute (the action does), and writes nothing: unlike the arkusz window this one has no refresh
- * side, so nothing here can change a figure the owner is looking at.
+ * „Porównaj z katalogiem" — the rozpiska read against the global cennik. Writes nothing: unlike the
+ * arkusz window this one has no refresh side, so nothing here can change a figure the owner is
+ * looking at.
  */
 export function CatalogueCompareDialog() {
   const {

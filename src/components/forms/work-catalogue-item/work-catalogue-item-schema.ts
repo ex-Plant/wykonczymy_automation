@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
 
 // Form-input layer: every field is a string, as the HTML controls produce them.
 export const workCatalogueItemFormSchema = z.object({
@@ -25,3 +26,13 @@ export const workCatalogueItemSchema = workCatalogueItemFormSchema.extend({
 })
 
 export type WorkCatalogueItemDataT = z.infer<typeof workCatalogueItemSchema>
+
+/**
+ * „12,50" → 12.5, blank and garbage → NaN, which `money()` refuses with „musi być liczbą".
+ * `Number('')` is 0, so a blank „Cena j.m." would otherwise save a 0 zł pozycja — and a 0 zł cena
+ * also silences the 80% ceiling for that row, since a share of nothing has no value to show.
+ */
+export function toMoney(value: string): number {
+  const parsed = parseDecimalInput(value)
+  return parsed.kind === 'value' ? parsed.value : NaN
+}

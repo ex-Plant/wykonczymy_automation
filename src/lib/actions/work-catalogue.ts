@@ -10,18 +10,14 @@ import {
   listCatalogueItemsByIds,
 } from '@/lib/db/work-catalogue'
 import { toCatalogueCandidate } from '@/lib/kosztorys/work-catalogue/item-to-catalogue'
-import {
-  buildCatalogueComparison,
-  type CatalogueComparisonT,
-} from '@/lib/kosztorys/work-catalogue/build-catalogue-comparison'
+import { buildCatalogueComparison } from '@/lib/kosztorys/work-catalogue/build-catalogue-comparison'
 import { catalogueKey } from '@/lib/kosztorys/work-catalogue/catalogue-key'
-import {
-  appendCatalogueItems,
-  type AppendedCatalogueSliceT,
-} from '@/lib/kosztorys/work-catalogue/append-catalogue-items'
+import { appendCatalogueItems } from '@/lib/kosztorys/work-catalogue/append-catalogue-items'
 import { getKosztorysTree } from '@/lib/queries/kosztorys'
 import { getWorkCatalogue } from '@/lib/queries/work-catalogue'
 import type {
+  AppendedCatalogueSliceT,
+  CatalogueComparisonT,
   CatalogueSavePreviewT,
   WorkCatalogueItemT,
 } from '@/lib/kosztorys/work-catalogue/types'
@@ -144,8 +140,11 @@ export async function insertCatalogueItemsAction(
       if (!parsed.success) return parsed
 
       const db = await getDb(payload)
-      const items = await listCatalogueItemsByIds(db, parsed.data.catalogueItemIds)
-      if (items.length !== parsed.data.catalogueItemIds.length)
+      // Deduped before the existence check: `listCatalogueItemsByIds` returns one row per REQUESTED
+      // id, so `[5, 5, 5]` would pass the length test and append the same praca three times.
+      const ids = [...new Set(parsed.data.catalogueItemIds)]
+      const items = await listCatalogueItemsByIds(db, ids)
+      if (items.length !== ids.length)
         return { success: false, error: 'Część wybranych prac nie istnieje już w katalogu.' }
 
       const created = await withPayloadTransaction(
@@ -162,16 +161,27 @@ export async function insertCatalogueItemsAction(
 }
 
 const EMPTY_DESCRIPTION_ERROR = 'Praca bez opisu nie trafi do katalogu — najpierw ją nazwij.'
+// The katalog row requires a j.m. (it is half the klucz), so without this the save died on Payload's
+// own validation and the owner got a framework sentence instead of the fix.
+const EMPTY_UNIT_ERROR = 'Praca bez jednostki miary nie trafi do katalogu — najpierw uzupełnij j.m.'
 const MISSING_ITEM_ERROR = 'Nie znaleziono pozycji'
 
 // Both „Zapisz do katalogu…" paths start here: the numbers are derived from the pozycja in the DB,
 // never from the wire, so the dialog's preview and the save can never disagree about what is saved.
-async function catalogueSaveState(payload: Payload, itemId: number) {
+// The refusals live here too — a caller that only got the figures back would have to re-run them, and
+// the preview and the save would drift the moment one of them forgot.
+async function catalogueSaveState(
+  payload: Payload,
+  itemId: number,
+): Promise<CatalogueSavePreviewT | { error: string }> {
   const db = await getDb(payload)
   const source = await getCatalogueSourceItem(db, itemId)
-  if (!source) return undefined
+  if (!source) return { error: MISSING_ITEM_ERROR }
 
   const candidate = toCatalogueCandidate(source)
+  if (!candidate.description) return { error: EMPTY_DESCRIPTION_ERROR }
+  if (!candidate.unit) return { error: EMPTY_UNIT_ERROR }
+
   const existing = await findCatalogueItemByKey(db, candidate.matchKey)
   return { candidate, existing: existing ?? null }
 }
@@ -182,8 +192,7 @@ export async function catalogueSavePreviewAction(
 ): Promise<ActionResultT<CatalogueSavePreviewT>> {
   return protectedAction('catalogueSavePreviewAction', async ({ payload }) => {
     const state = await catalogueSaveState(payload, itemId)
-    if (!state) return { success: false, error: MISSING_ITEM_ERROR }
-    if (!state.candidate.description) return { success: false, error: EMPTY_DESCRIPTION_ERROR }
+    if ('error' in state) return { success: false, error: state.error }
 
     return { success: true, data: state }
   })
@@ -204,10 +213,9 @@ export async function saveItemToCatalogueAction(itemId: number, mode: 'new' | 'o
       if (!parsed.success) return parsed
 
       const state = await catalogueSaveState(payload, parsed.data.itemId)
-      if (!state) return { success: false, error: MISSING_ITEM_ERROR }
+      if ('error' in state) return { success: false, error: state.error }
 
       const { candidate, existing } = state
-      if (!candidate.description) return { success: false, error: EMPTY_DESCRIPTION_ERROR }
 
       if (parsed.data.mode === 'overwrite') {
         // The row may have been deleted between opening the dialog and confirming — then the

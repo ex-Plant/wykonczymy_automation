@@ -2,6 +2,7 @@ import { MONEY_TOLERANCE, subcontractorPrice } from '@/lib/kosztorys/calc'
 import type { SnapshotPayloadT, SnapshotSettingsT } from '@/lib/kosztorys/snapshot-format'
 import type { KosztorysItemT, ViewPricingT } from '@/lib/kosztorys/types'
 import { catalogueKey } from '@/lib/kosztorys/work-catalogue/catalogue-key'
+import { stripSectionOrdinal } from '@/lib/kosztorys/work-catalogue/section-category'
 import type {
   CatalogueSeedItemT,
   SeedConflictFieldT,
@@ -9,17 +10,9 @@ import type {
   SeedOccurrenceT,
 } from '@/lib/kosztorys/work-catalogue/types'
 
-// A sekcja is named per room instance („Łazienka 1", „Łazienka 2"); the cennik is global, so the
-// instance number is noise. Only a TRAILING standalone number goes — „Gniazdka 230V" keeps its.
-const TRAILING_ORDINAL = /\s+\d+$/
-
 const GROSZ = 100
 
 const toGrosz = (value: number): number => Math.round(value * GROSZ)
-
-export function stripSectionOrdinal(name: string): string {
-  return name.replace(TRAILING_ORDINAL, '').trim()
-}
 
 /**
  * The winner rule: the value that occurs MOST OFTEN, ties broken by the higher one.

@@ -10,7 +10,7 @@ import { useSearchFilter } from '@/hooks/use-search-filter'
 import { insertCatalogueItemsAction } from '@/lib/actions/work-catalogue'
 import { formatNet } from '@/lib/kosztorys/format'
 import type { SectionSubtotalT } from '@/lib/kosztorys/types'
-import type { AppendedCatalogueSliceT } from '@/lib/kosztorys/work-catalogue/append-catalogue-items'
+import type { AppendedCatalogueSliceT } from '@/lib/kosztorys/work-catalogue/types'
 import type { WorkCatalogueItemT } from '@/lib/kosztorys/work-catalogue/types'
 import { cn } from '@/lib/utils/cn'
 import { toastMessage } from '@/lib/utils/toast'
@@ -106,7 +106,7 @@ export function AddItemsFromCatalogueDialog({ sections, open, onOpenChange, onIn
         ) : catalogue.length === 0 ? (
           <p className="text-muted-foreground px-4 py-6 text-sm">Katalog prac jest pusty.</p>
         ) : (
-          <div className="max-h-[45vh] min-h-0 overflow-y-auto border-t py-2">
+          <div className="max-h-[55vh] min-h-0 overflow-y-auto border-t py-2">
             {filtered.length === 0 ? (
               <p className="text-muted-foreground px-3 py-4 text-sm">Nie znaleziono pracy.</p>
             ) : (

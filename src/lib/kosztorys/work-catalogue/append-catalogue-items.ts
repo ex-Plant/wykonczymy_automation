@@ -4,15 +4,11 @@ import { getDb } from '@/lib/db/get-db'
 import { sectionOwnerAndNextItemOrder } from '@/lib/kosztorys/create-item'
 import { insertItems } from '@/lib/kosztorys/insert-rows'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
-import type { KosztorysItemT, KosztorysSectionT, ViewPricingT } from '@/lib/kosztorys/types'
-import type { WorkCatalogueItemT } from '@/lib/kosztorys/work-catalogue/types'
-
-// The created rows in the nested shape `getKosztorysTree` yields, so the grid can build its rows
-// without a refetch — same contract as `AppendedSliceT`, one section instead of many.
-export type AppendedCatalogueSliceT = {
-  section: KosztorysSectionT & { items: KosztorysItemT[] }
-  warnings: string[]
-}
+import type { KosztorysItemT, ViewPricingT } from '@/lib/kosztorys/types'
+import type {
+  AppendedCatalogueSliceT,
+  WorkCatalogueItemT,
+} from '@/lib/kosztorys/work-catalogue/types'
 
 // Both stawki land as FROZEN amounts, never as coefficients: the katalog's numbers are the ones the
 // owner approved, and a coefficient would re-derive them from the target investment's globals the

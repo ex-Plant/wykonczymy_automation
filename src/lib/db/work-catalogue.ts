@@ -10,6 +10,9 @@ import type {
 } from '@/lib/kosztorys/work-catalogue/types'
 import type { DbExecutorT } from './get-db'
 
+// Every read of the cennik selects the same seven columns, and `toCatalogueItem` maps exactly them.
+const CATALOGUE_COLUMNS = sql`id, description, category, unit, client_price, w_tools_rate, own_tools_rate, match_key`
+
 export function toCatalogueItem(row: Record<string, unknown>): WorkCatalogueItemT {
   return {
     id: Number(row.id),
@@ -33,7 +36,7 @@ export async function listCatalogueItemsByIds(
 ): Promise<WorkCatalogueItemT[]> {
   if (ids.length === 0) return []
   const result = await db.execute(sql`
-    SELECT id, description, category, unit, client_price, w_tools_rate, own_tools_rate, match_key
+    SELECT ${CATALOGUE_COLUMNS}
     FROM work_catalogue_items
     WHERE id IN (${sql.join(
       ids.map((id) => sql`${id}`),
@@ -47,7 +50,17 @@ export async function listCatalogueItemsByIds(
   })
 }
 
-/** Every klucz already in the cennik — what the seed subtracts before proposing anything. */
+/** The whole cennik, in the order the katalog screen reads it. */
+export async function listCatalogueItems(db: DbExecutorT): Promise<WorkCatalogueItemT[]> {
+  const result = await db.execute(sql`
+    SELECT ${CATALOGUE_COLUMNS}
+    FROM work_catalogue_items
+    ORDER BY category NULLS LAST, description
+  `)
+  return result.rows.map(toCatalogueItem)
+}
+
+/** What the seed subtracts before proposing anything. */
 export async function listCatalogueMatchKeys(db: DbExecutorT): Promise<Set<string>> {
   const result = await db.execute(sql`SELECT match_key FROM work_catalogue_items`)
   return new Set(result.rows.map((row) => String(row.match_key)))
@@ -122,13 +135,13 @@ export async function getCatalogueSourceItem(
   }
 }
 
-/** The cennik row holding a klucz, or nothing — what decides „nowa" vs „nadpisz". */
+/** Its presence is what decides „nowa" vs „nadpisz". */
 export async function findCatalogueItemByKey(
   db: DbExecutorT,
   matchKey: string,
 ): Promise<WorkCatalogueItemT | undefined> {
   const result = await db.execute(sql`
-    SELECT id, description, category, unit, client_price, w_tools_rate, own_tools_rate, match_key
+    SELECT ${CATALOGUE_COLUMNS}
     FROM work_catalogue_items
     WHERE match_key = ${matchKey}
   `)

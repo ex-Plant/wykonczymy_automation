@@ -1,7 +1,7 @@
 import { subcontractorPrice } from '@/lib/kosztorys/calc'
 import type { ViewPricingT } from '@/lib/kosztorys/types'
 import { catalogueKey } from '@/lib/kosztorys/work-catalogue/catalogue-key'
-import { stripSectionOrdinal } from '@/lib/kosztorys/work-catalogue/seed-from-preset'
+import { stripSectionOrdinal } from '@/lib/kosztorys/work-catalogue/section-category'
 import type { CatalogueSeedItemT, CatalogueSourceItemT } from '@/lib/kosztorys/work-catalogue/types'
 
 // `subcontractorPrice` reads a whole row; the fields it never touches on this path (quantities,

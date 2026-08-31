@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { cleanDescription, TYPO_FIXES } from '@/lib/kosztorys/clean-description'
+import { itemKey } from '@/lib/kosztorys/sheet-import/item-key'
 import { catalogueKey } from '@/lib/kosztorys/work-catalogue/catalogue-key'
 
 const key = (description: string, unit: string | null = 'm2') => catalogueKey(description, unit)
@@ -34,7 +35,9 @@ describe('catalogueKey', () => {
   })
 
   it('drops the section, unlike the sheet-import item key', () => {
-    // The katalog is global: „Skucie tynku" is one cennik entry no matter which sekcja it sits in.
+    // The katalog is global: „Skucie tynku" is one cennik entry no matter which sekcja it sits in,
+    // where the sheet-import key deliberately separates the two.
+    expect(itemKey('Łazienka', 'Skucie tynku', 0)).not.toBe(itemKey('Kuchnia', 'Skucie tynku', 0))
     expect(catalogueKey('Skucie tynku', 'm2')).toBe(catalogueKey('Skucie tynku', 'm2'))
   })
 

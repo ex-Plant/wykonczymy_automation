@@ -2,48 +2,16 @@ import { MONEY_TOLERANCE, subcontractorPrice } from '@/lib/kosztorys/calc'
 import type { KosztorysItemT, ViewPricingT } from '@/lib/kosztorys/types'
 import { foldDescription } from '@/lib/kosztorys/sheet-import/item-key'
 import { catalogueKey } from '@/lib/kosztorys/work-catalogue/catalogue-key'
-import type { WorkCatalogueItemT } from '@/lib/kosztorys/work-catalogue/types'
-
-// One figure the rozpiska and the cennik disagree about.
-export type CatalogueFigureDiffT = {
-  label: string
-  kosztorys: number
-  catalogue: number
-  delta: number
-}
-
-export type CataloguePriceDiffT = {
-  itemId: number
-  description: string
-  unit: string
-  figures: CatalogueFigureDiffT[]
-  // The largest of this praca's rozbieżności — what the list sorts by, so the biggest money is read
-  // first rather than found.
-  maxDelta: number
-}
-
-export type CatalogueMissingT = {
-  itemId: number
-  section: string
-  description: string
-  unit: string
-  // The closest cennik opis, or nothing. DISPLAY ONLY — this never matches, never prices anything
-  // and never decides which kubełek a praca lands in; it exists so „brak w katalogu" on a praca that
-  // IS there under a slightly different name is recognisable as such.
-  hint: string | null
-}
-
-export type CatalogueComparisonT = {
-  matching: number
-  diffs: CataloguePriceDiffT[]
-  missing: CatalogueMissingT[]
-}
-
-// The sekcja rides along for the report only — the cennik is global, so it takes no part in the
-// matching.
-export type CatalogueComparisonItemT = KosztorysItemT & { sectionName?: string }
-
-export type CatalogueComparisonSettingsT = { wToolsCoeff: number; ownToolsCoeff: number }
+import type {
+  CatalogueComparisonItemT,
+  CatalogueComparisonSettingsT,
+  CatalogueComparisonT,
+  CatalogueFigureDiffT,
+  CatalogueMissingT,
+  CataloguePriceDiffT,
+  WorkCatalogueItemT,
+} from '@/lib/kosztorys/work-catalogue/types'
+import { bigrams, diceSimilarity } from '@/lib/utils/string-similarity'
 
 // Below this the two names have nothing to do with each other and a hint would be noise — an owner
 // who reads „może chodzi o…" over an unrelated praca stops reading the hints at all.
@@ -56,41 +24,23 @@ const asPricing = (item: KosztorysItemT, settings: CatalogueComparisonSettingsT)
   globalOwnToolsCoeff: settings.ownToolsCoeff,
 })
 
-// Dice over letter bigrams: cheap, order-insensitive enough for „Gładź gipsowa" against „Gładzie
-// gipsowe", and — unlike a prefix test — unbothered by a difference at the front of the name.
-function bigrams(value: string): string[] {
-  const pairs: string[] = []
-  for (let i = 0; i < value.length - 1; i += 1) pairs.push(value.slice(i, i + 2))
-  return pairs
-}
+type HintCandidateT = { description: string; pairs: string[] }
 
-function similarity(left: string, right: string): number {
-  if (!left || !right) return 0
-  if (left === right) return 1
-  const leftPairs = bigrams(left)
-  const rightPairs = bigrams(right)
-  if (leftPairs.length === 0 || rightPairs.length === 0) return 0
+// Folded and bigrammed ONCE for the whole cennik: `foldDescription` is ~45 split/join passes, and a
+// 1000-row rozpiska against a few-hundred-row cennik would otherwise run it a million times inside
+// one server action.
+const hintCandidates = (catalogue: readonly WorkCatalogueItemT[]): HintCandidateT[] =>
+  catalogue.map((entry) => ({
+    description: entry.description,
+    pairs: bigrams(foldDescription(entry.description)),
+  }))
 
-  const pool = new Map<string, number>()
-  for (const pair of leftPairs) pool.set(pair, (pool.get(pair) ?? 0) + 1)
-
-  let shared = 0
-  for (const pair of rightPairs) {
-    const left = pool.get(pair) ?? 0
-    if (left > 0) {
-      shared += 1
-      pool.set(pair, left - 1)
-    }
-  }
-  return (2 * shared) / (leftPairs.length + rightPairs.length)
-}
-
-function closestDescription(description: string, catalogue: readonly WorkCatalogueItemT[]) {
-  const folded = foldDescription(description)
+function closestDescription(description: string, candidates: readonly HintCandidateT[]) {
+  const pairs = bigrams(foldDescription(description))
   let best: { description: string; score: number } | null = null
-  for (const entry of catalogue) {
-    const score = similarity(folded, foldDescription(entry.description))
-    if (!best || score > best.score) best = { description: entry.description, score }
+  for (const candidate of candidates) {
+    const score = diceSimilarity(pairs, candidate.pairs)
+    if (!best || score > best.score) best = { description: candidate.description, score }
   }
   return best && best.score >= HINT_THRESHOLD ? best.description : null
 }
@@ -119,6 +69,7 @@ export function buildCatalogueComparison(
   settings: CatalogueComparisonSettingsT,
 ): CatalogueComparisonT {
   const byKey = new Map(catalogue.map((entry) => [entry.matchKey, entry]))
+  const candidates = hintCandidates(catalogue)
   const diffs: CataloguePriceDiffT[] = []
   const missing: CatalogueMissingT[] = []
   let matching = 0
@@ -136,7 +87,7 @@ export function buildCatalogueComparison(
         section: item.sectionName ?? '',
         description,
         unit,
-        hint: closestDescription(description, catalogue),
+        hint: closestDescription(description, candidates),
       })
       continue
     }

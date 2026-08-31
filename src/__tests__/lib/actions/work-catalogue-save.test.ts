@@ -95,6 +95,7 @@ describe.skipIf(!ENV_READY)('saveItemToCatalogueAction (DB)', () => {
 
   type ItemOverridesT = {
     displayOrder?: number
+    unit?: string
     clientPrice?: number
     wToolsOverrideType?: string
     wToolsOverrideValue?: number
@@ -211,5 +212,21 @@ describe.skipIf(!ENV_READY)('saveItemToCatalogueAction (DB)', () => {
 
     const result = await saveItemToCatalogueAction(itemId, 'new')
     expect(result.success).toBe(false)
+  })
+
+  // j.m. is half the klucz and the katalog row requires it, so without the guard this died on
+  // Payload's own validation and the owner read a framework sentence instead of what to do.
+  it('odmawia zapisu pracy bez j.m., własnym zdaniem', async () => {
+    const description = `Bez jednostki ${suffix}`
+    const itemId = await createItem(description, { unit: '' })
+
+    const result = await saveItemToCatalogueAction(itemId, 'new')
+    expect(result.success).toBe(false)
+    expect(result.success === false && result.error).toContain('jednostki miary')
+
+    const rows = await db.execute(
+      sql`SELECT id FROM work_catalogue_items WHERE description = ${description}`,
+    )
+    expect(rows.rows).toHaveLength(0)
   })
 })

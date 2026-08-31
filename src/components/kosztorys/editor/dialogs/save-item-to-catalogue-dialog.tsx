@@ -13,7 +13,7 @@ const LOAD_FAILED = 'Nie udało się wczytać danych pozycji'
 
 type PricesT = { clientPrice: number; wToolsRate: number; ownToolsRate: number }
 
-// The three liczby side by side, so „nadpisz" is a decision about numbers rather than about a name.
+// Rendered for both sides so „nadpisz" is a decision about numbers rather than about a name.
 function PriceList({ title, prices }: { title: string; prices: PricesT }) {
   const rows = [
     ['Cena j.m.', prices.clientPrice],

@@ -238,7 +238,7 @@ function RowActionsCell({
         onMoveUp: () => opts.onReorderItem?.(rowData, 'up'),
         onMoveDown: () => opts.onReorderItem?.(rowData, 'down'),
         onRemove: () => opts.onRemoveItem?.(rowData),
-        catalogueItemId: opts.canSaveItemToCatalogue ? rowData.id : undefined,
+        savableItemId: opts.canSaveItemToCatalogue ? rowData.id : undefined,
       }}
       section={section}
     />
