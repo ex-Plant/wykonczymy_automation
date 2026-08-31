@@ -79,6 +79,7 @@ import * as migration_20260825_1_fleet_sheet_parity from './20260825_1_fleet_she
 import * as migration_20260826_0_notification_recipients from './20260826_0_notification_recipients'
 import * as migration_20260826_1_drop_inspection_next_due_odometer from './20260826_1_drop_inspection_next_due_odometer'
 import * as migration_20260827_0_payment_method_nullable from './20260827_0_payment_method_nullable'
+import * as migration_20260901_0_add_work_catalogue_items from './20260901_0_add_work_catalogue_items'
 
 export const migrations = [
   {
@@ -485,5 +486,10 @@ export const migrations = [
     up: migration_20260827_0_payment_method_nullable.up,
     down: migration_20260827_0_payment_method_nullable.down,
     name: '20260827_0_payment_method_nullable',
+  },
+  {
+    up: migration_20260901_0_add_work_catalogue_items.up,
+    down: migration_20260901_0_add_work_catalogue_items.down,
+    name: '20260901_0_add_work_catalogue_items',
   },
 ]

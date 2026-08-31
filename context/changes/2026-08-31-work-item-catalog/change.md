@@ -1,11 +1,11 @@
 ---
 change_id: work-item-catalog
 title: Katalog prac — dodawanie pojedynczej zapisanej pracy z ceną i stawkami
-status: planned
+status: implementing
 created: 2026-08-31
 updated: 2026-08-31
 archived_at: null
-branch: null
+branch: work-item-catalog
 worktree: null
 ---
 

@@ -15,6 +15,7 @@ export const CACHE_TAGS = {
   presets: 'collection:kosztorys-presets',
   vehicles: 'collection:vehicles',
   vehicleInspections: 'collection:vehicle-inspections',
+  workCatalogue: 'collection:work-catalogue-items',
 } as const
 
 export const entityTag = (collection: string, id: number | string) => `${collection}:${id}` as const
