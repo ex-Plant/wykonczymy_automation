@@ -65,28 +65,28 @@ export function getWorkCatalogueColumns({
     col.accessor('wToolsRate', {
       id: 'wToolsRate',
       header: 'Stawka z narzędziami',
-      meta: { align: 'right' },
+      meta: { align: 'right', headerWrap: true },
       cell: (info) => money(info.getValue()),
     }),
 
     col.accessor((row) => shareOf(row.wToolsRate, row.clientPrice), {
       id: 'wToolsShare',
       header: '% ceny klienta z narzędziami',
-      meta: { align: 'right', tooltip: SHARE_TOOLTIP },
+      meta: { align: 'right', tooltip: SHARE_TOOLTIP, headerWrap: true },
       cell: (info) => share(info.getValue()),
     }),
 
     col.accessor('ownToolsRate', {
       id: 'ownToolsRate',
       header: 'Stawka bez narzędzi',
-      meta: { align: 'right' },
+      meta: { align: 'right', headerWrap: true },
       cell: (info) => money(info.getValue()),
     }),
 
     col.accessor((row) => shareOf(row.ownToolsRate, row.clientPrice), {
       id: 'ownToolsShare',
       header: '% ceny klienta bez narzędzi',
-      meta: { align: 'right', tooltip: SHARE_TOOLTIP },
+      meta: { align: 'right', tooltip: SHARE_TOOLTIP, headerWrap: true },
       cell: (info) => share(info.getValue()),
     }),
 
