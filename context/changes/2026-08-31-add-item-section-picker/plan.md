@@ -158,10 +158,10 @@ kandydatem do E2E; decyzja zapada na bramce recenzji slice'a (autor albo zgłosz
 
 #### Automated
 
-- [x] 1.1 Brak checku wąsko zakresowego (pokrywa bramka całodrzewowa)
+- [x] 1.1 Brak checku wąsko zakresowego (pokrywa bramka całodrzewowa) — 815a3097
 
 ### Phase 2: „Praca ▸ wybór sekcji"
 
 #### Automated
 
-- [ ] 2.1 Brak checku wąsko zakresowego (pokrywa bramka całodrzewowa)
+- [x] 2.1 Brak checku wąsko zakresowego (pokrywa bramka całodrzewowa)

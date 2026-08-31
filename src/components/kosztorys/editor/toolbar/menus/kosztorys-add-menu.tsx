@@ -7,6 +7,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { AddSectionsFromPresetDialog } from '@/components/kosztorys/editor/dialogs/add-sections-from-preset-dialog'
@@ -17,7 +20,6 @@ import { PLANE_LABELS, TOOL_PLANES } from '@/lib/kosztorys/constants'
 export function KosztorysAddMenu() {
   const {
     investmentId,
-    collapsedSectionIds,
     subtotals,
     handleAddItem,
     handleAddSection,
@@ -27,11 +29,6 @@ export function KosztorysAddMenu() {
   // Owned here, OUTSIDE the dropdown content: the menu unmounts on close, so a dialog rendered inside
   // it would unmount before it could open. The item only flips this flag.
   const [pickerOpen, setPickerOpen] = useState(false)
-
-  // The new praca lands in the single expanded section when the fold isolates one, else the last.
-  const expanded = subtotals.filter((s) => !collapsedSectionIds.has(s.sectionId))
-  const onlyExpanded = expanded.length === 1 ? expanded[0].sectionId : undefined
-  const addItemSectionId = onlyExpanded ?? subtotals.at(-1)?.sectionId ?? null
 
   return (
     <>
@@ -43,13 +40,25 @@ export function KosztorysAddMenu() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
-          <DropdownMenuItem
-            disabled={addItemSectionId == null}
-            onSelect={() => addItemSectionId != null && handleAddItem(addItemSectionId)}
-          >
-            <Hammer />
-            Praca
-          </DropdownMenuItem>
+          {/* No section is preselected: any default lands the praca somewhere the user isn't
+              looking, which is the whole reason this is a picker. The pozycja count disambiguates —
+              section names are not unique. */}
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger disabled={subtotals.length === 0}>
+              <Hammer />
+              Praca
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              {subtotals.map((section) => (
+                <DropdownMenuItem
+                  key={section.sectionId}
+                  onSelect={() => handleAddItem(section.sectionId)}
+                >
+                  {section.sectionName} ({section.itemCount} poz.)
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
           {/* Plane is forced at creation — each etap plane is its own top-level item, so there is no
               plane-less „Etap" and no new stage is ever unconfirmed. The worker is deliberately NOT
               forced the same way: an unassigned etap is a legitimate resting state (it earns its own
