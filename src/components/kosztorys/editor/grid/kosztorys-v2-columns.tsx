@@ -212,7 +212,6 @@ function RowActionsCell({
 }) {
   const plan = opts.getRemovePlan?.(rowData)
   const removeBlockReason = plan?.kind === 'blocked' ? plan.reason : undefined
-  const removeNeedsConfirm = plan != null && plan.kind !== 'blocked' && plan.requiresConfirm
 
   // All four section callbacks come from one `editorOnly()` gate, so this reads as a single
   // "editor mode?" test rather than four independent ones.
@@ -237,7 +236,6 @@ function RowActionsCell({
     <KosztorysRowActionsMenu
       sortActive={opts.sort != null}
       removeBlockReason={removeBlockReason}
-      removeNeedsConfirm={removeNeedsConfirm}
       item={{
         onInsertAbove: () => opts.onInsertItem?.(rowData, 'above'),
         onInsertBelow: () => opts.onInsertItem?.(rowData, 'below'),

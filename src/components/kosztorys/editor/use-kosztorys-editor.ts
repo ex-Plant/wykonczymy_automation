@@ -755,19 +755,14 @@ export function useKosztorysEditor({
   // What deleting a row does — read at event time from the full dataset (prevById), not the view,
   // so the handler decides on accurate counts. The render-hot per-cell path uses getRemovePlan.
   function removalPlan(row: KosztorysV2RowT) {
-    return planItemRemoval([...prevById.current.values()], row, stages)
+    return planItemRemoval([...prevById.current.values()], row)
   }
 
   // Render-hot: called per cell. Counts are precomputed once per render (removalCounts below), so this
   // is O(1) per row — going through removalPlan (which spreads prevById and rescans per row) here would
   // make the whole grid's per-row delete plan O(n²).
   function getRemovePlan(row: KosztorysV2RowT): ItemRemovalPlanT {
-    return planItemRemovalFromCounts(
-      rows.length,
-      removalCounts.get(row.sectionId) ?? 0,
-      row,
-      stages,
-    )
+    return planItemRemovalFromCounts(rows.length, removalCounts.get(row.sectionId) ?? 0)
   }
 
   async function handleRemoveItem(row: KosztorysV2RowT) {

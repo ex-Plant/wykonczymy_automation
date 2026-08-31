@@ -504,45 +504,21 @@ describe('wartość wiersza idzie za etapami', () => {
 })
 
 describe('planItemRemoval', () => {
-  const stages = [{ id: 100, ordinal: 1, label: null, plane: null, workerId: null }]
-  const row = (id: number, sectionId: number, over: Partial<KosztorysV2RowT> = {}) =>
-    ({ id, sectionId, [stageKey(100)]: 0, ...over }) as unknown as KosztorysV2RowT
+  const row = (id: number, sectionId: number) => ({ id, sectionId }) as unknown as KosztorysV2RowT
 
-  it('środek sekcji (sekcja ma >1 pozycję) → usuń pozycję, bez potwierdzenia', () => {
+  it('środek sekcji (sekcja ma >1 pozycję) → usuń pozycję', () => {
     const rows = [row(1, 10), row(2, 10), row(3, 20)]
-    expect(planItemRemoval(rows, rows[0], stages)).toEqual({
-      kind: 'remove-item',
-      requiresConfirm: false,
-    })
+    expect(planItemRemoval(rows, rows[0])).toEqual({ kind: 'remove-item' })
   })
 
-  it('ostatnia pozycja sekcji (są inne sekcje) → kaskadowo usuń sekcję, bez potwierdzenia', () => {
+  it('ostatnia pozycja sekcji (są inne sekcje) → kaskadowo usuń sekcję', () => {
     const rows = [row(1, 10), row(2, 20)]
-    expect(planItemRemoval(rows, rows[1], stages)).toEqual({
-      kind: 'cascade-section',
-      requiresConfirm: false,
-    })
+    expect(planItemRemoval(rows, rows[1])).toEqual({ kind: 'cascade-section' })
   })
 
   it('ostatni wiersz całego kosztorysu → zablokowane (próg pustego arkusza)', () => {
     const rows = [row(1, 10)]
-    expect(planItemRemoval(rows, rows[0], stages)).toEqual({
-      kind: 'blocked',
-      reason: REMOVE_BLOCK_LAST_ITEM,
-    })
-  })
-
-  it('wiersz z postępem etapu → usuwalny, ale wymaga potwierdzenia', () => {
-    const rows = [row(1, 10, { [stageKey(100)]: 2 }), row(2, 20)]
-    expect(planItemRemoval(rows, rows[0], stages)).toEqual({
-      kind: 'cascade-section',
-      requiresConfirm: true,
-    })
-  })
-
-  it('próg pustego arkusza ma pierwszeństwo nad blokadą wypełnienia', () => {
-    const rows = [row(1, 10, { [stageKey(100)]: 5 })]
-    expect(planItemRemoval(rows, rows[0], stages)).toEqual({
+    expect(planItemRemoval(rows, rows[0])).toEqual({
       kind: 'blocked',
       reason: REMOVE_BLOCK_LAST_ITEM,
     })

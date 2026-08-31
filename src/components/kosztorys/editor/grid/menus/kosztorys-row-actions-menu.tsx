@@ -42,20 +42,12 @@ type PropsT = {
   // delete disabled with the reason in a tooltip (disabled items are pointer-events-none, so a
   // native title never fires).
   removeBlockReason?: string
-  // Populated row: delete destroys recorded stage progress, so route through a confirm dialog first.
-  removeNeedsConfirm?: boolean
   item: OrderActionsT & { onRemove: () => void }
   // Absent (read-only view) → the whole „Sekcja" group is hidden.
   section?: SectionActionsT
 }
 
-export function KosztorysRowActionsMenu({
-  sortActive,
-  removeBlockReason,
-  removeNeedsConfirm,
-  item,
-  section,
-}: PropsT) {
+export function KosztorysRowActionsMenu({ sortActive, removeBlockReason, item, section }: PropsT) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [sectionConfirmOpen, setSectionConfirmOpen] = useState(false)
   // The wrapper div is not decoration: a disabled item is pointer-events-none and would swallow the
@@ -107,7 +99,7 @@ export function KosztorysRowActionsMenu({
             <DropdownMenuItem
               variant="destructive"
               disabled={removeBlockReason != null}
-              onSelect={() => (removeNeedsConfirm ? setConfirmOpen(true) : item.onRemove())}
+              onSelect={() => setConfirmOpen(true)}
             >
               <Trash2 />
               Usuń pozycję
@@ -131,7 +123,7 @@ export function KosztorysRowActionsMenu({
       <ConfirmDialog
         open={confirmOpen}
         title="Usunąć pozycję?"
-        description="Pozycja i wpisane w niej ilości etapów zostaną usunięte."
+        description="Pozycja wraz z wpisanymi w niej ilościami etapów zostanie usunięta. Tej operacji nie można cofnąć."
         confirmLabel="Usuń"
         onConfirm={() => {
           item.onRemove()
