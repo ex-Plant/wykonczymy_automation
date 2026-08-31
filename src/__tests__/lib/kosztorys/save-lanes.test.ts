@@ -4,6 +4,11 @@ import type { ActionResultT } from '@/types/action'
 
 const ok = (): ActionResultT => ({ success: true })
 const fail = (error: string): ActionResultT => ({ success: false, error })
+const failNotFound = (): ActionResultT => ({
+  success: false,
+  error: 'Ten rekord już nie istnieje — dane zmieniły się w innym miejscu.',
+  code: 'NOT_FOUND',
+})
 
 // A deferred whose resolution the test controls, to force a slow forward save that finishes AFTER a
 // later-enqueued inverse would have, absent serialization.
@@ -66,7 +71,7 @@ describe('createSaveLanes', () => {
     const lanes = createSaveLanes()
     const onError = vi.fn()
     await lanes.enqueue('item:1:name', async () => fail('rejected by server'), onError)
-    expect(onError).toHaveBeenCalledWith('rejected by server')
+    expect(onError).toHaveBeenCalledWith('rejected by server', undefined)
   })
 
   it('routes a thrown/rejected action to onError and never rejects the lane (EX-526 #3)', async () => {
@@ -83,6 +88,15 @@ describe('createSaveLanes', () => {
       ),
     ).resolves.toBeUndefined()
     expect(onError).toHaveBeenCalledWith('network down')
+  })
+
+  // Without the code the caller can only match on the sentence, and „your row is gone" would keep
+  // being handled as „your value was rejected" — a revert onto a tree that no longer exists.
+  it('hands the failure code to onError so a stale-tree refusal is distinguishable', async () => {
+    const lanes = createSaveLanes()
+    const onError = vi.fn()
+    await lanes.enqueue('item:1:plannedQty', async () => failNotFound(), onError)
+    expect(onError).toHaveBeenCalledWith(expect.any(String), 'NOT_FOUND')
   })
 
   it('a failed write does not block the next write on the same key', async () => {
