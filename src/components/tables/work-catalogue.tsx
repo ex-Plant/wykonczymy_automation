@@ -28,6 +28,16 @@ const share = (value: number | null) =>
     </span>
   )
 
+// The break is written, not guessed from a width: these four labels are long enough to wrap on
+// their own, and left to the browser they came out three lines deep.
+const twoLines = (first: string, second: string) => () => (
+  <span className="block text-right">
+    {first}
+    <br />
+    {second}
+  </span>
+)
+
 const SHARE_TOOLTIP = `Udział stawki w cenie j.m. Powyżej ${MAX_CLIENT_SHARE * 100}% na czerwono.`
 
 export function getWorkCatalogueColumns({
@@ -64,29 +74,29 @@ export function getWorkCatalogueColumns({
 
     col.accessor('wToolsRate', {
       id: 'wToolsRate',
-      header: 'Stawka z narzędziami',
-      meta: { align: 'right', headerWrap: true },
+      header: twoLines('Stawka z', 'narzędziami'),
+      meta: { align: 'right', label: 'Stawka z narzędziami' },
       cell: (info) => money(info.getValue()),
     }),
 
     col.accessor((row) => shareOf(row.wToolsRate, row.clientPrice), {
       id: 'wToolsShare',
-      header: '% ceny klienta z narzędziami',
-      meta: { align: 'right', tooltip: SHARE_TOOLTIP, headerWrap: true },
+      header: twoLines('% ceny klienta', 'z narzędziami'),
+      meta: { align: 'right', tooltip: SHARE_TOOLTIP, label: '% ceny klienta z narzędziami' },
       cell: (info) => share(info.getValue()),
     }),
 
     col.accessor('ownToolsRate', {
       id: 'ownToolsRate',
-      header: 'Stawka bez narzędzi',
-      meta: { align: 'right', headerWrap: true },
+      header: twoLines('Stawka bez', 'narzędzi'),
+      meta: { align: 'right', label: 'Stawka bez narzędzi' },
       cell: (info) => money(info.getValue()),
     }),
 
     col.accessor((row) => shareOf(row.ownToolsRate, row.clientPrice), {
       id: 'ownToolsShare',
-      header: '% ceny klienta bez narzędzi',
-      meta: { align: 'right', tooltip: SHARE_TOOLTIP, headerWrap: true },
+      header: twoLines('% ceny klienta', 'bez narzędzi'),
+      meta: { align: 'right', tooltip: SHARE_TOOLTIP, label: '% ceny klienta bez narzędzi' },
       cell: (info) => share(info.getValue()),
     }),
 
