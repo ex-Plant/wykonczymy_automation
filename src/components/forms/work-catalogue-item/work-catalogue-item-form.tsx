@@ -30,6 +30,9 @@ type WorkCatalogueItemFormPropsT = {
   persistDraft?: boolean
 }
 
+// Matches `Input`, so the two comboboxes read as fields you can type into rather than as captions.
+const COMBOBOX_FIELD = 'border-input bg-background h-9 w-full rounded-md border px-3'
+
 const toNumber = (value: string) => Number(value.replace(',', '.').trim())
 
 export function WorkCatalogueItemForm({
@@ -81,7 +84,10 @@ export function WorkCatalogueItemForm({
                 onChange={field.handleChange}
                 options={categorySuggestions}
                 allowCustom
-                placeholder="Łazienka"
+                modal
+                className={COMBOBOX_FIELD}
+                contentClassName="w-(--radix-popover-trigger-width)"
+                placeholder="Wybierz lub wpisz nową…"
               />
             </FormBase>
           )}
@@ -95,7 +101,10 @@ export function WorkCatalogueItemForm({
                 onChange={field.handleChange}
                 options={UNIT_SUGGESTIONS}
                 allowCustom
-                placeholder="m²"
+                modal
+                className={COMBOBOX_FIELD}
+                contentClassName="w-(--radix-popover-trigger-width)"
+                placeholder="Wybierz lub wpisz nową…"
               />
             </FormBase>
           )}
