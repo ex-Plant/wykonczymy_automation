@@ -508,14 +508,14 @@ wsadzie katalog jest zwykłymi danymi produkcyjnymi i obowiązują zasady bez wy
 
 #### Automated
 
-- [x] 1.1 Migracja przechodzi na lokalnej bazie
-- [x] 1.2 Spec klucza tożsamości przechodzi
+- [x] 1.1 Migracja przechodzi na lokalnej bazie — 4a296fda
+- [x] 1.2 Spec klucza tożsamości przechodzi — 4a296fda
 
 ### Phase 2: Ekran „Katalog prac"
 
 #### Automated
 
-- [ ] 2.1 Spec akcji katalogu (kolizja klucza, ignorowanie klucza z drutu)
+- [x] 2.1 Spec akcji katalogu (kolizja klucza, ignorowanie klucza z drutu)
 
 ### Phase 3: Zasilenie katalogu z szablonu-wzoru
 

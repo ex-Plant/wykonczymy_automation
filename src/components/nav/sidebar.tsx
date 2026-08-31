@@ -17,6 +17,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FileSpreadsheet,
+  ListChecks,
   LogOut,
   RefreshCw,
   Users,
@@ -37,6 +38,7 @@ const MANAGEMENT_LINKS: {
   badge?: ComponentType
 }[] = [
   { href: '/kosztorysy', label: 'Kosztorysy v1', icon: FileSpreadsheet },
+  { href: '/katalog-prac', label: 'Katalog prac', icon: ListChecks },
   { href: '/flota', label: 'Flota', icon: Car, badge: UnreadFleetBadge },
   { href: '/pracownicy', label: 'Pracownicy', icon: Users },
 ]
