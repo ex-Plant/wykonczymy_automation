@@ -42,8 +42,7 @@ type PropsT = {
 }
 
 export function KosztorysRowActionsMenu({ sortActive, item, section }: PropsT) {
-  const [confirmOpen, setConfirmOpen] = useState(false)
-  const [sectionConfirmOpen, setSectionConfirmOpen] = useState(false)
+  const [pendingRemoval, setPendingRemoval] = useState<'item' | 'section' | null>(null)
   const orderItems = ({ onInsertAbove, onInsertBelow, onMoveUp, onMoveDown }: OrderActionsT) => (
     <>
       <DropdownMenuItem disabled={sortActive} onSelect={onInsertAbove}>
@@ -77,7 +76,7 @@ export function KosztorysRowActionsMenu({ sortActive, item, section }: PropsT) {
               only thing saying whether „Przesuń w górę" moves the row or the whole section. */}
           <DropdownMenuLabel>Praca</DropdownMenuLabel>
           {orderItems(item)}
-          <DropdownMenuItem variant="destructive" onSelect={() => setConfirmOpen(true)}>
+          <DropdownMenuItem variant="destructive" onSelect={() => setPendingRemoval('item')}>
             <Trash2 />
             Usuń pozycję
           </DropdownMenuItem>
@@ -87,7 +86,7 @@ export function KosztorysRowActionsMenu({ sortActive, item, section }: PropsT) {
               <DropdownMenuLabel>Sekcja</DropdownMenuLabel>
               {orderItems(section)}
               <SectionColorPicker value={section.color} onChange={section.onSetColor} />
-              <DropdownMenuItem variant="destructive" onSelect={() => setSectionConfirmOpen(true)}>
+              <DropdownMenuItem variant="destructive" onSelect={() => setPendingRemoval('section')}>
                 <Trash2 />
                 Usuń sekcję
               </DropdownMenuItem>
@@ -96,26 +95,20 @@ export function KosztorysRowActionsMenu({ sortActive, item, section }: PropsT) {
         </DropdownMenuContent>
       </DropdownMenu>
       <ConfirmDialog
-        open={confirmOpen}
-        title="Usunąć pozycję?"
-        description="Pozycja wraz z wpisanymi w niej ilościami etapów zostanie usunięta. Jeśli jest ostatnia w sekcji, zniknie też sekcja. Tej operacji nie można cofnąć."
+        open={pendingRemoval !== null}
+        title={
+          pendingRemoval === 'section'
+            ? `Usunąć sekcję „${section?.name}" (${section?.itemCount} poz.)?`
+            : 'Usunąć pozycję?'
+        }
+        description="Usunięte zostaną też wpisane ilości etapów. Cofnięcie w edytorze nie zadziała — przywrócisz je tylko z zapisanej wersji."
         confirmLabel="Usuń"
         onConfirm={() => {
-          item.onRemove()
-          setConfirmOpen(false)
+          if (pendingRemoval === 'section') section?.onRemove()
+          else item.onRemove()
+          setPendingRemoval(null)
         }}
-        onCancel={() => setConfirmOpen(false)}
-      />
-      <ConfirmDialog
-        open={sectionConfirmOpen}
-        title={`Usunąć sekcję „${section?.name}"?`}
-        description={`Usunie też ${section?.itemCount} pozycji wraz z wpisanymi w nich ilościami etapów. Tej operacji nie można cofnąć.`}
-        confirmLabel="Usuń"
-        onConfirm={() => {
-          section?.onRemove()
-          setSectionConfirmOpen(false)
-        }}
-        onCancel={() => setSectionConfirmOpen(false)}
+        onCancel={() => setPendingRemoval(null)}
       />
     </>
   )
