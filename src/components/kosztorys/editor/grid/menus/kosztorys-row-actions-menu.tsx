@@ -1,7 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, Trash2 } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowDownToLine,
+  ArrowUp,
+  ArrowUpToLine,
+  BookmarkPlus,
+  Trash2,
+} from 'lucide-react'
 
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import {
@@ -13,6 +20,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { CellMenuTrigger } from '@/components/ui/datasheet-grid/cell-menu-trigger'
 import { SectionColorPicker } from '@/components/kosztorys/editor/grid/menus/section-color-picker'
+import { SaveItemToCatalogueDialog } from '@/components/kosztorys/editor/dialogs/save-item-to-catalogue-dialog'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 
 type OrderActionsT = {
@@ -36,13 +44,17 @@ type PropsT = {
   // Insert + move have no meaning against a sorted view — array position no longer mirrors
   // display_order — so they go dead while any sort is on, whatever its scope.
   sortActive: boolean
-  item: OrderActionsT & { onRemove: () => void }
+  // `catalogueItemId` rather than a callback: the dialog reads every figure it shows from the
+  // server by that id, so the menu has nothing to hand it but the pozycja. Absent (read-only view)
+  // → no „Zapisz do katalogu…" entry.
+  item: OrderActionsT & { onRemove: () => void; catalogueItemId?: number }
   // Absent (read-only view) → the whole „Sekcja" group is hidden.
   section?: SectionActionsT
 }
 
 export function KosztorysRowActionsMenu({ sortActive, item, section }: PropsT) {
   const [pendingRemoval, setPendingRemoval] = useState<'item' | 'section' | null>(null)
+  const [catalogueSaveOpen, setCatalogueSaveOpen] = useState(false)
   const orderItems = ({ onInsertAbove, onInsertBelow, onMoveUp, onMoveDown }: OrderActionsT) => (
     <>
       <DropdownMenuItem disabled={sortActive} onSelect={onInsertAbove}>
@@ -76,6 +88,12 @@ export function KosztorysRowActionsMenu({ sortActive, item, section }: PropsT) {
               only thing saying whether „Przesuń w górę" moves the row or the whole section. */}
           <DropdownMenuLabel>Praca</DropdownMenuLabel>
           {orderItems(item)}
+          {item.catalogueItemId !== undefined && (
+            <DropdownMenuItem onSelect={() => setCatalogueSaveOpen(true)}>
+              <BookmarkPlus />
+              Zapisz do katalogu…
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem variant="destructive" onSelect={() => setPendingRemoval('item')}>
             <Trash2 />
             Usuń pozycję
@@ -110,6 +128,14 @@ export function KosztorysRowActionsMenu({ sortActive, item, section }: PropsT) {
         }}
         onCancel={() => setPendingRemoval(null)}
       />
+      {/* Mounted only while open: the menu renders once per row, and the dialog fetches on mount. */}
+      {catalogueSaveOpen && item.catalogueItemId !== undefined && (
+        <SaveItemToCatalogueDialog
+          itemId={item.catalogueItemId}
+          open
+          onOpenChange={setCatalogueSaveOpen}
+        />
+      )}
     </>
   )
 }

@@ -461,6 +461,7 @@ export function useKosztorysEditor({
     onInsertSection: editorOnly(handleInsertSection),
     onPersistKosztorysOrder: editorOnly(handlePersistKosztorysOrder),
     onSetSectionColor: editorOnly(handleSetSectionColor),
+    canSaveItemToCatalogue: editorOnly(true),
     getSectionItemCount: (sectionId: number) => sectionCounts.get(sectionId) ?? 0,
     globalDiscountActive,
     divergenceFilterEngaged,

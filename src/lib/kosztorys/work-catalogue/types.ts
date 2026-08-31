@@ -1,3 +1,5 @@
+import type { SubcontractorOverrideTypeT } from '@/lib/kosztorys/types'
+
 // The catalogue row as every reader sees it. Both stawki are frozen ZŁOTÓWKI, never współczynniki:
 // a coefficient would silently re-price the praca against the target investment's global coeffs the
 // moment it left the katalog, so the number the owner saw when saving would not be the number the
@@ -36,4 +38,26 @@ export type SeedConflictT = {
   description: string
   fields: SeedConflictFieldT[]
   occurrences: SeedOccurrenceT[]
+}
+
+// One praca from a rozpiska as „Zapisz do katalogu…" reads it: its own numbers plus the inwestycja's
+// global coefficients, without which a pozycja that overrides nothing has no stawka to freeze.
+export type CatalogueSourceItemT = {
+  description: string
+  unit: string
+  sectionName: string
+  clientPrice: number
+  wToolsOverrideType: SubcontractorOverrideTypeT | null
+  wToolsOverrideValue: number
+  ownToolsOverrideType: SubcontractorOverrideTypeT | null
+  ownToolsOverrideValue: number
+  wToolsCoeff: number
+  ownToolsCoeff: number
+}
+
+// What the „Zapisz do katalogu…" dialog renders: the row that WOULD be written, and the cennik row
+// already holding its klucz — the presence of the second is the whole nowa/nadpisz question.
+export type CatalogueSavePreviewT = {
+  candidate: CatalogueSeedItemT
+  existing: WorkCatalogueItemT | null
 }

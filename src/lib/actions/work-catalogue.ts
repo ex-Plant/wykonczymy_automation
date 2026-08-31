@@ -1,16 +1,25 @@
 'use server'
 
+import type { Payload } from 'payload'
 import { z } from 'zod'
 import { getDb } from '@/lib/db/get-db'
 import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
-import { listCatalogueItemsByIds } from '@/lib/db/work-catalogue'
+import {
+  findCatalogueItemByKey,
+  getCatalogueSourceItem,
+  listCatalogueItemsByIds,
+} from '@/lib/db/work-catalogue'
+import { toCatalogueCandidate } from '@/lib/kosztorys/work-catalogue/item-to-catalogue'
 import { catalogueKey } from '@/lib/kosztorys/work-catalogue/catalogue-key'
 import {
   appendCatalogueItems,
   type AppendedCatalogueSliceT,
 } from '@/lib/kosztorys/work-catalogue/append-catalogue-items'
 import { getWorkCatalogue } from '@/lib/queries/work-catalogue'
-import type { WorkCatalogueItemT } from '@/lib/kosztorys/work-catalogue/types'
+import type {
+  CatalogueSavePreviewT,
+  WorkCatalogueItemT,
+} from '@/lib/kosztorys/work-catalogue/types'
 import type { ActionResultT } from '@/types/action'
 import {
   workCatalogueItemSchema,
@@ -144,5 +153,78 @@ export async function insertCatalogueItemsAction(
       return { success: true, data: created }
     },
     ['kosztorysItems'],
+  )
+}
+
+const EMPTY_DESCRIPTION_ERROR = 'Praca bez opisu nie trafi do katalogu — najpierw ją nazwij.'
+const MISSING_ITEM_ERROR = 'Nie znaleziono pozycji'
+
+// Both „Zapisz do katalogu…" paths start here: the numbers are derived from the pozycja in the DB,
+// never from the wire, so the dialog's preview and the save can never disagree about what is saved.
+async function catalogueSaveState(payload: Payload, itemId: number) {
+  const db = await getDb(payload)
+  const source = await getCatalogueSourceItem(db, itemId)
+  if (!source) return undefined
+
+  const candidate = toCatalogueCandidate(source)
+  const existing = await findCatalogueItemByKey(db, candidate.matchKey)
+  return { candidate, existing: existing ?? null }
+}
+
+// Fetch-on-open for the dialog: what would be written, and what is already there under that klucz.
+export async function catalogueSavePreviewAction(
+  itemId: number,
+): Promise<ActionResultT<CatalogueSavePreviewT>> {
+  return protectedAction('catalogueSavePreviewAction', async ({ payload }) => {
+    const state = await catalogueSaveState(payload, itemId)
+    if (!state) return { success: false, error: MISSING_ITEM_ERROR }
+    if (!state.candidate.description) return { success: false, error: EMPTY_DESCRIPTION_ERROR }
+
+    return { success: true, data: state }
+  })
+}
+
+const saveItemToCatalogueSchema = z.object({
+  itemId: z.number().int().positive(),
+  mode: z.enum(['new', 'overwrite']),
+})
+
+// The way back from a rozpiska into the cennik. `'overwrite'` updates the row holding the klucz in
+// place — same id, same `created_at` — because the katalog entry is the same praca, re-priced.
+export async function saveItemToCatalogueAction(itemId: number, mode: 'new' | 'overwrite') {
+  return protectedAction(
+    'saveItemToCatalogueAction',
+    async ({ payload }) => {
+      const parsed = validateAction(saveItemToCatalogueSchema, { itemId, mode })
+      if (!parsed.success) return parsed
+
+      const state = await catalogueSaveState(payload, parsed.data.itemId)
+      if (!state) return { success: false, error: MISSING_ITEM_ERROR }
+
+      const { candidate, existing } = state
+      if (!candidate.description) return { success: false, error: EMPTY_DESCRIPTION_ERROR }
+
+      if (parsed.data.mode === 'overwrite') {
+        // The row may have been deleted between opening the dialog and confirming — then the
+        // overwrite IS a create, and refusing it would be pedantry about a race nobody caused.
+        if (!existing) {
+          await payload.create({ collection: 'work-catalogue-items', data: candidate })
+          return { success: true }
+        }
+        await payload.update({
+          collection: 'work-catalogue-items',
+          id: existing.id,
+          data: candidate,
+        })
+        return { success: true }
+      }
+
+      if (existing) return { success: false, error: DUPLICATE_ERROR }
+
+      await payload.create({ collection: 'work-catalogue-items', data: candidate })
+
+      return { success: true }
+    },
+    ['workCatalogue'],
   )
 }

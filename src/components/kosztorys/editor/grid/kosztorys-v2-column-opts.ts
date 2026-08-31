@@ -75,6 +75,10 @@ export type BuildV2ColumnsOptsT = {
   // layer or the preview allowlist. Transient like the two flags above; the tick itself is untouched,
   // so disengaging restores exactly what the user had chosen.
   revealedColumnIds?: ReadonlySet<string>
+  // Is „Zapisz do katalogu…" offered on a praca? A flag rather than a callback because the dialog
+  // owns its own state next to the menu — the grid must not re-render because a dialog opened. Off
+  // in the read-only view, through the same `editorOnly` gate as every mutation callback here.
+  canSaveItemToCatalogue?: boolean
   // Item count for a section, to size the "removes N items" confirm before deleting it.
   getSectionItemCount?: (sectionId: number) => number
   // Global discount active → the four per-item discount columns are overridden, so drop them from

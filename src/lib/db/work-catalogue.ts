@@ -1,7 +1,13 @@
 // No `server-only` here: the katalog seed script runs these helpers under tsx, where it throws
 // (same reason as kosztorys-descriptions.ts).
 import { sql } from '@payloadcms/db-vercel-postgres'
-import type { CatalogueSeedItemT, WorkCatalogueItemT } from '@/lib/kosztorys/work-catalogue/types'
+import { DEFAULT_COEFFS } from '@/lib/kosztorys/constants'
+import type { SubcontractorOverrideTypeT } from '@/lib/kosztorys/types'
+import type {
+  CatalogueSeedItemT,
+  CatalogueSourceItemT,
+  WorkCatalogueItemT,
+} from '@/lib/kosztorys/work-catalogue/types'
 import type { DbExecutorT } from './get-db'
 
 export function toCatalogueItem(row: Record<string, unknown>): WorkCatalogueItemT {
@@ -73,4 +79,59 @@ export async function insertCatalogueItems(
     RETURNING id
   `)
   return result.rows.length
+}
+
+/**
+ * Everything „Zapisz do katalogu…" needs about one praca, read by its id: the pozycja's own numbers,
+ * the sekcja it sits in (the proposed kategoria) and the inwestycja's global coefficients — a praca
+ * with no override prices off THOSE, so the katalog would otherwise freeze a rate nobody offered.
+ */
+export async function getCatalogueSourceItem(
+  db: DbExecutorT,
+  itemId: number,
+): Promise<CatalogueSourceItemT | undefined> {
+  const result = await db.execute(sql`
+    SELECT ki.description, ki.unit, ki.client_price,
+           ki.w_tools_override_type, ki.w_tools_override_value,
+           ki.own_tools_override_type, ki.own_tools_override_value,
+           ks.name AS section_name,
+           inv.w_tools_coeff, inv.own_tools_coeff
+    FROM kosztorys_items ki
+    JOIN kosztorys_sections ks ON ks.id = ki.section_id
+    JOIN investments inv ON inv.id = ki.investment_id
+    WHERE ki.id = ${itemId}
+  `)
+  const row = result.rows[0]
+  if (!row) return undefined
+
+  const overrideType = (value: unknown): SubcontractorOverrideTypeT | null =>
+    value === 'coeff' || value === 'amount' ? value : null
+
+  return {
+    description: (row.description as string | null) ?? '',
+    unit: (row.unit as string | null) ?? '',
+    sectionName: (row.section_name as string | null) ?? '',
+    clientPrice: Number(row.client_price),
+    wToolsOverrideType: overrideType(row.w_tools_override_type),
+    wToolsOverrideValue: Number(row.w_tools_override_value),
+    ownToolsOverrideType: overrideType(row.own_tools_override_type),
+    ownToolsOverrideValue: Number(row.own_tools_override_value),
+    wToolsCoeff: row.w_tools_coeff == null ? DEFAULT_COEFFS.wTools : Number(row.w_tools_coeff),
+    ownToolsCoeff:
+      row.own_tools_coeff == null ? DEFAULT_COEFFS.ownTools : Number(row.own_tools_coeff),
+  }
+}
+
+/** The cennik row holding a klucz, or nothing — what decides „nowa" vs „nadpisz". */
+export async function findCatalogueItemByKey(
+  db: DbExecutorT,
+  matchKey: string,
+): Promise<WorkCatalogueItemT | undefined> {
+  const result = await db.execute(sql`
+    SELECT id, description, category, unit, client_price, w_tools_rate, own_tools_rate, match_key
+    FROM work_catalogue_items
+    WHERE match_key = ${matchKey}
+  `)
+  const row = result.rows[0]
+  return row ? toCatalogueItem(row) : undefined
 }

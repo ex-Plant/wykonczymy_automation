@@ -527,13 +527,13 @@ wsadzie katalog jest zwykłymi danymi produkcyjnymi i obowiązują zasady bez wy
 
 #### Automated
 
-- [x] 4.1 Spec wstawiania (różne display_order, kolejność, stawki jako kwoty, ostrzeżenie 80%)
+- [x] 4.1 Spec wstawiania (różne display_order, kolejność, stawki jako kwoty, ostrzeżenie 80%) — 285e24ed
 
 ### Phase 5: „Zapisz do katalogu…" z menu wiersza
 
 #### Automated
 
-- [ ] 5.1 Spec zapisu (stawka z globalnych współczynników, kolizja, nadpisanie w miejscu)
+- [x] 5.1 Spec zapisu (stawka z globalnych współczynników, kolizja, nadpisanie w miejscu)
 
 ### Phase 6: Raport „Porównaj z katalogiem"
 
