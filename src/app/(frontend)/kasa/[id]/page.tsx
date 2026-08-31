@@ -8,6 +8,7 @@ import { buildTransferFilters } from '@/lib/queries/transfer-filters'
 import { perfStart } from '@/lib/perf'
 import { buildFilterConfig } from '@/lib/utils/build-filter-config'
 import { TransfersSection } from '@/components/transfers/transfers-section'
+import { EditCashRegisterDialog } from '@/components/dialogs/edit-cash-register-dialog'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { InfoList } from '@/components/ui/info-list'
 import { SignedMoneyDisplay } from '@/components/ui/signed-money-display'
@@ -59,6 +60,7 @@ export default async function CashRegisterDetailPage({ params, searchParams }: D
 
   return (
     <PageWrapper title={register.name}>
+      {isManager && <EditCashRegisterDialog register={register} workers={refData.workers} />}
       <InfoList items={[{ label: 'Właściciel', value: ownerName }]} />
       <SignedMoneyDisplay amount={registerBalance} />
 

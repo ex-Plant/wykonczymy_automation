@@ -1,12 +1,12 @@
 'use client'
 
 import 'react-datasheet-grid/dist/style.css'
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { SheetIcon } from 'lucide-react'
 // `DynamicDataSheetGrid`, not `DataSheetGrid`: the library aliases the plain name to
 // StaticDataSheetGrid, which snapshots `columns` via useState at mount (EX-422).
-import { DynamicDataSheetGrid } from 'react-datasheet-grid'
+import { DynamicDataSheetGrid, type DataSheetGridRef } from 'react-datasheet-grid'
 import { KosztorysTotalsPanel } from '@/components/kosztorys/summary/kosztorys-totals-panel'
 import { KosztorysTotalsPanelToggle } from '@/components/kosztorys/summary/kosztorys-totals-panel-toggle'
 import { KosztorysEditorToolbar } from '@/components/kosztorys/editor/toolbar/kosztorys-editor-toolbar'
@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useKosztorysEditor } from '@/components/kosztorys/editor/use-kosztorys-editor'
 import { KosztorysEditorProvider } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
+import { useRowHeightCacheReset } from '@/components/kosztorys/editor/hooks/use-row-height-cache-reset'
 import { useUndoKeyboard } from '@/components/kosztorys/editor/hooks/use-undo-keyboard'
 import { useSheetImport } from '@/components/kosztorys/editor/hooks/use-sheet-import'
 import { SheetImportDialog } from '@/components/kosztorys/editor/dialogs/sheet-import-dialog'
@@ -178,6 +179,9 @@ export function KosztorysEditorBody({
     [viewRows, collapsedSectionIds, sort, sectionRows],
   )
   const gridRows = useMemo(() => [...bodyRows, makeSpacerRow(), makeTotalsRow()], [bodyRows])
+  const datasheetRef = useRef<DataSheetGridRef>(null)
+  const gridRowKeys = useMemo(() => gridRows.map((row) => String(row.id)), [gridRows])
+  useRowHeightCacheReset(datasheetRef, gridRowKeys)
   // The empty grid names what emptied it — and the two kinds empty it for opposite reasons: an
   // unticked filter leaves nothing because EVERY pozycja fell into what was unticked, a diagnostic
   // because NONE matched it, which is the goal state and worth saying out loud rather than a dead end.
@@ -266,6 +270,7 @@ export function KosztorysEditorBody({
               grid-cols-1 still gives the grid a definite width (anti-flicker). */}
           <div ref={gridRef} className="grid min-h-0 min-w-0 flex-1 grid-cols-1 overflow-hidden">
             <DynamicDataSheetGrid
+              ref={datasheetRef}
               className="kosztorys-grid"
               value={gridRows}
               // Strip the appended spacer + „Razem" rows before the editor's diff sees them — display-only.
