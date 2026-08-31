@@ -390,10 +390,12 @@ Foundations below assume these are present and do NOT re-scaffold them.
 > dialog**, and every destructive delete that can take child data with it (item, section, stage/column)
 > takes an **auto snapshot right before deleting** (`captureAutoSnapshot`), so it is recoverable via
 > S-06 restore. The server actions no longer reject a populated delete; the client owns the confirm.
-> The empty-sheet floor (a kosztorys keeps ≥1 item) is the one remaining hard block.
+> The empty-sheet floor (a kosztorys keeps ≥1 item) survived as the one remaining hard block, and was
+> itself removed on 2026-08-31 (owner: a kosztorys may be emptied to zero, EX-751 canceled) — there is
+> no hard block left, and every item delete confirms, populated or not.
 > Change doc: `context/changes/kosztorys-delete-confirm/`.
 
-- **Outcome:** deleting a kosztorys row (item), a section, a stage, or a stage-column that **holds recorded work** goes through a **confirm dialog**, then deletes after taking a pre-delete auto snapshot. No populated delete is hard-blocked anymore (only the last remaining item is).
+- **Outcome:** deleting a kosztorys row (item), a section, a stage, or a stage-column that **holds recorded work** goes through a **confirm dialog**, then deletes after taking a pre-delete auto snapshot. No delete is hard-blocked anymore — the last remaining item included (floor removed 2026-08-31).
 - **Change ID:** kosztorys-delete-guard (superseded by `kosztorys-delete-confirm` — EX-477)
 - **PRD refs:** — (owner request, 2026-07-10; policy reversed 2026-07-17)
 - **Prerequisites:** S-01
