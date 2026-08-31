@@ -164,4 +164,4 @@ kandydatem do E2E; decyzja zapada na bramce recenzji slice'a (autor albo zgłosz
 
 #### Automated
 
-- [x] 2.1 Brak checku wąsko zakresowego (pokrywa bramka całodrzewowa)
+- [x] 2.1 Brak checku wąsko zakresowego (pokrywa bramka całodrzewowa) — d33de2ed

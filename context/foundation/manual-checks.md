@@ -243,7 +243,7 @@ Pass ran clean — **no bugs found**, all five Phase-2 boxes ticked. No open fin
       stale wording** — there is no pie chart here (grepped `src/components/kosztorys/summary/` for
       `PieChart`: none in this table). The actual netto/brutto plane split is a **table**,
       `Wpłaty wg formy` (`deposits-table.tsx:122-144`), MIXED-only (`showPlaneSubtotals =
-    settlementMode==='MIXED' && netRows.length>0 && grossRows.length>0`) — confirmed rendering on
+  settlementMode==='MIXED' && netRows.length>0 && grossRows.length>0`) — confirmed rendering on
       inw. 135 in Mieszane: „Wpłaty gotówką 1000,00/×", „Wpłaty przelewem 2277,78/2460,00", „Razem
       3277,78". The „INVESTOR_DEPOSIT rows only" filter wasn't independently re-derived this pass
       (no non-INVESTOR_DEPOSIT-carrying investment exists to test against, same gap as the box below)
@@ -252,7 +252,7 @@ Pass ran clean — **no bugs found**, all five Phase-2 boxes ticked. No open fin
 - [ ] ⚠ **`wplatyNet` base fix — verify on an investment carrying a legacy `COMPANY_FUNDING` (or `OTHER_DEPOSIT`) row.** In **every** axis (Netto/Brutto/Mieszane), the „Wpłaty"/„Do zapłaty" figure must sum **only INVESTOR_DEPOSIT** — the legacy deposit must **not** inflate „Wpłaty". Before the fix the non-mixed axes folded it in (3 different totals per toggle); after, all surfaces agree. **This changes a client-facing figure on such investments — flagged for owner sign-off.** (Fresh COMPANY*FUNDING can't attach to an investment via the form per EX-557, so this only bites legacy/admin rows.) Regression-guarded by `src/__tests__/lib/db/get-deposit-transactions.test.ts`.
       \_Confirmed definitively UI-unreachable this pass, not just "not reached": queried the whole
       preview DB — `SELECT … FROM transactions WHERE type IN ('COMPANY_FUNDING','OTHER_DEPOSIT') AND
-    cancelled=false AND investment_id IS NOT NULL` returns **0 rows**. No investment on this branch
+  cancelled=false AND investment_id IS NOT NULL` returns **0 rows**. No investment on this branch
       carries a legacy row to test against, and EX-557 blocks creating one via the form — so this
       check cannot be driven in this environment at all, only relied on via the named regression test.*
       **Needs human:** either accept the named unit test as sufficient coverage for this box, or
@@ -1704,8 +1704,8 @@ dogfooding merges to `main`, so replacing one is safe.
 - [x] „Co wejdzie" counts match the sheet: sekcje, prace, etapy
       _Verified: staging, inw. 135 re-linked to the canonical sheet and re-imported 2026-08-26 (B19) —
       preview read „14 sekcji · 372 prac · 0 etapów"; SQL post-import confirmed `count(*) FROM
-    kosztorys_sections WHERE investment_id=135` = 14, `count(*) FROM kosztorys_items WHERE
-    investment_id=135` = 372, and `count(*) FROM kosztorys_stages WHERE investment_id=135` = 0 — all
+  kosztorys_sections WHERE investment_id=135` = 14, `count(*) FROM kosztorys_items WHERE
+  investment_id=135` = 372, and `count(*) FROM kosztorys_stages WHERE investment_id=135` = 0 — all
       three match the preview exactly. **Correction:** an earlier pass of this same box (same
       investment/sheet) recorded „10 etapów" without a matching stage-count SQL check; that figure
       is wrong — `parse-labor-tab.ts:216` (`usedColumns.has(column) || isNamedStage(caption(column))`)
@@ -1922,7 +1922,7 @@ Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z zaimportowanym arkusze
       _Verified 2026-08-26 (B19): inw. 133 and inw. 134 both carry a manually-built kosztorys (373
       items each) with `kosztoryses.google_sheet_id IS NULL` — never imported. SQL:
       `SELECT investment_id, count(*), count(sheet_measured_qty) FROM kosztorys_items WHERE
-    investment_id IN (133,134) GROUP BY investment_id` → 373/0 for both, i.e. `sheet_measured_qty`
+  investment_id IN (133,134) GROUP BY investment_id` → 373/0 for both, i.e. `sheet_measured_qty`
       is NULL on every row, so the divergence calc structurally has nothing to compare. Live on inw.
       134's „Problemy" menu: only „Pozycje bez ceny j.m. (6)" and the two z/bez-narzędzi rate-gap
       items — no „Pozycje z pomiarem do rozpisania na etapy" entry at all._
@@ -2132,7 +2132,7 @@ jej arkusz rozbija „Wartość netto" na dwie kolumny, więc dopasowanie po naz
 - [ ] Po poprawieniu nagłówka w arkuszu na „Wartość netto" odczyt idzie po nazwie, mimo zapisanego wskazania na inną kolumnę — not exercised, would require editing the canonical (real business) sheet's header row, out of scope for a read-only-preferred pass.
 - [ ] Wskazanie zapisane na jednej inwestycji nie zmienia niczego na drugiej — not exercised this pass.
       _B19 attempted this on inw. 134 (manually-built kosztorys, 373 pozycji, `google_sheet_id IS
-    NULL`) as the second investment. The link/import action (`kosztorys-actions-menu.tsx`, menu
+  NULL`) as the second investment. The link/import action (`kosztorys-actions-menu.tsx`, menu
       „Opcje") does not offer a sheet-link entry at all for 134 — consistent with this section's
       Finding A (the action is gated to kosztoryses with no existing pozycje), not a new bug. No
       second sheet-link-reachable investment was available as a fixture this pass (135 is the only
@@ -3527,7 +3527,7 @@ cofnięta — stan po passie identyczny z przed (`bartek@wykonczymy.com.pl`, `ad
 - [x] Nowe zgłoszenie z formularza WWW dociera na wszystkie adresy z listy „Powiadomienia o nowych zgłoszeniach"
       _Zweryfikowane WYŁĄCZNIE kodem (ten sam zakaz realnej wysyłki): `notifyNewLead`
       (`src/lib/leads/notify.ts`) woła `payload.sendEmail({ to: await requireRecipients(payload,
-    'newLead'), ... })` — `requireRecipients('newLead')` czyta dokładnie tę samą listę, która jest
+  'newLead'), ... })` — `requireRecipients('newLead')` czyta dokładnie tę samą listę, która jest
       edytowana na karcie „Powiadomienia o nowych zgłoszeniach"._
 - [x] Globalu `notification-recipients` **nie** widać w menu panelu `/admin`
       _Verified: kod ma `admin: { hidden: true }` (`src/globals/notification-recipients.ts`) z
@@ -3587,3 +3587,20 @@ JSON w `GOOGLE_SERVICE_ACCOUNT_WRITE_JSON` — takie konto z definicji nie sięg
 - [ ] Sześć odmrożonych sekcji bramy `staging → main` (`sheet-live-compare`, `kosztorys-importer`,
       `import-etapy-z-arkusza`, `sheet-column-mapping`, `EX-686`, `sheet-measured-qty-from-formula`)
       daje się przejechać lokalnie — wszystkie są odczytowe, żadna nie potrzebuje prawa zapisu
+
+## add-item-section-picker
+
+### Faza 1: Podmenu przewija się jak menu główne
+
+- [ ] Rozpiska z kilkudziesięcioma sekcjami: podmenu „Praca" mieści się w oknie i przewija się
+      kółkiem oraz strzałkami, ostatnia sekcja jest osiągalna
+- [ ] Pozostałe podmenu w aplikacji wyglądają bez zmian przy krótkiej liście
+
+### Faza 2: „Praca ▸ wybór sekcji"
+
+- [ ] „Dodaj → Praca" pokazuje wszystkie sekcje rozpiski, w kolejności rozpiski, z licznikiem pozycji
+- [ ] Wybór sekcji dokleja pustą pracę na jej końcu i rozwija tę sekcję — także wtedy, gdy była zwinięta
+- [ ] Wybór sekcji innej niż ostatnia i innej niż jedyna rozwinięta trafia dokładnie tam, gdzie
+      wskazano, i utrzymuje się po odświeżeniu strony
+- [ ] Przy rozpisce bez sekcji wyzwalacz „Praca" jest wyszarzony
+- [ ] Nawigacja klawiaturą: strzałka w prawo otwiera podmenu, Enter dodaje pracę do podświetlonej sekcji
