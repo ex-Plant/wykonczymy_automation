@@ -22,6 +22,13 @@ against the 5435 test DB, `pnpm typecheck` clean, `pnpm lint` clean in slice fil
       „malowanie" in Kategoria silently stored „Elektryka". Fix: an untouched highlight commits the
       draft, canonicalised against the options; arrows/mouse still pick from the list.
       test: test-driven-debugging · unit — `comboboxCommit` extracted as a pure module and spec'd (no jsdom in this repo)
+- [x] 🟡 WARNING · fixed · owner · `work-catalogue-item-schema.ts:9` · guard na puste „Cena j.m."
+      siedział o warstwę za daleko: schemat formularza przepuszczał string, więc pusta cena leciała na
+      serwer i wracała TOASTEM „Cena j.m. musi być liczbą" — zdaniem o NaN-ie, nie o brakującym polu.
+      Trzy pola kwotowe walidują się teraz jako stringi, przy `Dodaj`, POD polem: „jest wymagana" /
+      „musi być liczbą" / „nie może być ujemna". Schemat domenowy zostaje jako zapora dla payloadu,
+      który nie przeszedł przez formularz.
+      test: test-driven-debugging · unit — 5 asercji na warstwę formularza, w tym `path` komunikatu
 - [x] 🟡 WARNING · fixed · impl-review + code-review · `src/components/forms/work-catalogue-item/work-catalogue-item-schema.ts:8`
       · a blank „Cena j.m." saved 0 zł (`Number('') === 0`), which also silences the 80% ceiling for
       that row. Fix: the three money fields require a value and parse through `parseDecimalInput`.

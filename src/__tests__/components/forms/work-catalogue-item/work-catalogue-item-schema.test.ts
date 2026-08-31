@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   toMoney,
+  workCatalogueItemFormSchema,
   workCatalogueItemSchema,
 } from '@/components/forms/work-catalogue-item/work-catalogue-item-schema'
 
@@ -27,6 +28,48 @@ describe('toMoney', () => {
   it('refuses half-typed garbage', () => {
     expect(toMoney('1e')).toBeNaN()
     expect(toMoney('-')).toBeNaN()
+  })
+})
+
+// The layer the „Nowa praca w katalogu" dialog validates against — it is what decides whether the
+// owner sees a sentence UNDER the field he left empty, or a toast after the write was attempted.
+describe('workCatalogueItemFormSchema', () => {
+  const formValues = (overrides: Partial<Record<string, string>> = {}) => ({
+    description: 'Malowanie ścian',
+    category: '',
+    unit: 'm2',
+    clientPrice: '50',
+    wToolsRate: '30',
+    ownToolsRate: '20',
+    ...overrides,
+  })
+
+  const issueFor = (field: string, raw: string) => {
+    const result = workCatalogueItemFormSchema.safeParse(formValues({ [field]: raw }))
+    return result.error?.issues.find((issue) => issue.path[0] === field)
+  }
+
+  it('names a blank price as missing, not as „nie liczba"', () => {
+    expect(issueFor('clientPrice', '')?.message).toBe('Cena j.m. jest wymagana')
+    expect(issueFor('clientPrice', '   ')?.message).toBe('Cena j.m. jest wymagana')
+  })
+
+  it('pins the message to the field it belongs to, so it renders under that input', () => {
+    expect(issueFor('ownToolsRate', '')?.path).toEqual(['ownToolsRate'])
+  })
+
+  it('separates garbage from a missing value', () => {
+    expect(issueFor('wToolsRate', '1e')?.message).toBe('Stawka z narzędziami musi być liczbą')
+  })
+
+  it('refuses a negative figure', () => {
+    expect(issueFor('clientPrice', '-5')?.message).toBe('Cena j.m. nie może być ujemna')
+  })
+
+  it('accepts a comma as the decimal separator', () => {
+    expect(
+      workCatalogueItemFormSchema.safeParse(formValues({ clientPrice: '12,50' })).success,
+    ).toBe(true)
   })
 })
 
