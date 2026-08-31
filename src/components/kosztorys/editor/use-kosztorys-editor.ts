@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useDebouncedSave } from '@/components/kosztorys/editor/hooks/use-debounced-save'
+import { useStaleTreeRecovery } from '@/components/kosztorys/editor/hooks/use-stale-tree-recovery'
 import {
   coalesceFieldChanges,
   coalesceStageChanges,
@@ -29,7 +30,6 @@ import { useLayer } from '@/components/kosztorys/editor/hooks/use-layer'
 import { useMoneyAxis } from '@/components/kosztorys/editor/hooks/use-money-axis'
 import { effectiveMoneyAxis } from '@/lib/kosztorys/money-axis'
 import { useElementHeight } from '@/hooks/use-element-height'
-import { toastMessage } from '@/lib/utils/toast'
 import { buildV2Grid } from '@/components/kosztorys/editor/grid/kosztorys-v2-columns'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import {
@@ -109,6 +109,9 @@ type ArgsT = {
   // problem (EX-708). Optional with a `false` default for the client-share entry points, which count
   // no problems at all; on the owner's editor it is always supplied.
   hasSettledMaterial?: boolean
+  // The shell's reseed-the-whole-tree path, taken when a write comes back NOT_FOUND — see
+  // useStaleTreeRecovery. Absent on the read-only body, which never writes.
+  onStaleTree?: () => Promise<void>
 }
 
 // Grace period after the last keystroke before a grid edit burst becomes one undo entry. Longer
@@ -130,9 +133,11 @@ export function useKosztorysEditor({
   undoRedo,
   workers,
   hasSettledMaterial = false,
+  onStaleTree,
 }: ArgsT) {
   const router = useRouter()
-  const { save, runNow } = useDebouncedSave(500)
+  const { recoverStaleTree, reportFailure } = useStaleTreeRecovery(onStaleTree)
+  const { save, runNow } = useDebouncedSave(500, recoverStaleTree)
   // Per-mount undo/redo stack, owned by the shell (KosztorysEditorV2) and passed in. Capture pushes
   // here; the toolbar + keyboard call undo/redo (re-exported below).
   const { push, undo, redo, canUndo, canRedo, pruneByIds, amendTop } = undoRedo
@@ -211,6 +216,7 @@ export function useKosztorysEditor({
     patchRows,
     dropWidth,
     save,
+    reportFailure,
   })
 
   // Grid edit burst awaiting a coalesced undo entry (see UNDO_COALESCE_MS). onChange appends each
@@ -686,9 +692,26 @@ export function useKosztorysEditor({
   // server exchanges with whatever is rank-adjacent NOW, so replaying a stale id would diverge the
   // moment a row landed between the pair (insert between A and X, then undo). `swapItemInSection` is
   // the same primitive the forward gesture uses, which is what makes both halves one operation.
+  // A ▲▼ swap is optimistic, so a refusal has to put the pair back — otherwise the grid keeps showing
+  // an order no reload can reproduce. `swapItemInSection` with the opposite direction is the exact
+  // inverse of the move that was applied. Fire-and-forget only in the sense that the CALLER doesn't
+  // await it; the result is never dropped.
+  //
+  // `command` is the undo entry the gesture pushed. Rolling the rows back without retracting it would
+  // leave the stack claiming a swap that never happened, and Cmd+Z would then move the row one slot
+  // PAST where it started (EX-737's rule: a retraction cancels against the command already pushed).
+  // `amendTop` is identity-guarded, so anything the user did since makes this a silent no-op.
+  async function persistItemSwap(itemId: number, dir: 'up' | 'down', command?: UndoCommandT) {
+    const res = await swapItemOrderAction(itemId, dir)
+    if (res.success) return
+    setRows((rs) => swapItemInSection(rs, itemId, dir === 'up' ? 'down' : 'up'))
+    if (command) amendTop(command, null)
+    reportFailure(res.error, res.code)
+  }
+
   function runReorderReversal(itemId: number, dir: 'up' | 'down') {
     setRows((rs) => swapItemInSection(rs, itemId, dir))
-    void swapItemOrderAction(itemId, dir)
+    void persistItemSwap(itemId, dir)
   }
 
   // The tree-level half of a blank row (VAT, global coefficients, the stage axis) is identical at
@@ -710,7 +733,7 @@ export function useKosztorysEditor({
 
   async function handleAddItem(sectionId: number) {
     const res = await addItemAction(sectionId)
-    if (!res.success) return
+    if (!res.success) return reportFailure(res.error, res.code)
     // Take the denormalized section fields from any existing row of that section.
     const sample = [...prevById.current.values()].find((r) => r.sectionId === sectionId)
     const row = makeBlankRow({
@@ -732,7 +755,7 @@ export function useKosztorysEditor({
   async function handleInsertItem(anchorRow: KosztorysV2RowT, dir: 'above' | 'below') {
     if (sort) return
     const res = await insertItemAction(anchorRow.id, dir)
-    if (!res.success) return
+    if (!res.success) return reportFailure(res.error, res.code)
     const sample =
       [...prevById.current.values()].find((r) => r.sectionId === anchorRow.sectionId) ?? anchorRow
     const row = makeBlankRow({
@@ -771,7 +794,7 @@ export function useKosztorysEditor({
       // this row stays gone — a rare failure path on throwaway data, not worth reconstructing.
       prevById.current.set(row.id, row)
       setRows((rs) => applyRestoreItem(rs, row, afterId))
-      toastMessage(res.error ?? 'Nie udało się usunąć pozycji', 'warning', 4000)
+      reportFailure(res.error, res.code)
     }
   }
 
@@ -780,17 +803,20 @@ export function useKosztorysEditor({
     const neighbor = sectionNeighbor(rs, row.id, dir)
     if (!neighbor) return // edge of the block → no-op
     setRows(swapItemInSection(rs, row.id, dir))
-    // ▲▼ is a swap of two neighbors → the server exchanges just their display_order (2 updates, not a
-    // renumbering of the whole section — that choked with 1000+ rows). The action fires from the
-    // event handler, not from the setRows updater (there its cache revalidation would move the Router during render).
-    void swapItemOrderAction(row.id, dir)
     const back = dir === 'up' ? 'down' : 'up'
-    pushCommand({
+    // Built before the write so a refusal can retract exactly this entry; pushed after it, because
+    // the push is synchronous and the rejection can only land in a later tick.
+    const command: UndoCommandT = {
       label: 'Zmiana kolejności',
       undo: () => runReorderReversal(row.id, back),
       redo: () => runReorderReversal(row.id, dir),
       touchedIds: [row.id, neighbor.id],
-    })
+    }
+    // ▲▼ is a swap of two neighbors → the server exchanges just their display_order (2 updates, not a
+    // renumbering of the whole section — that choked with 1000+ rows). The action fires from the
+    // event handler, not from the setRows updater (there its cache revalidation would move the Router during render).
+    void persistItemSwap(row.id, dir, command)
+    pushCommand(command)
   }
 
   // Menu nagłówka → „Zapisz kolejność": the active sort is only a view, so this is what makes it
@@ -808,7 +834,7 @@ export function useKosztorysEditor({
     const res = await renumberKosztorysOrderAction(investmentId, next)
     if (!res.success) {
       setRows((rs) => applyKosztorysOrder(rs, revertTo))
-      toastMessage(res.error ?? 'Nie udało się zapisać kolejności', 'warning', 4000)
+      reportFailure(res.error, res.code)
     }
   }
 
@@ -832,12 +858,21 @@ export function useKosztorysEditor({
     })
   }
 
+  // Section twin of persistItemSwap, down to the rollback and the undo retraction.
+  async function persistSectionSwap(sectionId: number, dir: 'up' | 'down', command?: UndoCommandT) {
+    const res = await swapSectionOrderAction(sectionId, dir)
+    if (res.success) return
+    setRows((rs) => swapSectionBlock(rs, sectionId, dir === 'up' ? 'down' : 'up'))
+    if (command) amendTop(command, null)
+    reportFailure(res.error, res.code)
+  }
+
   // Mirrors handleReorderItem one level up: the grid regroups its blocks, the DB exchanges the two sections' display_order (2 updates, not a renumbering). Returns
   // false at the edge so the undo command isn't pushed for a no-op.
-  function applySectionSwap(sectionId: number, dir: 'up' | 'down') {
+  function applySectionSwap(sectionId: number, dir: 'up' | 'down', command?: UndoCommandT) {
     if (neighborSectionId(rowsRef.current, sectionId, dir) == null) return false
     setRows((rs) => swapSectionBlock(rs, sectionId, dir))
-    void swapSectionOrderAction(sectionId, dir)
+    void persistSectionSwap(sectionId, dir, command)
     return true
   }
 
@@ -847,14 +882,15 @@ export function useKosztorysEditor({
     // Captured BEFORE the swap: deleting the section later prunes this command, so an undo can
     // never re-derive a neighbour from rows the section no longer has.
     const touchedIds = rowsRef.current.filter((r) => r.sectionId === sectionId).map((r) => r.id)
-    if (!applySectionSwap(sectionId, dir)) return
     const back = dir === 'up' ? 'down' : 'up'
-    pushCommand({
+    const command: UndoCommandT = {
       label: 'Zmiana kolejności sekcji',
       undo: () => void applySectionSwap(sectionId, back),
       redo: () => void applySectionSwap(sectionId, dir),
       touchedIds,
-    })
+    }
+    if (!applySectionSwap(sectionId, dir, command)) return
+    pushCommand(command)
   }
 
   // The first row of a brand-new section: the section's own fields are still the defaults the action
@@ -875,7 +911,7 @@ export function useKosztorysEditor({
   async function handleInsertSection(anchorSectionId: number, dir: 'above' | 'below') {
     if (sort) return
     const res = await insertSectionAction(anchorSectionId, dir)
-    if (!res.success) return
+    if (!res.success) return reportFailure(res.error, res.code)
     const row = buildNewSectionRow(res.data.section.id, res.data.item)
     prevById.current.set(row.id, row)
     setRows((rs) => applyInsertSectionRow(rs, anchorSectionId, row, dir))
@@ -883,7 +919,7 @@ export function useKosztorysEditor({
 
   async function handleAddSection() {
     const res = await addSectionAction(investmentId)
-    if (!res.success) return
+    if (!res.success) return reportFailure(res.error, res.code)
     const row = buildNewSectionRow(res.data.section.id, res.data.item)
     prevById.current.set(row.id, row)
     setRows((rs) => applyAddItem(rs, row))
@@ -931,7 +967,7 @@ export function useKosztorysEditor({
       // Server rejected (predicate drift) — restore the section's rows and surface the block.
       for (const r of removed) prevById.current.set(r.id, r)
       setRows((rs) => [...rs, ...removed])
-      toastMessage(res.error ?? 'Nie udało się usunąć sekcji', 'warning', 4000)
+      reportFailure(res.error, res.code)
     }
   }
 

@@ -55,6 +55,8 @@ type PropsT = KosztorysEditorDataT & {
   undoRedo?: UndoRedoApiT
   onOpenVersions?: () => void
   onTreeReplaced?: () => void
+  // Reseed after a write was refused because its row is gone (the tree was replaced elsewhere).
+  onStaleTree?: () => Promise<void>
 }
 
 // The stateful editor: seeds the grid from `tree` at mount (useKosztorysEditor's useState
@@ -74,6 +76,7 @@ export function KosztorysEditorBody({
   undoRedo = NOOP_UNDO_REDO,
   onOpenVersions,
   onTreeReplaced,
+  onStaleTree,
   workers,
   ...panelData
 }: PropsT) {
@@ -89,6 +92,7 @@ export function KosztorysEditorBody({
     undoRedo,
     workers,
     hasSettledMaterial,
+    onStaleTree,
   })
   const {
     gridRef,

@@ -12,8 +12,11 @@ import type { ActionResultT } from '@/types/action'
 // Every write — debounced forward save AND an undo's immediate inverse (`runNow`) — is dispatched onto a
 // per-key serialized lane, so writes to the same cell can never overlap. That is what lets an undo's
 // inverse write reliably land *after* an in-flight forward save instead of racing it (EX-526 #1).
-export function useDebouncedSave(delay = 500) {
+export function useDebouncedSave(delay = 500, onStale?: () => void) {
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
+  // Read at failure time, not at dispatch time, so the handler doesn't have to be stable.
+  const onStaleRef = useRef(onStale)
+  onStaleRef.current = onStale
   const lanesRef = useRef<ReturnType<typeof createSaveLanes> | null>(null)
   lanesRef.current ??= createSaveLanes()
   const lanes = lanesRef.current
@@ -25,9 +28,18 @@ export function useDebouncedSave(delay = 500) {
 
   // Enqueue a write on the key's lane, toasting + reverting on failure (logical or thrown — the lane
   // catches both). Returns the promise for this write settling.
+  //
+  // NOT_FOUND is the one failure that is not about this write: the row is gone, so the grid's whole
+  // mount-frozen copy of the tree is stale and every other pending write will fail the same way.
+  // Reverting one cell there is theatre — it would restore a value from a tree that no longer exists —
+  // so the failure is handed to `onStale`, which reseeds instead, and neither toasts nor reverts here.
   const dispatch = useCallback(
     (key: string, run: () => Promise<ActionResultT>, onError?: () => void) =>
-      lanes.enqueue(key, run, (message) => {
+      lanes.enqueue(key, run, (message, code) => {
+        if (code === 'NOT_FOUND' && onStaleRef.current) {
+          onStaleRef.current()
+          return
+        }
         toastMessage(message, 'error', 5000)
         onError?.()
       }),
