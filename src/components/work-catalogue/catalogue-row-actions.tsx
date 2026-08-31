@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip } from '@/components/ui/tooltip'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EditCatalogueItemDialog } from '@/components/dialogs/edit-catalogue-item-dialog'
 import { deleteCatalogueItemAction } from '@/lib/actions/work-catalogue'
@@ -34,10 +35,17 @@ export function CatalogueRowActions({ item, categorySuggestions }: PropsT) {
     <div className="flex items-center justify-end gap-1">
       <EditCatalogueItemDialog item={item} categorySuggestions={categorySuggestions} />
 
-      <Button size="xs" variant="destructive" onClick={() => setConfirming(true)}>
-        <Trash2 />
-        Usuń
-      </Button>
+      <SimpleTooltip content="Usuń z katalogu">
+        <Button
+          size="xs"
+          variant="ghostDestructive"
+          className="px-1.5"
+          aria-label="Usuń z katalogu"
+          onClick={() => setConfirming(true)}
+        >
+          <Trash2 />
+        </Button>
+      </SimpleTooltip>
 
       <ConfirmDialog
         open={confirming}

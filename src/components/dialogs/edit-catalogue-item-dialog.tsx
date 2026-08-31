@@ -2,6 +2,7 @@
 
 import { Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SimpleTooltip } from '@/components/ui/tooltip'
 import { FormDialog } from '@/components/ui/form-dialog'
 import { WorkCatalogueItemForm } from '@/components/forms/work-catalogue-item/work-catalogue-item-form'
 import { updateCatalogueItemAction } from '@/lib/actions/work-catalogue'
@@ -23,10 +24,11 @@ export function EditCatalogueItemDialog({
       formId={formId}
       showKeepOpen={false}
       trigger={
-        <Button size="xs" variant="outline" aria-label="Edytuj pozycję katalogu">
-          <Pencil />
-          <span>Edytuj</span>
-        </Button>
+        <SimpleTooltip content="Edytuj pozycję">
+          <Button size="xs" variant="ghost" className="px-1.5" aria-label="Edytuj pozycję katalogu">
+            <Pencil />
+          </Button>
+        </SimpleTooltip>
       }
       title="Edytuj pozycję katalogu"
       description={item.description}
