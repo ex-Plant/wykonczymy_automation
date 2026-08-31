@@ -48,12 +48,7 @@ import {
   swapSectionBlock,
   type BlankRowInputT,
 } from '@/lib/kosztorys/row-ops'
-import {
-  planItemRemoval,
-  planItemRemovalFromCounts,
-  sectionItemCounts,
-  type ItemRemovalPlanT,
-} from '@/lib/kosztorys/delete-policy'
+import { isLastItemInSection, sectionItemCounts } from '@/lib/kosztorys/delete-policy'
 import { columnTotalsForRows } from '@/lib/kosztorys/column-totals'
 import { sectionSubtotalsForView, stageAxisForView } from '@/lib/kosztorys/settlement-aggregates'
 import { clientTotalsFromSubtotals } from '@/lib/kosztorys/settlement-client-totals'
@@ -346,8 +341,8 @@ export function useKosztorysEditor({
     handleApplyPercentDiscount,
   } = useKosztorysSettings({ investmentId, tree, rowsRef, patchRows, pushReversible })
 
-  // One O(n) pass feeding the render-hot getRemovePlan (see below) an O(1) per-row lookup.
-  const removalCounts = sectionItemCounts(rows)
+  // One O(n) pass; every row's actions menu reads its own section's count for the delete confirm.
+  const sectionCounts = sectionItemCounts(rows)
 
   // onRemoveItem/onReorderItem read prevById.current / rowsRef.current — stable refs —
   // only from a cell's onClick, never during render, so passing them here is safe.
@@ -460,8 +455,7 @@ export function useKosztorysEditor({
     onInsertSection: editorOnly(handleInsertSection),
     onPersistKosztorysOrder: editorOnly(handlePersistKosztorysOrder),
     onSetSectionColor: editorOnly(handleSetSectionColor),
-    getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
-    getRemovePlan: editorOnly(getRemovePlan),
+    getSectionItemCount: (sectionId: number) => sectionCounts.get(sectionId) ?? 0,
     globalDiscountActive,
     divergenceFilterEngaged,
     engagedStageConditionIds,
@@ -752,28 +746,10 @@ export function useKosztorysEditor({
     setRows((rs) => applyInsertItem(rs, anchorRow.id, row, dir))
   }
 
-  // What deleting a row does — read at event time from the full dataset (prevById), not the view,
-  // so the handler decides on accurate counts. The render-hot per-cell path uses getRemovePlan.
-  function removalPlan(row: KosztorysV2RowT) {
-    return planItemRemoval([...prevById.current.values()], row)
-  }
-
-  // Render-hot: called per cell. Counts are precomputed once per render (removalCounts below), so this
-  // is O(1) per row — going through removalPlan (which spreads prevById and rescans per row) here would
-  // make the whole grid's per-row delete plan O(n²).
-  function getRemovePlan(row: KosztorysV2RowT): ItemRemovalPlanT {
-    return planItemRemovalFromCounts(rows.length, removalCounts.get(row.sectionId) ?? 0)
-  }
-
   async function handleRemoveItem(row: KosztorysV2RowT) {
-    const plan = removalPlan(row)
-    // Backstop: the trash button is disabled when a reason exists, so this is normally unreachable.
-    if (plan.kind === 'blocked') {
-      toastMessage(plan.reason, 'warning', 4000)
-      return
-    }
-    // Last item in its section → cascade-delete the section so no orphaned 0-row section is left.
-    if (plan.kind === 'cascade-section') {
+    // Decided at event time against the full dataset (prevById), not the view, so a filtered or
+    // searched grid can't make a row look like the last one in its section.
+    if (isLastItemInSection([...prevById.current.values()], row)) {
       await handleRemoveSection(row.sectionId)
       return
     }

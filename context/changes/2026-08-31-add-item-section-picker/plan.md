@@ -16,8 +16,8 @@ razie ostatnia" znika.
   Ta część nie wymaga zmian.
 - `subtotals` (`use-kosztorys-editor.ts:504`) niesie `sectionId`, `sectionName`, `sectionColor`
   i `itemCount`, w kolejności występowania sekcji w rozpisce — kompletne źródło listy.
-- Sekcja bez pozycji nie istnieje: `planItemRemovalFromCounts`
-  (`src/lib/kosztorys/delete-policy.ts:28`) kasuje sekcję kaskadowo przy usunięciu ostatniej pozycji,
+- Sekcja bez pozycji nie istnieje: `handleRemoveItem` (`use-kosztorys-editor.ts`) przy
+  `isLastItemInSection` (`src/lib/kosztorys/delete-policy.ts:6`) kasuje sekcję kaskadowo,
   a nowa sekcja powstaje od razu z jedną pozycją. Lista z `subtotals` jest więc zawsze kompletna.
 - `DropdownMenuSubContent` (`src/components/ui/dropdown-menu.tsx:215`) nie ma ani `max-h`, ani
   `overflow-y-auto` — `DropdownMenuContent` (linia 36) ma oba. `DropdownMenuSubTrigger` nie ma z kolei

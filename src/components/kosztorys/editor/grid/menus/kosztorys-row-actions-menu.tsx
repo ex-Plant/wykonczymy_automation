@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import type { ReactNode } from 'react'
 import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, Trash2 } from 'lucide-react'
 
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -14,7 +13,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { CellMenuTrigger } from '@/components/ui/datasheet-grid/cell-menu-trigger'
 import { SectionColorPicker } from '@/components/kosztorys/editor/grid/menus/section-color-picker'
-import { SimpleTooltip } from '@/components/ui/tooltip'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 
 type OrderActionsT = {
@@ -38,30 +36,14 @@ type PropsT = {
   // Insert + move have no meaning against a sorted view — array position no longer mirrors
   // display_order — so they go dead while any sort is on, whatever its scope.
   sortActive: boolean
-  // Why delete is blocked (only the empty-sheet floor now), or undefined if removable. Present →
-  // delete disabled with the reason in a tooltip (disabled items are pointer-events-none, so a
-  // native title never fires).
-  removeBlockReason?: string
   item: OrderActionsT & { onRemove: () => void }
   // Absent (read-only view) → the whole „Sekcja" group is hidden.
   section?: SectionActionsT
 }
 
-export function KosztorysRowActionsMenu({ sortActive, removeBlockReason, item, section }: PropsT) {
+export function KosztorysRowActionsMenu({ sortActive, item, section }: PropsT) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [sectionConfirmOpen, setSectionConfirmOpen] = useState(false)
-  // The wrapper div is not decoration: a disabled item is pointer-events-none and would swallow the
-  // hover, and a menu item makes a poor tooltip trigger anyway — both are Radix primitives fighting
-  // over the same ref and props. The div catches the hover for either case.
-  const withHint = (items: ReactNode, reason?: string) =>
-    reason == null ? (
-      items
-    ) : (
-      <SimpleTooltip content={reason}>
-        <div>{items}</div>
-      </SimpleTooltip>
-    )
-
   const orderItems = ({ onInsertAbove, onInsertBelow, onMoveUp, onMoveDown }: OrderActionsT) => (
     <>
       <DropdownMenuItem disabled={sortActive} onSelect={onInsertAbove}>
@@ -95,17 +77,10 @@ export function KosztorysRowActionsMenu({ sortActive, removeBlockReason, item, s
               only thing saying whether „Przesuń w górę" moves the row or the whole section. */}
           <DropdownMenuLabel>Praca</DropdownMenuLabel>
           {orderItems(item)}
-          {withHint(
-            <DropdownMenuItem
-              variant="destructive"
-              disabled={removeBlockReason != null}
-              onSelect={() => setConfirmOpen(true)}
-            >
-              <Trash2 />
-              Usuń pozycję
-            </DropdownMenuItem>,
-            removeBlockReason,
-          )}
+          <DropdownMenuItem variant="destructive" onSelect={() => setConfirmOpen(true)}>
+            <Trash2 />
+            Usuń pozycję
+          </DropdownMenuItem>
           {section && (
             <>
               <DropdownMenuSeparator />
@@ -123,7 +98,7 @@ export function KosztorysRowActionsMenu({ sortActive, removeBlockReason, item, s
       <ConfirmDialog
         open={confirmOpen}
         title="Usunąć pozycję?"
-        description="Pozycja wraz z wpisanymi w niej ilościami etapów zostanie usunięta. Tej operacji nie można cofnąć."
+        description="Pozycja wraz z wpisanymi w niej ilościami etapów zostanie usunięta. Jeśli jest ostatnia w sekcji, zniknie też sekcja. Tej operacji nie można cofnąć."
         confirmLabel="Usuń"
         onConfirm={() => {
           item.onRemove()

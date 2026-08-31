@@ -9,7 +9,7 @@ import {
   hasStagesOverPlanned,
 } from '@/lib/kosztorys/settlement-rows'
 import { applyRestoreItem, revertField } from '@/lib/kosztorys/row-ops'
-import { planItemRemoval, REMOVE_BLOCK_LAST_ITEM } from '@/lib/kosztorys/delete-policy'
+import { isLastItemInSection } from '@/lib/kosztorys/delete-policy'
 import { rowDoneFraction } from '@/lib/kosztorys/calc'
 import {
   STAGE_QTY_PREFIX,
@@ -503,25 +503,22 @@ describe('wartość wiersza idzie za etapami', () => {
   })
 })
 
-describe('planItemRemoval', () => {
+describe('isLastItemInSection', () => {
   const row = (id: number, sectionId: number) => ({ id, sectionId }) as unknown as KosztorysV2RowT
 
-  it('środek sekcji (sekcja ma >1 pozycję) → usuń pozycję', () => {
+  it('sekcja ma jeszcze inne pozycje → nie jest ostatnia', () => {
     const rows = [row(1, 10), row(2, 10), row(3, 20)]
-    expect(planItemRemoval(rows, rows[0])).toEqual({ kind: 'remove-item' })
+    expect(isLastItemInSection(rows, rows[0])).toBe(false)
   })
 
-  it('ostatnia pozycja sekcji (są inne sekcje) → kaskadowo usuń sekcję', () => {
+  it('jedyna pozycja swojej sekcji → jest ostatnia, choć kosztorys ma inne sekcje', () => {
     const rows = [row(1, 10), row(2, 20)]
-    expect(planItemRemoval(rows, rows[1])).toEqual({ kind: 'cascade-section' })
+    expect(isLastItemInSection(rows, rows[1])).toBe(true)
   })
 
-  it('ostatni wiersz całego kosztorysu → zablokowane (próg pustego arkusza)', () => {
+  it('jedyna pozycja całego kosztorysu → jest ostatnia (opróżnienie do zera jest dozwolone)', () => {
     const rows = [row(1, 10)]
-    expect(planItemRemoval(rows, rows[0])).toEqual({
-      kind: 'blocked',
-      reason: REMOVE_BLOCK_LAST_ITEM,
-    })
+    expect(isLastItemInSection(rows, rows[0])).toBe(true)
   })
 })
 

@@ -210,9 +210,6 @@ function RowActionsCell({
   rowData: KosztorysV2RowT
   opts: BuildV2ColumnsOptsT
 }) {
-  const plan = opts.getRemovePlan?.(rowData)
-  const removeBlockReason = plan?.kind === 'blocked' ? plan.reason : undefined
-
   // All four section callbacks come from one `editorOnly()` gate, so this reads as a single
   // "editor mode?" test rather than four independent ones.
   const { onInsertSection, onReorderSection, onSetSectionColor, onRemoveSection } = opts
@@ -235,7 +232,6 @@ function RowActionsCell({
   return (
     <KosztorysRowActionsMenu
       sortActive={opts.sort != null}
-      removeBlockReason={removeBlockReason}
       item={{
         onInsertAbove: () => opts.onInsertItem?.(rowData, 'above'),
         onInsertBelow: () => opts.onInsertItem?.(rowData, 'below'),
