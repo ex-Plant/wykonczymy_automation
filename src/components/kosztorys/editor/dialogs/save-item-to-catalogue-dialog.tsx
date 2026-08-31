@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Description } from '@/components/ui/description'
 import { FormDialogShell } from '@/components/ui/form-dialog-shell'
-import { ToggleGroup } from '@/components/ui/toggle-group'
 import { catalogueSavePreviewAction, saveItemToCatalogueAction } from '@/lib/actions/work-catalogue'
 import type { CatalogueSavePreviewT } from '@/lib/kosztorys/work-catalogue/types'
 import { formatPLN } from '@/lib/utils/format-currency'
@@ -45,8 +45,8 @@ export function SaveItemToCatalogueDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const [preview, setPreview] = useState<CatalogueSavePreviewT | null>(null)
-  const [mode, setMode] = useState<'new' | 'overwrite'>('new')
   const [saving, setSaving] = useState(false)
+  const [confirming, setConfirming] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -61,9 +61,6 @@ export function SaveItemToCatalogueDialog({
         if (stale) return
         if (!res.success) return fail(res.error ?? LOAD_FAILED)
         setPreview(res.data)
-        // A klucz already in the cennik makes „nadpisz" the answer the owner came for — a „nowa"
-        // default would only ever produce the duplicate message.
-        setMode(res.data.existing ? 'overwrite' : 'new')
       })
       .catch(() => fail(LOAD_FAILED))
     return () => {
@@ -71,19 +68,28 @@ export function SaveItemToCatalogueDialog({
     }
   }, [open, itemId, onOpenChange])
 
+  // The klucz (opis + j.m.) decides it — there is no mode to pick: an occupied klucz can only be
+  // overwritten, and a free one can only be created. „Nadpisz" replaces the figures of a row every
+  // future kosztorys copies from, and the katalog keeps no history, so that branch asks first.
+  const overwrites = preview?.existing != null
+
+  function requestSave() {
+    if (!preview || saving) return
+    if (overwrites) return setConfirming(true)
+    void handleSave()
+  }
+
   async function handleSave() {
     if (!preview || saving) return
+    setConfirming(false)
     setSaving(true)
-    const res = await saveItemToCatalogueAction(itemId, mode)
+    const res = await saveItemToCatalogueAction(itemId, overwrites ? 'overwrite' : 'new')
     setSaving(false)
     if (!res.success) {
       toastMessage(res.error ?? 'Nie udało się zapisać pracy do katalogu', 'error', 4000)
       return
     }
-    toastMessage(
-      mode === 'overwrite' ? 'Nadpisano pozycję katalogu' : 'Dodano do katalogu',
-      'success',
-    )
+    toastMessage(overwrites ? 'Nadpisano pozycję katalogu' : 'Dodano do katalogu', 'success')
     onOpenChange(false)
   }
 
@@ -93,8 +99,8 @@ export function SaveItemToCatalogueDialog({
       onOpenChange={onOpenChange}
       title="Zapisz do katalogu…"
       description="Katalog prac to wspólny cennik — stawki zapisują się jako kwoty, wyliczone dla tej inwestycji."
-      confirmLabel="Zapisz"
-      onConfirm={() => void handleSave()}
+      confirmLabel={overwrites ? 'Nadpisz…' : 'Zapisz'}
+      onConfirm={requestSave}
       confirmDisabled={!preview || saving}
     >
       {!preview ? (
@@ -109,31 +115,32 @@ export function SaveItemToCatalogueDialog({
             </p>
           </div>
 
-          {preview.existing && (
-            <ToggleGroup
-              options={[
-                { value: 'overwrite', label: 'Nadpisz' },
-                { value: 'new', label: 'Nowa' },
-              ]}
-              value={mode}
-              onChange={setMode}
-              aria-label="Tryb zapisu do katalogu"
-            />
-          )}
-
           {preview.existing && <PriceList title="W katalogu" prices={preview.existing} />}
           <PriceList
             title={preview.existing ? 'Po zapisie' : 'Do zapisania'}
             prices={preview.candidate}
           />
 
-          {preview.existing && mode === 'new' && (
-            <Description tone="error" size="xs">
-              Ta praca jest już w katalogu pod tą samą nazwą i jednostką — drugiej pozycji nie da
-              się dodać.
+          {preview.existing && (
+            <Description size="xs">
+              Ta praca jest już w katalogu pod tą samą nazwą i jednostką — zapis ją nadpisze. Chcesz
+              osobną pozycję? Zmień nazwę pracy w rozpisce i zapisz jeszcze raz.
             </Description>
           )}
         </>
+      )}
+
+      {preview?.existing && (
+        <ConfirmDialog
+          open={confirming}
+          title={`Nadpisać „${preview.existing.description}" w katalogu?`}
+          description={`Stare stawki przepadną — katalog nie trzyma historii. Cena j.m. ${formatPLN(preview.existing.clientPrice)} → ${formatPLN(preview.candidate.clientPrice)}, stawka z narzędziami ${formatPLN(preview.existing.wToolsRate)} → ${formatPLN(preview.candidate.wToolsRate)}, bez narzędzi ${formatPLN(preview.existing.ownToolsRate)} → ${formatPLN(preview.candidate.ownToolsRate)}. Kosztorysy, w których ta praca już siedzi, zostają bez zmian. Jeśli chcesz dodać osobną pozycję zamiast nadpisać tę — anuluj i zmień nazwę pracy w rozpisce.`}
+          confirmLabel="Nadpisz"
+          pending={saving}
+          pendingLabel="Zapisuję…"
+          onConfirm={() => void handleSave()}
+          onCancel={() => setConfirming(false)}
+        />
       )}
     </FormDialogShell>
   )
