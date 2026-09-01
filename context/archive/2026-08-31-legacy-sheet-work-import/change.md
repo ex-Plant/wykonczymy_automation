@@ -1,10 +1,10 @@
 ---
 change_id: legacy-sheet-work-import
 title: Import brakujących prac ze starych arkuszy do katalogu prac
-status: implemented
+status: archived
 created: 2026-08-31
 updated: 2026-09-01
-archived_at: null
+archived_at: 2026-09-01T14:45:36Z
 branch: legacy-sheet-work-import
 worktree: null
 ---
@@ -89,3 +89,21 @@ Skutki dla planu:
   produkcji różniłby się od tego, co było oglądane na ekranie.
 - Warunek: między przeglądem a wsadem nikt nie zanieczyszcza lokalnego katalogu danymi
   testowymi — to on jest źródłem.
+
+### Jak to wyszło — odstępstwa od ustaleń (2026-09-01)
+
+1. **Dopisek to SUFIKS, nie prefiks** (decyzja właściciela w trakcie). Listing sortuje po nazwie,
+   więc sufiks stawia pracę z arkusza obok jej bliźniaczki ze wzoru — a to jest dokładnie to
+   porównanie, które robi przegląd; prefiks zsypałby wszystkie dołożone pozycje w jeden blok pod
+   „[". Sam dopisek i zdejmowanie go mieszkają w `lib/kosztorys/work-catalogue/legacy-marker.ts`,
+   bo `match_key` liczy nie tylko skrypt, ale i formularz katalogu — patrz wpis w `lessons.md`.
+2. **Skrypty jednorazowe skasowane od razu po akcji**, nie „kiedyś": zassanie, analiza, raport
+   i wsad kandydatów (dziesięć plików). Zostały tylko eksport katalogu, wsad z pliku i sam JSON —
+   te mają pracę do wykonania jeszcze po tej zmianie, na produkcji (EX-763). Punkt 8 ustaleń
+   przewidywał kasację całości; ta trójka znika dopiero po wgraniu katalogu na produkcję.
+3. **Literówki w OPISACH poprawione** przez `cleanDescription`. Zakaz z ustaleń dotyczył j.m.
+   (gdzie słownik literówek to decyzja na ślepo), nie opisów; sprawdzone empirycznie, że
+   na 946 wierszach nie ruszyło to ani jednego klucza.
+
+Przegląd katalogu przez właściciela trwa (liczba pozycji spadła 946 → 940 w trakcie bramki);
+wgranie na produkcję opisuje EX-763 — robi to człowiek.
