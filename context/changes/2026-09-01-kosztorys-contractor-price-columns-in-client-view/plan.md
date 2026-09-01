@@ -352,13 +352,13 @@ Raz, po ostatniej fazie:
 
 #### Automated
 
-- [x] 2.1 Sortowanie obu planów
-- [x] 2.2 Zakres i porządek sortowania bez regresji
+- [x] 2.1 Sortowanie obu planów — c2404c4c
+- [x] 2.2 Zakres i porządek sortowania bez regresji — c2404c4c
 
 ### Phase 3: Widoczność, oś, reveal problemów i zamek podglądu
 
 #### Automated
 
-- [ ] 3.1 Zamek podglądu i picker
-- [ ] 3.2 Reveal problemów
-- [ ] 3.3 Oś pieniądza po zmianie
+- [x] 3.1 Zamek podglądu i picker
+- [x] 3.2 Reveal problemów
+- [x] 3.3 Oś pieniądza po zmianie

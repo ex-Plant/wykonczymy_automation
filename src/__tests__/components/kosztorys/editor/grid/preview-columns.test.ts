@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { planePriceKey } from '@/lib/kosztorys/plane-price-keys'
 import {
   buildV2Columns,
   buildV2Grid,
@@ -131,7 +132,8 @@ describe('preview columns', () => {
   })
 })
 
-// The allowlist alone is not a lock: `price`/`net`/`gross` are on it and would compute at a
+// The allowlist alone is not a lock for the CLIENT-named columns: `price`/`net`/`gross` are on it and
+// would compute at a
 // subcontractor's cost basis, under client column names. No column looks foreign, so the leak does not
 // announce itself — which is why the pair is enforced by an exception rather than a comment.
 describe('the pair: allowlist + price plane', () => {
@@ -147,17 +149,21 @@ describe('the pair: allowlist + price plane', () => {
     expect(() => previewIds()).not.toThrow()
   })
 
-  // Held by the PLANE, not the allowlist: `priceMode`/`priceCoeff` are only assembled at
-  // `view !== 'client'`, so a preview can never reach them. Their absence from the allowlist is
-  // defence in depth.
-  it('cannot reach the subcontractor-only columns', () => {
+  // The allowlist is now the ONLY half holding these back. They used to be held by the plane as well
+  // — assembled solely at `view !== 'client'` — but a crew's stawki are assembled in every view since
+  // the owner asked to compare both planes from „Inwestor", so the client view reaches them too and
+  // only their absence from PREVIEW_VISIBLE_COLUMNS keeps them off a client's document.
+  it('cannot reach the subcontractor rate columns, in either plane', () => {
     const visible = previewIds()
-    expect(visible).not.toContain('priceMode')
-    expect(visible).not.toContain('priceCoeff')
-    // The editor at a subcontractor plane still gets them — proof the assertion above has teeth.
-    expect(buildV2Columns({ view: 'w_tools', stages: STAGES }).map((c) => c.id)).toContain(
-      'priceMode',
-    )
+    for (const plane of ['w_tools', 'own_tools'] as const) {
+      for (const base of ['priceMode', 'priceCoeff', 'price'] as const) {
+        expect(visible).not.toContain(planePriceKey(base, plane))
+      }
+    }
+    // The editor gets them — in the client view too, which is exactly why the allowlist is load-bearing.
+    const editorIds = buildV2Columns({ view: 'client', stages: STAGES }).map((c) => c.id)
+    expect(editorIds).toContain(planePriceKey('priceMode', 'w_tools'))
+    expect(editorIds).toContain(planePriceKey('price', 'own_tools'))
   })
 
   // The subcontractor plane without the allowlist is just the owner's own view — the pair binds one

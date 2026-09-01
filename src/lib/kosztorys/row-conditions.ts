@@ -1,5 +1,6 @@
 import { subcontractorPrice } from '@/lib/kosztorys/calc'
-import { PLANE_LABELS } from '@/lib/kosztorys/constants'
+import { PLANE_LABELS, TOOL_PLANES } from '@/lib/kosztorys/constants'
+import { PLANE_PRICE_BASE_KEYS, planePriceKey } from '@/lib/kosztorys/plane-price-keys'
 import { measureDiscrepancy, rowTotalQtyDone } from '@/lib/kosztorys/settlement-rows'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
@@ -58,19 +59,32 @@ export type RowConditionT = {
   matches: (row: KosztorysV2RowT, ctx: RowConditionCtxT) => boolean
 }
 
-// Both the symptom and the two cells that compute it: the price is what is wrong, „Źródło ceny
-// wykonawcy" and „Mnożnik" are the only way to make it right, so revealing the first alone shows a
-// number nobody can act on (owner, explicit). The latter two only assemble in a subcontractor view, so
-// naming them from the client view is a harmless no-op and needs no view check.
-//
-// Every price problem gets all three, „bez ceny j.m." included: the subcontractor stawki derive from
-// the client price, so a pozycja missing that price is missing them too, and the fix is made in the
-// same three cells whichever of the two the reader noticed first.
 // Named once so the pair below cannot be edited apart — „bez rabatu" is „ma rabat" negated, and two
 // hand-written copies of a three-term test are two chances to change only one of them.
 const hasItemDiscount = (row: KosztorysV2RowT) => row.discountType !== null && row.discountValue > 0
 
-const PRICE_COLUMNS = ['price', 'priceMode', 'priceCoeff'] as const
+// Both the symptom and the cells that compute it: the price is what is wrong, „Źródło ceny wykonawcy"
+// and „Mnożnik" are the only way to make it right, so revealing the first alone shows a number nobody
+// can act on (owner, explicit). The client's cena j.m. rides along in every case — every stawka
+// wykonawcy derives from it, so it is where half of these problems are actually fixed.
+//
+// A condition that names a plane reveals THAT plane's three. Both planes assemble in every view now,
+// so revealing both would answer a question about one crew by putting six columns on screen — and the
+// old „naming them from the client view is a harmless no-op" no longer holds: from the client view
+// those ids are real columns.
+const priceColumnsFor = (plane: ToolPlaneT): readonly string[] => [
+  'price',
+  ...PLANE_PRICE_BASE_KEYS.map((base) => planePriceKey(base, plane)),
+]
+
+// A missing cena j.m. is missing from BOTH stawki at once — there is no plane to narrow to, so „bez
+// ceny j.m." reveals everything the fix could be typed into.
+const ALL_PRICE_COLUMNS: readonly string[] = [
+  'price',
+  ...TOOL_PLANES.flatMap((plane) =>
+    PLANE_PRICE_BASE_KEYS.map((base) => planePriceKey(base, plane)),
+  ),
+]
 
 // Named because the grid reads it too: the „Rozjazd między arkuszem Google a apką" column exists only while this
 // diagnostic is pressed, so the id is shared between the registry and the column assembly.
@@ -263,7 +277,7 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     tone: 'defect',
     // The executed quantity alongside the price cells: engaging a problem that says „praca wykonana"
     // and showing no column carrying that work leaves the claim unverifiable on screen.
-    revealsColumns: [...PRICE_COLUMNS, 'stageQtySum'],
+    revealsColumns: [...ALL_PRICE_COLUMNS, 'stageQtySum'],
     matches: (row, ctx) => !(row.clientPrice > 0) && rowTotalQtyDone(row, ctx.stages, 'client') > 0,
   },
   {
@@ -274,7 +288,7 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     sectionLabel: null,
     kind: 'diagnostic',
     tone: 'defect',
-    revealsColumns: PRICE_COLUMNS,
+    revealsColumns: ALL_PRICE_COLUMNS,
     // The only hand-typed price; the subcontractor planes derive from it through the coefficients.
     matches: (row, ctx) =>
       !(row.clientPrice > 0) && !(rowTotalQtyDone(row, ctx.stages, 'client') > 0),
@@ -304,16 +318,16 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     matches: (row, ctx) => !(row.plannedQty > 0) && rowTotalQtyDone(row, ctx.stages, 'client') > 0,
   },
   // One entry per plane rather than one asking about the active view: a price exists on both planes for
-  // every row, so a problem on the plane you are not looking at is still a problem — and in the client
-  // view, where no subcontractor price renders at all, neither would ever surface.
+  // every row, so a problem on the plane you are not looking at is still a problem, and one entry
+  // asking about the active view would never surface the other crew's.
   // „zbyt wysoką", naming the direction the guard actually refuses (owner, 2026-08-17): a stawka above
   // 80% of the client price. The guard's other branch — a negative stawka — is not that, but it is
   // typo-shaped rather than a real state of the kosztorys, so it rides along unnamed instead of
   // costing the label its one clear meaning.
   //
-  // „w widoku …", not „— …": the plane IS a view here, and the reader has to switch to it to see the
-  // stawka being judged. Engaged from „Inwestor" the row still narrows correctly, but the price on
-  // screen is then the client's — the accepted cost of not switching the view out from under a click.
+  // „w widoku …", not „— …": the plane IS a view here, and the label names where the stawka is
+  // normally read. Engaged from „Inwestor" the reveal now brings that plane's own stawka cells with
+  // it, so the reader sees the judged number without switching the view out from under a click.
   {
     id: 'overpriced-w-tools',
     label: `ze zbyt wysoką stawką wykonawcy w widoku ${PLANE_LABELS.w_tools.toLowerCase()}`,
@@ -321,7 +335,7 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     kind: 'diagnostic',
     tone: 'defect',
     plane: 'w_tools',
-    revealsColumns: PRICE_COLUMNS,
+    revealsColumns: priceColumnsFor('w_tools'),
     // The guard, not a restatement of the 80% rule: the filter and the red cell must never disagree.
     matches: (row) => checkSubcontractorPrice(row, 'w_tools') != null,
   },
@@ -332,7 +346,7 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     kind: 'diagnostic',
     tone: 'defect',
     plane: 'own_tools',
-    revealsColumns: PRICE_COLUMNS,
+    revealsColumns: priceColumnsFor('own_tools'),
     matches: (row) => checkSubcontractorPrice(row, 'own_tools') != null,
   },
   // The other half of the same question, and the one an import creates: a praca whose cenniki
@@ -351,7 +365,7 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     kind: 'diagnostic',
     tone: 'defect',
     plane: 'w_tools',
-    revealsColumns: PRICE_COLUMNS,
+    revealsColumns: priceColumnsFor('w_tools'),
     matches: (row) => row.clientPrice > 0 && subcontractorPrice(row, 'w_tools') === 0,
   },
   {
@@ -361,7 +375,7 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     kind: 'diagnostic',
     tone: 'defect',
     plane: 'own_tools',
-    revealsColumns: PRICE_COLUMNS,
+    revealsColumns: priceColumnsFor('own_tools'),
     matches: (row) => row.clientPrice > 0 && subcontractorPrice(row, 'own_tools') === 0,
   },
   // Split per plane like the two above, but for a different reason: there the stawka exists on both
@@ -380,7 +394,7 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     kind: 'diagnostic',
     tone: 'defect',
     plane: 'w_tools',
-    revealsColumns: PRICE_COLUMNS,
+    revealsColumns: priceColumnsFor('w_tools'),
     problemLabel: (count) => percentRateProblemLabel('w_tools', count),
     matches: (row, ctx) => settledAtPercentRate(row, ctx, 'w_tools'),
   },
@@ -391,7 +405,7 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     kind: 'diagnostic',
     tone: 'defect',
     plane: 'own_tools',
-    revealsColumns: PRICE_COLUMNS,
+    revealsColumns: priceColumnsFor('own_tools'),
     problemLabel: (count) => percentRateProblemLabel('own_tools', count),
     matches: (row, ctx) => settledAtPercentRate(row, ctx, 'own_tools'),
   },

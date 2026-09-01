@@ -617,6 +617,10 @@ function toggleKey(columnId: string): string {
 // says it out loud at the one chokepoint both build paths cross. It throws rather than repairing the
 // opts: a caller that got this wrong has a bug worth seeing, and silently overriding its `view` would
 // hide it.
+//
+// What this pin no longer covers: the six per-plane rate columns. They carry their plane in the id
+// and assemble in EVERY view, so pinning `view` to 'client' does nothing for them — the allowlist is
+// their only barrier, and it is the half to check before touching either.
 function assertDisclosurePair(opts: BuildV2ColumnsOptsT): void {
   if (opts.previewVisible && opts.view !== 'client') {
     throw new Error(

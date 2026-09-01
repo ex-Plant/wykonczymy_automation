@@ -870,8 +870,12 @@ w złą stronę:
   naprawienie ostatniego trafienia zabierało jedyny przycisk zdejmujący zawężenie — siatka zostawała
   przycięta bez wyjścia. To była 🔴 tej bramki.
 - **Zbyt wysoka stawka wykonawcy to dwa wiersze, po jednym na płaszczyznę** — liczone niezależnie od
-  aktywnego widoku. Defekt na płaszczyźnie, na którą akurat nie patrzysz, dalej jest defektem, a
-  w widoku klienta żadna stawka wykonawcy się nie renderuje, więc inaczej nie wyszedłby nigdy.
+  aktywnego widoku. Defekt na płaszczyźnie, na którą akurat nie patrzysz, dalej jest defektem, więc
+  jeden wiersz pytający o widok nigdy nie pokazałby stawki drugiej ekipy. Odsłania kolumny swojej
+  płaszczyzny, nie obu — od 2026-09-01 stawki obu płaszczyzn składają się w KAŻDYM widoku (domyślnie
+  ukryte, do włączenia w pikerze), więc odsłonięcie obu odpowiadałoby na pytanie o jedną ekipę
+  liczbami drugiej. Do podglądu inwestora żadna z nich nie ma wstępu — trzyma je wyłącznie allowlista
+  `PREVIEW_VISIBLE_COLUMNS`, bo przypięcie płaszczyzny ceny już ich nie dotyczy.
 - **Problem etapowy zawęża kolumny etapów**, nie wiersze. Zakaz „widoczności per etap" dotyczy stanu
   **utrwalonego**; filtr jest przejściowy, więc go nie łamie.
 - **Etap bez płaszczyzny liczy się dwa razy** (jest też etapem bez pracownika) — świadomie, żeby każdy

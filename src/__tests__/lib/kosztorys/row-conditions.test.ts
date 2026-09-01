@@ -10,6 +10,7 @@ import {
   isFoldSuppressed,
   sectionIdsWhereAllMatch,
 } from '@/lib/kosztorys/row-conditions'
+import { planePriceKey } from '@/lib/kosztorys/plane-price-keys'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
@@ -18,6 +19,16 @@ const STAGES: KosztorysStageT[] = [
   { id: 2, ordinal: 2, label: null, plane: 'w_tools', workerId: 5 },
 ]
 const CTX = { stages: STAGES, hasSettledMaterial: false }
+
+// The client's cena j.m. plus one crew's three rate cells — what a price problem on that plane is
+// repaired in. Both planes' columns exist in every view now, so a reveal that named both would answer
+// a question about one crew with the other crew's numbers beside it.
+const priceCells = (...planes: ('w_tools' | 'own_tools')[]) => [
+  'price',
+  ...planes.flatMap((plane) =>
+    (['priceMode', 'priceCoeff', 'price'] as const).map((base) => planePriceKey(base, plane)),
+  ),
+]
 
 function row(overrides: Partial<KosztorysV2RowT> = {}): KosztorysV2RowT {
   return {
@@ -354,11 +365,9 @@ describe('„ze stawką wykonawcy od ceny z materiałem" — the overpaid-crew g
   it('sends each half to the plane it judges, and reveals the cells that repair it', () => {
     expect(engagedPlane(['material-percent-rate-w-tools'])).toBe('w_tools')
     expect(engagedPlane(['material-percent-rate-own-tools'])).toBe('own_tools')
-    expect([...columnsRevealedBy(['material-percent-rate-w-tools'])].sort()).toEqual([
-      'price',
-      'priceCoeff',
-      'priceMode',
-    ])
+    expect(columnsRevealedBy(['material-percent-rate-w-tools'])).toEqual(
+      new Set(priceCells('w_tools')),
+    )
   })
 })
 
@@ -504,37 +513,36 @@ describe('columnsRevealedBy', () => {
   // The price is the symptom; „Źródło ceny wykonawcy" and „Mnożnik" are the only way to change it, so
   // revealing the first alone would show a number nobody can act on.
   it('brings the two cells that compute a stawka along with the stawka', () => {
-    expect([...columnsRevealedBy(['overpriced-w-tools'])].sort()).toEqual([
-      'price',
-      'priceCoeff',
-      'priceMode',
-    ])
+    expect(columnsRevealedBy(['overpriced-w-tools'])).toEqual(new Set(priceCells('w_tools')))
+  })
+
+  // …and only that crew's: the other plane's stawka is not what the problem is about, even though its
+  // columns are now assembled in the same view.
+  it('leaves the other plane alone', () => {
+    const revealed = columnsRevealedBy(['overpriced-w-tools'])
+    expect(revealed.has(planePriceKey('price', 'own_tools'))).toBe(false)
   })
 
   it('unions two engaged problems without repeating their shared column', () => {
     const revealed = columnsRevealedBy(['no-client-price', 'overpriced-own-tools'])
-    expect([...revealed].sort()).toEqual(['price', 'priceCoeff', 'priceMode'])
+    expect(revealed).toEqual(new Set(priceCells('w_tools', 'own_tools')))
   })
 
   // The subcontractor stawki derive from the client price, so a missing cena j.m. is a missing stawka
-  // too and gets the same three cells rather than „Cena j.m." alone.
-  it('gives a missing cena j.m. the same three cells as a bad stawka', () => {
-    expect([...columnsRevealedBy(['no-client-price'])].sort()).toEqual([
-      'price',
-      'priceCoeff',
-      'priceMode',
-    ])
+  // too — on BOTH planes at once, which is why this one problem reveals everything the two guards
+  // above split between them.
+  it('gives a missing cena j.m. every cell the fix could be typed into', () => {
+    expect(columnsRevealedBy(['no-client-price'])).toEqual(
+      new Set(priceCells('w_tools', 'own_tools')),
+    )
   })
 
   // A problem that claims work was executed has to put that work on screen, or the claim cannot be
   // checked against the pozycja it narrowed to.
   it('adds the pomiar to the price cells when the problem is about executed work', () => {
-    expect([...columnsRevealedBy(['no-client-price-with-work'])].sort()).toEqual([
-      'price',
-      'priceCoeff',
-      'priceMode',
-      'stageQtySum',
-    ])
+    expect(columnsRevealedBy(['no-client-price-with-work'])).toEqual(
+      new Set([...priceCells('w_tools', 'own_tools'), 'stageQtySum']),
+    )
   })
 
   // Same rule as the rest of the registry: an id persisted under a condition since removed must be
