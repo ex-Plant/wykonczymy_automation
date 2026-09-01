@@ -1,11 +1,11 @@
 ---
 change_id: legacy-sheet-work-import
 title: Import brakujących prac ze starych arkuszy do katalogu prac
-status: new
+status: implementing
 created: 2026-08-31
-updated: 2026-08-31
+updated: 2026-09-01
 archived_at: null
-branch: null
+branch: legacy-sheet-work-import
 worktree: null
 ---
 
@@ -64,3 +64,28 @@ spór MIĘDZY arkuszami.
 Napięcie do pilnowania (roadmap.md:420): ta sama praca kosztuje różnie w różnych
 inwestycjach (inna ekipa → inna cena). Katalog tego nie łamie, bo cena jest kopiowana przy
 wstawieniu i nigdy żywa — ale raport ma mówić „różni się od cennika", nigdy „jest błędna".
+
+### Ustalenie: prod dostaje wynik, nie powtórkę akcji (2026-09-01)
+
+Prod nie ma jeszcze tabeli `work_catalogue_items` (katalog żyje na gałęziach, nie na `main`),
+więc akcja nie jest „zrób lokalnie, powtórz na produkcji". Cała praca dzieje się na lokalnej
+bazie, a produkcja dostaje jej **wynik jako dane**:
+
+1. lokalnie: wsad wzoru (`seed-work-catalogue.ts`, szablon 373 pozycje → 194 unikalne klucze)
+   - trzy przebiegi importu ze starych arkuszy,
+2. lokalnie: przegląd w aplikacji — kasowanie śmieci, poprawki cen, zdejmowanie dopisków.
+   To jest praca, której nie wolno powtarzać,
+3. produkcja: **eksport całego lokalnego `work_catalogue_items`** jako jednorazowy wsad, po
+   merge'u katalogu na `main` i migracji. Bez zasysania arkuszy, bez analizy, bez przeglądu.
+
+Skutki dla planu:
+
+- Skrypt importu pisze wyłącznie do lokalnej bazy — nie potrzebuje ścieżki „nazwij bazę jawnie
+  przy wywołaniu", którą ma `seed-work-catalogue.ts`, bo nigdy nie celuje w produkcję.
+- Dochodzi drobny krok: eksport katalogu do pliku + wsad tego pliku (insert-only po
+  `match_key`). Kształtem to `seed-work-catalogue.ts`, więc przeróbka, nie nowy kod.
+- Produkcja dostaje **wyłącznie** ten eksport — wzór też jedzie z lokalnego, przejrzanego
+  stanu. Żadnego osobnego uruchomienia `seed-work-catalogue.ts` na produkcji; inaczej wzór na
+  produkcji różniłby się od tego, co było oglądane na ekranie.
+- Warunek: między przeglądem a wsadem nikt nie zanieczyszcza lokalnego katalogu danymi
+  testowymi — to on jest źródłem.

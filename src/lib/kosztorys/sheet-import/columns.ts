@@ -149,3 +149,22 @@ export const FOOTER_ROWS: ReadonlyArray<{
 
 export const isFooterLabel = (folded: string): boolean =>
   FOOTER_ROWS.some(({ matches }) => matches(folded))
+
+// Superscript digits as the owner types them into a j.m. cell — `m²`, occasionally `m³`.
+const SUPERSCRIPT_DIGITS: Record<string, string> = { '¹': '1', '²': '2', '³': '3' }
+
+// The j.m. member of a praca's identity, folded harder than `fold()` because a unit is an
+// abbreviation and the owner abbreviates it inconsistently across sheets and years: `szt` / `szt.`,
+// `mb` / `m.b.`, `m2` / `m²`. Left as `fold()` alone those are distinct units, so the same praca
+// arrives from two sheets as two catalogue entries — and the second one carries a price nobody
+// compared against the first.
+//
+// Deliberately NOT a typo dictionary: `klp` (38×) and `n2` (1×) stay separate from `kpl` and `m2`.
+// Guessing that a letter was mistyped decides a praca's price on the strength of a hunch; the report
+// flags them instead and a human decides. Same reason the description half is not fuzzy-matched.
+export function foldUnit(unit: unknown): string {
+  return fold(unit)
+    .replace(/[¹²³]/g, (char) => SUPERSCRIPT_DIGITS[char] ?? char)
+    .replace(/\./g, '')
+    .trim()
+}

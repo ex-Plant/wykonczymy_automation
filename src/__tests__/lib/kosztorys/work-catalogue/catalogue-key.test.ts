@@ -30,6 +30,25 @@ describe('catalogueKey', () => {
     expect(key('Malowanie ścian')).not.toBe(key('Malowanie sufitów'))
   })
 
+  // The owner abbreviates a j.m. differently across sheets and years, so the variants have to
+  // collapse — otherwise the same praca imported from two arkusze becomes two cennik entries.
+  it.each([
+    ['szt', 'szt.'],
+    ['m2', 'm²'],
+    ['mb', 'm.b.'],
+  ])('keys j.m. „%s" and „%s" the same', (plain, variant) => {
+    expect(key('Malowanie ścian', plain)).toBe(key('Malowanie ścian', variant))
+  })
+
+  // The line the folding deliberately does NOT cross: a transposed or mistyped unit stays its own
+  // unit. Guessing that `klp` meant `kpl` would hand the praca a price nobody compared.
+  it.each([
+    ['kpl', 'klp'],
+    ['m2', 'n2'],
+  ])('keeps j.m. „%s" and „%s" apart — typos are a human decision', (unit, typo) => {
+    expect(key('Malowanie ścian', unit)).not.toBe(key('Malowanie ścian', typo))
+  })
+
   it('keeps the same opis priced per different j.m. apart', () => {
     expect(key('Malowanie ścian', 'm2')).not.toBe(key('Malowanie ścian', 'szt'))
   })

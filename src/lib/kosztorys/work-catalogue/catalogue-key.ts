@@ -1,4 +1,4 @@
-import { fold } from '@/lib/kosztorys/sheet-import/columns'
+import { foldUnit } from '@/lib/kosztorys/sheet-import/columns'
 import { foldDescription } from '@/lib/kosztorys/sheet-import/item-key'
 
 // A praca with no j.m. still needs a key member: Postgres compares NULLs as distinct, so an empty
@@ -11,7 +11,8 @@ const NO_UNIT = '~'
 //
 // Unlike `itemKey` this drops the section: the katalog is global, so the same praca appearing in
 // „Łazienka 1" and „Kuchnia" is ONE cennik entry. The j.m. joins the key instead, because the same
-// opis priced per m² and per szt. is genuinely two prices.
+// opis priced per m² and per szt. is genuinely two prices — folded through `foldUnit`, so the same
+// praca written `m2` on one sheet and `m²` on another stays ONE entry.
 export function catalogueKey(description: string, unit: string | null): string {
-  return `${foldDescription(description)}|${fold(unit) || NO_UNIT}`
+  return `${foldDescription(description)}|${foldUnit(unit) || NO_UNIT}`
 }
