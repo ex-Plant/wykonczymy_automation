@@ -33,6 +33,7 @@ import {
 } from '@/components/kosztorys/editor/grid/cells/discount-columns'
 import { unitColumn } from '@/components/kosztorys/editor/grid/cells/unit-column'
 import { SectionNameCell } from '@/components/kosztorys/editor/grid/cells/section-name-cell'
+import { wrapColumnHeaderClass } from '@/lib/kosztorys/row-content-lines'
 import { longTextColumn } from '@/components/ui/datasheet-grid/long-text-cell'
 import { type ColumnToggleItemT } from '@/components/ui/column-toggle-menu'
 import {
@@ -303,6 +304,8 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
       title: title('description', opts),
       minWidth: 360,
       grow: 2,
+      // Marks the header cell the row-height measurement reads this column's width off.
+      headerClassName: wrapColumnHeaderClass('description'),
     }),
   ]
 
@@ -537,7 +540,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
       title: title('note', opts),
       minWidth: 200,
       grow: 1,
-      headerClassName: 'border-l border-border',
+      headerClassName: `border-l border-border ${wrapColumnHeaderClass('note')}`,
       cellClassName: 'border-l border-border',
     }),
   ]

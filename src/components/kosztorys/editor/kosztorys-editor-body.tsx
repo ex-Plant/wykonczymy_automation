@@ -16,6 +16,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { useKosztorysEditor } from '@/components/kosztorys/editor/use-kosztorys-editor'
 import { KosztorysEditorProvider } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 import { useRowHeightCacheReset } from '@/components/kosztorys/editor/hooks/use-row-height-cache-reset'
+import { useWrapColumnWidths } from '@/components/kosztorys/editor/hooks/use-wrap-column-widths'
 import { useUndoKeyboard } from '@/components/kosztorys/editor/hooks/use-undo-keyboard'
 import { useSheetImport } from '@/components/kosztorys/editor/hooks/use-sheet-import'
 import { SheetImportDialog } from '@/components/kosztorys/editor/dialogs/sheet-import-dialog'
@@ -23,7 +24,10 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { sectionFooterLabelColumnId } from '@/components/kosztorys/editor/grid/cells/section-footer-cell'
 import { sectionBandLabelColumnId } from '@/components/kosztorys/editor/grid/cells/section-header-cell'
 import { withSyntheticRows } from '@/components/kosztorys/editor/grid/kosztorys-synthetic-rows'
-import { ordinalGutterColumn } from '@/components/kosztorys/editor/grid/ordinal-gutter-column'
+import {
+  ordinalGutterColumn,
+  type RowResizeApiT,
+} from '@/components/kosztorys/editor/grid/ordinal-gutter-column'
 import { buildSectionBandRows } from '@/lib/kosztorys/section-band-rows'
 import { engagedConditionsOfKind, engagedHiders, listLabels } from '@/lib/kosztorys/row-conditions'
 import {
@@ -33,6 +37,15 @@ import {
   makeSpacerRow,
   makeTotalsRow,
 } from '@/lib/kosztorys/synthetic-rows'
+import { rowContentLines } from '@/lib/kosztorys/row-content-lines'
+import {
+  HEADER_HEIGHT_KEY,
+  HEADER_ROW_HEIGHT,
+  heightForLines,
+  resolveRowHeight,
+  restingRowHeight,
+} from '@/lib/kosztorys/row-height'
+import { measureTextWidth } from '@/lib/utils/text-measure'
 import { sectionColorRail } from '@/lib/kosztorys/section-colors'
 import { cn } from '@/lib/utils/cn'
 import { buildKosztorysReconciliation } from '@/lib/kosztorys/reconciliation'
@@ -40,11 +53,8 @@ import {
   NOOP_UNDO_REDO,
   type UndoRedoApiT,
 } from '@/components/kosztorys/editor/hooks/use-undo-redo'
-import type { KosztorysEditorDataT } from '@/lib/kosztorys/types'
+import type { KosztorysEditorDataT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
-
-const ITEM_ROW_HEIGHT = 32
-const SECTION_BAND_ROW_HEIGHT = 52
 
 type PropsT = KosztorysEditorDataT & {
   // Read-only public/preview render: hides the mutation chrome, swaps the toolbar for a slim header,
@@ -97,10 +107,15 @@ export function KosztorysEditorBody({
   })
   const {
     gridRef,
+    gridNode,
     gridHeight,
     columns,
     viewRows,
     guideX,
+    guideY,
+    rowHeights,
+    setRowHeight,
+    setGuideY,
     subtotals,
     progressSubtotals,
     columnTotals,
@@ -181,7 +196,24 @@ export function KosztorysEditorBody({
   const gridRows = useMemo(() => [...bodyRows, makeSpacerRow(), makeTotalsRow()], [bodyRows])
   const datasheetRef = useRef<DataSheetGridRef>(null)
   const gridRowKeys = useMemo(() => gridRows.map((row) => String(row.id)), [gridRows])
-  useRowHeightCacheReset(datasheetRef, gridRowKeys)
+
+  // The client's rows size themselves to their „Opis prac" — they have no handle to drag and no way
+  // to open a truncated description, so a row that doesn't fit its text is simply unreadable. The
+  // owner's rows do NOT: they stay at 32px until dragged, because an editor whose every long
+  // description is expanded by default is unscannable. The measurement runs in both views all the
+  // same — in the editor it is what a double-click on the handle fits a row to.
+  const columnIds = useMemo(() => columns.map((column) => column.id), [columns])
+  const wrap = useWrapColumnWidths(gridNode, columnIds)
+  // Re-wrapping the same description costs a handful of Map lookups: measureTextWidth caches every
+  // width it has ever measured, and dsg only asks for a row's height once per scroll that extends
+  // its measured range. So there is nothing here worth caching a second time.
+  const contentLinesFor = useMemo(() => {
+    const measure = measureTextWidth(wrap.font)
+    return (row: KosztorysV2RowT) => rowContentLines(row, wrap.widths, measure)
+  }, [wrap])
+  // The override map and the measured widths both invalidate every cached height, not just those
+  // below an inserted row.
+  useRowHeightCacheReset(datasheetRef, gridRowKeys, rowHeights, preview ? wrap : undefined)
   // The empty grid names what emptied it — and the two kinds empty it for opposite reasons: an
   // unticked filter leaves nothing because EVERY pozycja fell into what was unticked, a diagnostic
   // because NONE matched it, which is the goal state and worth saying out loud rather than a dead end.
@@ -201,7 +233,28 @@ export function KosztorysEditorBody({
           title: `Brak pozycji ${listLabels(engagedDiagnostics, 'ani')}`,
           description: 'Filtr zrobił swoje — nie ma już czego poprawiać.',
         }
-  const gutterColumn = useMemo(() => ordinalGutterColumn(ordinalByRowId), [ordinalByRowId])
+  // Composed here rather than in the editor hook because fitting a row to its text needs the
+  // measured column widths, and only the rendered grid knows those. Absent in the preview: the
+  // client has no handle to drag.
+  const rowResize: RowResizeApiT | undefined = useMemo(
+    () =>
+      preview
+        ? undefined
+        : {
+            onGuide: setGuideY,
+            onCommit: setRowHeight,
+            onFit: (row: KosztorysV2RowT) =>
+              setRowHeight(
+                String(row.id),
+                Math.max(restingRowHeight(row.id), heightForLines(contentLinesFor(row))),
+              ),
+          },
+    [preview, setGuideY, setRowHeight, contentLinesFor],
+  )
+  const gutterColumn = useMemo(
+    () => ordinalGutterColumn({ ordinals: ordinalByRowId, resize: rowResize }),
+    [ordinalByRowId, rowResize],
+  )
 
   // Reconciliation verdict for the Podsumowanie scream: kosztorys client-view nets (laborCostsNetFromKosztorys /
   // discountNetFromKosztorys, view-independent) vs the investment's transaction sums — net to net, since the
@@ -279,11 +332,22 @@ export function KosztorysEditorBody({
               gutterColumn={gutterColumn}
               height={gridHeight}
               rowHeight={({ rowData }) =>
-                isSectionHeaderRow(rowData.id) ? SECTION_BAND_ROW_HEIGHT : ITEM_ROW_HEIGHT
+                resolveRowHeight({
+                  isSectionBand: isSectionHeaderRow(rowData.id),
+                  // The client's heights come from the content, full stop — the owner's drags live
+                  // in the same localStorage origin, so reading them here would let the owner's
+                  // flattened editor rows clip the offer they open to check.
+                  override: preview ? undefined : rowHeights[String(rowData.id)],
+                  contentLines:
+                    preview && !isSyntheticRow(rowData.id) ? contentLinesFor(rowData) : undefined,
+                })
               }
-              // Taller header so verbose column labels („Pozostało netto (względem przedmiaru)" etc.)
-              // wrap onto two rows instead of truncating.
-              headerRowHeight={56}
+              // Tall enough that verbose column labels („Pozostało netto (względem przedmiaru)" etc.)
+              // wrap onto two rows instead of truncating — and draggable from the same handle as a
+              // row, since which labels wrap depends on how wide the owner made their columns.
+              headerRowHeight={
+                (preview ? undefined : rowHeights[HEADER_HEIGHT_KEY]) ?? HEADER_ROW_HEIGHT
+              }
               lockRows
               rowKey={({ rowData }) => String(rowData.id)}
               rowClassName={({ rowData }) =>
@@ -411,6 +475,15 @@ export function KosztorysEditorBody({
             <div
               className="bg-primary/70 pointer-events-none fixed inset-y-0 z-50 w-px"
               style={{ left: guideX }}
+            />,
+            document.body,
+          )}
+        {/* Its horizontal twin, for a row-height drag — same portal, same reason. */}
+        {guideY !== null &&
+          createPortal(
+            <div
+              className="bg-primary/70 pointer-events-none fixed inset-x-0 z-50 h-px"
+              style={{ top: guideY }}
             />,
             document.body,
           )}

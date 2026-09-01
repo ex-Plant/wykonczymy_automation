@@ -19,6 +19,7 @@ import { buildReversalPatches, planReversalWrites } from '@/lib/kosztorys/undo-r
 import type { UndoCommandT, UndoRedoApiT } from '@/components/kosztorys/editor/hooks/use-undo-redo'
 import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
 import { useColumnWidths } from '@/components/kosztorys/editor/hooks/use-column-widths'
+import { useRowHeights } from '@/components/kosztorys/editor/hooks/use-row-heights'
 import { useConditionRowLatch } from '@/components/kosztorys/editor/hooks/use-condition-row-latch'
 import { engagedProblemIds, engagedStageProblemIds } from '@/lib/kosztorys/problem-conditions'
 import { useKosztorysSettings } from '@/components/kosztorys/editor/hooks/use-kosztorys-settings'
@@ -72,6 +73,7 @@ import { planKosztorysRenumber } from '@/lib/kosztorys/display-order-plan'
 import { DEFAULT_SECTION_NAME } from '@/lib/kosztorys/constants'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
+import { sectionFooterRowId, sectionHeaderRowId } from '@/lib/kosztorys/synthetic-rows'
 import { roundToCents } from '@/lib/utils/round-to-cents'
 import {
   addItemAction,
@@ -141,7 +143,7 @@ export function useKosztorysEditor({
   // Per-mount undo/redo stack, owned by the shell (KosztorysEditorV2) and passed in. Capture pushes
   // here; the toolbar + keyboard call undo/redo (re-exported below).
   const { push, undo, redo, canUndo, canRedo, pruneByIds, amendTop } = undoRedo
-  const [gridRef, gridHeight] = useElementHeight()
+  const [gridRef, gridHeight, gridNode] = useElementHeight()
   // The row store (this + prevById + rowsRef + patchRows + revertOne) reads like the obvious fourth
   // extraction after settlement settings / stage ops / view state, and isn't one (EX-702): those three
   // each had a narrow seam, while the store has ~47 references across ~30 handlers below. Pulling it
@@ -168,11 +170,14 @@ export function useKosztorysEditor({
     resetFilters,
     guideX,
     setGuideX,
+    guideY,
+    setGuideY,
   } = useKosztorysViewState({ investmentId, preview, clientView })
 
   // Column widths: persisted in localStorage, committed on handle release (not per pointermove —
   // that would be a write per pixel).
   const { widths, setWidth, dropWidth } = useColumnWidths()
+  const { heights: rowHeights, setHeight: setRowHeight, dropHeight } = useRowHeights()
   const { isHidden, toggleColumn, setAllColumns } = useHiddenColumns()
   const {
     ranks: columnRanks,
@@ -781,6 +786,7 @@ export function useKosztorysEditor({
     const removedAt = rowsAtRemoval.findIndex((r) => r.id === row.id)
     const afterId = removedAt > 0 ? rowsAtRemoval[removedAt - 1].id : null
     prevById.current.delete(row.id)
+    dropHeight(String(row.id))
     setRows((rs) => applyRemoveItem(rs, row.id))
     // Flush any still-buffering burst into a command first, then drop every stack command touching the
     // deleted row — otherwise undoing one would fire writes against a dead id and `setStageProgressAction`
@@ -978,6 +984,12 @@ export function useKosztorysEditor({
       .filter((r) => r.sectionId === sectionId)
       .map((r) => prevById.current.get(r.id) ?? r)
     setRows((rs) => rs.filter((r) => r.sectionId !== sectionId))
+    // The section's band and footer carry heights of their own — they have a handle too.
+    dropHeight(
+      ...removed.map((r) => String(r.id)),
+      String(sectionHeaderRowId(sectionId)),
+      String(sectionFooterRowId(sectionId)),
+    )
     for (const [id, r] of prevById.current) {
       if (r.sectionId === sectionId) prevById.current.delete(id)
     }
@@ -1122,6 +1134,7 @@ export function useKosztorysEditor({
   return {
     // grid data + layout
     gridRef,
+    gridNode,
     gridHeight,
     columns,
     columnToggleItems,
@@ -1140,6 +1153,12 @@ export function useKosztorysEditor({
     view,
     sort,
     guideX,
+    guideY,
+    rowHeights,
+    // The handle's callbacks are composed one layer out, in the body: fitting a row to its text
+    // needs the measured column widths, which only the rendered grid knows.
+    setRowHeight,
+    setGuideY,
     collapsedSectionIds,
     storedCollapsedSectionIds,
     toggleSectionCollapsed,
