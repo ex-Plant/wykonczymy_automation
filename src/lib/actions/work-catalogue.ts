@@ -201,15 +201,28 @@ export async function catalogueSavePreviewAction(
 const saveItemToCatalogueSchema = z.object({
   itemId: z.number().int().positive(),
   mode: z.enum(['new', 'overwrite']),
+  keepCatalogueCategory: z.boolean(),
 })
 
 // The way back from a rozpiska into the cennik. `'overwrite'` updates the row holding the klucz in
 // place — same id, same `created_at` — because the katalog entry is the same praca, re-priced.
-export async function saveItemToCatalogueAction(itemId: number, mode: 'new' | 'overwrite') {
+//
+// `keepCatalogueCategory` defaults to protecting the cennik: the candidate's kategoria comes from
+// THIS kosztorys' sekcja, which is one investment's local context, while the katalog owns its own
+// classification. So an overwrite re-prices a praca; reclassifying it has to be asked for.
+export async function saveItemToCatalogueAction(
+  itemId: number,
+  mode: 'new' | 'overwrite',
+  keepCatalogueCategory = true,
+) {
   return protectedAction(
     'saveItemToCatalogueAction',
     async ({ payload }) => {
-      const parsed = validateAction(saveItemToCatalogueSchema, { itemId, mode })
+      const parsed = validateAction(saveItemToCatalogueSchema, {
+        itemId,
+        mode,
+        keepCatalogueCategory,
+      })
       if (!parsed.success) return parsed
 
       const state = await catalogueSaveState(payload, parsed.data.itemId)
@@ -227,7 +240,9 @@ export async function saveItemToCatalogueAction(itemId: number, mode: 'new' | 'o
         await payload.update({
           collection: 'work-catalogue-items',
           id: existing.id,
-          data: candidate,
+          data: parsed.data.keepCatalogueCategory
+            ? { ...candidate, category: existing.category }
+            : candidate,
         })
         return { success: true }
       }

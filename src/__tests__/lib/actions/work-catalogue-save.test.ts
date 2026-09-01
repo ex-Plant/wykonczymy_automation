@@ -30,6 +30,9 @@ describe.skipIf(!ENV_READY)('saveItemToCatalogueAction (DB)', () => {
   let db: Awaited<ReturnType<typeof getDb>>
   let investmentId: number
   let sectionId: number
+  // A second sekcja under a DIFFERENT name, so an overwrite issued from it has a kategoria to
+  // impose — which is the whole thing the katalog's own kategoria has to survive.
+  let otherSectionId: number
   let suffix = ''
   const createdSections: number[] = []
   const ctx = { context: { skipRevalidation: true } }
@@ -66,11 +69,22 @@ describe.skipIf(!ENV_READY)('saveItemToCatalogueAction (DB)', () => {
     })
     sectionId = Number(section.id)
     createdSections.push(sectionId)
+
+    const otherSection = await payload.create({
+      collection: 'kosztorys-sections',
+      data: { investment: investmentId, name: `Hydraulika ${suffix} 5`, displayOrder: 1 },
+      overrideAccess: true,
+      ...ctx,
+    })
+    otherSectionId = Number(otherSection.id)
+    createdSections.push(otherSectionId)
   })
 
   afterEach(async () => {
     await db.execute(sql`DELETE FROM work_catalogue_items WHERE description LIKE ${`%${suffix}`}`)
-    await db.execute(sql`DELETE FROM kosztorys_items WHERE section_id = ${sectionId}`)
+    await db.execute(
+      sql`DELETE FROM kosztorys_items WHERE section_id IN (${sectionId}, ${otherSectionId})`,
+    )
   })
 
   afterAll(async () => {
@@ -80,6 +94,7 @@ describe.skipIf(!ENV_READY)('saveItemToCatalogueAction (DB)', () => {
   })
 
   type ItemOverridesT = {
+    section?: number
     displayOrder?: number
     unit?: string
     clientPrice?: number
@@ -190,6 +205,36 @@ describe.skipIf(!ENV_READY)('saveItemToCatalogueAction (DB)', () => {
     )
     expect(Number(after.client_price)).toBe(250)
     expect(Number(after.w_tools_rate)).toBe(111)
+  })
+
+  // The kategoria is the cennik's own classification; an overwrite re-prices a praca, it does not
+  // reclassify it. Asserting the PERSISTED row is the point — the action returns success either way.
+  it('„nadpisz" domyślnie zostawia kategorię z katalogu', async () => {
+    const description = `Kategoria zostaje ${suffix}`
+    const first = await createItem(description)
+    await saveItemToCatalogueAction(first, 'new')
+
+    const second = await createItem(description, { displayOrder: 1, section: otherSectionId })
+    const result = await saveItemToCatalogueAction(second, 'overwrite')
+    expect(result.success).toBe(true)
+
+    const rows = await catalogueRow(description)
+    expect(rows).toHaveLength(1)
+    expect(rows[0].category).toBe(`Łazienka ${suffix}`)
+  })
+
+  it('„nadpisz" bez zostawiania wpisuje kategorię z sekcji', async () => {
+    const description = `Kategoria się zmienia ${suffix}`
+    const first = await createItem(description)
+    await saveItemToCatalogueAction(first, 'new')
+
+    const second = await createItem(description, { displayOrder: 1, section: otherSectionId })
+    const result = await saveItemToCatalogueAction(second, 'overwrite', false)
+    expect(result.success).toBe(true)
+
+    const rows = await catalogueRow(description)
+    expect(rows).toHaveLength(1)
+    expect(rows[0].category).toBe(`Hydraulika ${suffix}`)
   })
 
   it('odmawia zapisu pracy bez opisu', async () => {
