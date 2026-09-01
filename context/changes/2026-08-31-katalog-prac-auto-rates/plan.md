@@ -407,5 +407,5 @@ Locally: `pnpm exec payload migrate` against the dev DB, and `pnpm db:import:tes
 
 #### Automated
 
-- [x] 3.1 Form-schema tests cover auto ticked, auto unticked with a blank field, and mixed planes
-- [x] 3.2 The work-catalogue-item schema spec passes
+- [x] 3.1 Form-schema tests cover auto ticked, auto unticked with a blank field, and mixed planes — c89fc34d
+- [x] 3.2 The work-catalogue-item schema spec passes — c89fc34d

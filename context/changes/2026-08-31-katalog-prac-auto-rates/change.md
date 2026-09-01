@@ -1,7 +1,7 @@
 ---
 change_id: katalog-prac-auto-rates
 title: Stawka „auto" w katalogu prac — cennik bez własnej stawki liczy ze współczynnika inwestycji
-status: implementing
+status: implemented
 created: 2026-08-31
 updated: 2026-09-01
 archived_at: null

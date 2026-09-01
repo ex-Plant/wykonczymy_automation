@@ -3700,3 +3700,12 @@ Sprawdzenia szły po bazie **deweloperskiej**, nie testowej, więc zostawiły dw
 pozycję w sekcji „Klimatyzacja" inwestycji 42 (użyta do sprawdzenia, czy wpis wysokości znika razem
 z wierszem) oraz zasiany od nowa syntetyczny kosztorys inwestycji 7. Wstawiona testowo „Nowa sekcja"
 została usunięta.
+
+## Stawka „auto" w katalogu prac (2026-09-01, `katalog-prac-auto-rates`)
+
+- [ ] „Nowa praca w katalogu" z „bez narzędzi" na auto zapisuje się i pokazuje „auto" na liście
+- [ ] Odznaczenie auto przy pustym polu nadal daje „Stawka bez narzędzi jest wymagana" pod polem
+- [ ] Edycja pracy z auto otwiera formularz z zaznaczonym przełącznikiem
+- [ ] „Zapisz do katalogu…" pokazuje „auto" w podglądzie i w potwierdzeniu nadpisania
+- [ ] Wstawiona z katalogu praca auto ma w rozpisce pustą komórkę nadpisania i liczy się ze
+      współczynnika inwestycji
