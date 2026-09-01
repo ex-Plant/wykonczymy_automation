@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Checkbox } from '@/components/ui/checkbox'
+import { CheckboxRow } from '@/components/ui/checkbox-row'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Description } from '@/components/ui/description'
 import { FormDialogShell } from '@/components/ui/form-dialog-shell'
@@ -16,9 +16,9 @@ type PricesT = { clientPrice: number; wToolsRate: number | null; ownToolsRate: n
 
 const NO_CATEGORY = 'bez kategorii'
 
-// Rendered for both sides so „nadpisz" is a decision about numbers rather than about a name. The
-// kategoria joins them only when the caller passes it — an unchanged kategoria would be noise, and
-// an empty one is a value like any other, not a missing row.
+// Rendered for both sides so „nadpisz" is a decision about numbers rather than about a name. An
+// EMPTY kategoria is a value like any other — hence `undefined` (not falsiness) hides the row, so
+// „bez kategorii" still renders on both sides.
 function PriceList({
   title,
   prices,
@@ -28,19 +28,21 @@ function PriceList({
   prices: PricesT
   category?: string | null
 }) {
-  const rows = [
-    ['Cena j.m.', formatPLNOrAuto(prices.clientPrice)],
-    ['Stawka z narzędziami', formatPLNOrAuto(prices.wToolsRate)],
-    ['Stawka bez narzędzi', formatPLNOrAuto(prices.ownToolsRate)],
-    ...(category !== undefined ? [['Kategoria', category || NO_CATEGORY]] : []),
+  const rows: [string, string, boolean][] = [
+    ['Cena j.m.', formatPLNOrAuto(prices.clientPrice), true],
+    ['Stawka z narzędziami', formatPLNOrAuto(prices.wToolsRate), true],
+    ['Stawka bez narzędzi', formatPLNOrAuto(prices.ownToolsRate), true],
+    ...(category !== undefined
+      ? ([['Kategoria', category || NO_CATEGORY, false]] as [string, string, boolean][])
+      : []),
   ]
   return (
     <div className="space-y-1">
       <p className="text-muted-foreground text-xs">{title}</p>
-      {rows.map(([label, value]) => (
+      {rows.map(([label, value, numeric]) => (
         <div key={label} className="flex justify-between text-sm">
           <span className="text-muted-foreground">{label}</span>
-          <span className="tabular-nums">{value}</span>
+          <span className={numeric ? 'tabular-nums' : undefined}>{value}</span>
         </div>
       ))}
     </div>
@@ -61,9 +63,8 @@ export function SaveItemToCatalogueDialog({
   const [preview, setPreview] = useState<CatalogueSavePreviewT | null>(null)
   const [saving, setSaving] = useState(false)
   const [confirming, setConfirming] = useState(false)
-  // Never synced to the preview fetch: the katalog owns its klasyfikacja, so protecting it is the
-  // answer until the owner says otherwise — and an effect resetting this would stomp a tick made
-  // while the confirm was already open.
+  // Deliberately never synced to the preview fetch: the katalog owns its klasyfikacja, so
+  // protecting it is the answer until the owner says otherwise.
   const [keepCategory, setKeepCategory] = useState(true)
 
   useEffect(() => {
@@ -91,9 +92,10 @@ export function SaveItemToCatalogueDialog({
   // future kosztorys copies from, and the katalog keeps no history, so that branch asks first.
   const existing = preview?.existing ?? null
   const overwrites = existing != null
-  // Only an overwrite has a kategoria to keep; a new row's kategoria is the only one there is.
+  // `|| null`, not `??`: an empty kategoria and a missing one are the same thing to the owner, and
+  // the Payload admin can leave `''` in the column where every in-app write folds it to NULL.
   const categoryDiffers =
-    existing != null && (existing.category ?? null) !== (preview?.candidate.category ?? null)
+    existing != null && (existing.category || null) !== (preview?.candidate.category || null)
   const savedCategory = keepCategory ? existing?.category : preview?.candidate.category
 
   function requestSave() {
@@ -140,7 +142,9 @@ export function SaveItemToCatalogueDialog({
             <p className="text-sm font-medium">{preview.candidate.description}</p>
             <p className="text-muted-foreground text-xs">
               {preview.candidate.unit || 'bez jednostki'}
-              {preview.candidate.category ? ` · ${preview.candidate.category}` : ''}
+              {/* Only in the create case — on an overwrite the kategoria is a decision made by the
+                  „Po zapisie" row below, and repeating the sekcja's here would contradict it. */}
+              {!existing && preview.candidate.category ? ` · ${preview.candidate.category}` : ''}
             </p>
           </div>
 
@@ -158,13 +162,9 @@ export function SaveItemToCatalogueDialog({
           />
 
           {categoryDiffers && (
-            <label className="hover:bg-accent flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm">
-              <Checkbox
-                checked={keepCategory}
-                onCheckedChange={(state) => setKeepCategory(state === true)}
-              />
+            <CheckboxRow checked={keepCategory} onCheckedChange={setKeepCategory}>
               Zostaw kategorię z katalogu
-            </label>
+            </CheckboxRow>
           )}
 
           {existing && (

@@ -3716,13 +3716,30 @@ Setup: baza testowa 5435 z rozpisanym kosztorysem (`pnpm seed:kosztorys:test`) i
 w którym ta sama praca (ten sam opis + j.m.) siedzi pod INNĄ kategorią niż nazwa sekcji, z której ją
 zapisujesz. Zalogowany jako OWNER.
 
-- [ ] „…" na wierszu → „Zapisz pozycję do katalogu prac": gdy kategoria w katalogu jest inna niż
+- [x] „…" na wierszu → „Zapisz pozycję do katalogu prac": gdy kategoria w katalogu jest inna niż
       sekcja, oba bloki („W katalogu" / „Po zapisie") mają czwarty wiersz „Kategoria"
-- [ ] Przełącznik „Zostaw kategorię z katalogu" jest zaznaczony od razu, a wiersz „Po zapisie"
+      _Zweryfikowane 2026-09-01 na „Zakup, transport i wniesienie towaru budowlanego…" (kpl,
+      sekcja „Prace dodatkowe", inwestycja 90): oba bloki pokazują czwarty wiersz „Kategoria"._
+- [x] Przełącznik „Zostaw kategorię z katalogu" jest zaznaczony od razu, a wiersz „Po zapisie"
       pokazuje kategorię z katalogu
-- [ ] Odznaczenie przełącznika zmienia „Po zapisie" na kategorię z sekcji, a zdanie w potwierdzeniu
+      _Zweryfikowane 2026-09-01: przełącznik domyślnie zaznaczony, „Po zapisie" pokazuje
+      „Kategoria testowa różna od sekcji" (katalog), nie „Prace dodatkowe" (sekcja)._
+- [x] Szara linijka pod nazwą pracy (j.m. · kategoria) przy nadpisaniu **nie** dopisuje kategorii
+      z sekcji — kategorię mówi wyłącznie wiersz „Po zapisie"; przy zapisie nowej pozycji kategoria
+      w tej linijce zostaje
+      _Zweryfikowane 2026-09-01: na nadpisaniu linijka pokazuje tylko „kpl" (bez kategorii); przy
+      pierwszym zapisie tej samej pozycji (klucz wolny) linijka pokazywała „kpl · Prace dodatkowe"._
+- [x] Odznaczenie przełącznika zmienia „Po zapisie" na kategorię z sekcji, a zdanie w potwierdzeniu
       dostaje zdanie o zmianie kategorii (przy zaznaczonym — nie ma go)
-- [ ] Zapis z zaznaczonym przełącznikiem: pozycja na /katalog-prac ma NADAL starą kategorię,
+      _Zweryfikowane 2026-09-01: odznaczone → „Po zapisie" = „Prace dodatkowe", a potwierdzenie
+      dostaje „Kategoria w katalogu zmieni się z „Kategoria testowa różna od sekcji" na
+      „Prace dodatkowe"."; zaznaczone → zdania brak._
+- [x] Zapis z zaznaczonym przełącznikiem: pozycja na /katalog-prac ma NADAL starą kategorię,
       a stawki nowe
-- [ ] Gdy kategoria w katalogu jest taka sama jak sekcja — nie ma ani wiersza „Kategoria",
+      _Zweryfikowane 2026-09-01: cena j.m. zmieniona 1500 zł → 1700 zł w rozpisce, po nadpisaniu z
+      zaznaczonym przełącznikiem katalog ma cenę 1700 zł i kategorię NADAL „Kategoria testowa
+      różna od sekcji" (SQL + /katalog-prac)._
+- [x] Gdy kategoria w katalogu jest taka sama jak sekcja — nie ma ani wiersza „Kategoria",
       ani przełącznika
+      _Zweryfikowane 2026-09-01 na „TRANSPORT I WNIESIENIE MATERIAŁÓW WYKOŃCZENIOWYCH" (kpl ·
+      Prace dodatkowe): dialog pokazuje tylko trzy wiersze w obu blokach, bez przełącznika._

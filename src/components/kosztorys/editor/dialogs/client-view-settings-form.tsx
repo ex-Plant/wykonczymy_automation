@@ -1,7 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
-import { Checkbox } from '@/components/ui/checkbox'
+import { CheckboxRow } from '@/components/ui/checkbox-row'
 import { Description } from '@/components/ui/description'
 import { ToggleGroup } from '@/components/ui/toggle-group'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
@@ -18,29 +17,6 @@ type PropsT = {
   value: ClientViewConfigT | null
   onChange: (value: ClientViewConfigT) => void
   disabled?: boolean
-}
-
-function CheckboxRow({
-  checked,
-  onCheckedChange,
-  disabled,
-  children,
-}: {
-  checked: boolean
-  onCheckedChange: (checked: boolean) => void
-  disabled?: boolean
-  children: ReactNode
-}) {
-  return (
-    <label className="hover:bg-accent flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm">
-      <Checkbox
-        checked={checked}
-        disabled={disabled}
-        onCheckedChange={(state) => onCheckedChange(state === true)}
-      />
-      {children}
-    </label>
-  )
 }
 
 const MODE_OPTIONS: { value: ClientViewModeT; label: string }[] = [

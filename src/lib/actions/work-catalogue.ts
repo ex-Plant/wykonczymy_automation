@@ -209,7 +209,7 @@ const saveItemToCatalogueSchema = z.object({
 //
 // `keepCatalogueCategory` defaults to protecting the cennik: the candidate's kategoria comes from
 // THIS kosztorys' sekcja, which is one investment's local context, while the katalog owns its own
-// classification. So an overwrite re-prices a praca; reclassifying it has to be asked for.
+// classification. Reclassifying has to be asked for.
 export async function saveItemToCatalogueAction(
   itemId: number,
   mode: 'new' | 'overwrite',
