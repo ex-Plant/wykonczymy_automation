@@ -41,8 +41,10 @@ export function EditCatalogueItemDialog({
             category: item.category ?? '',
             unit: item.unit,
             clientPrice: String(item.clientPrice),
-            wToolsRate: String(item.wToolsRate),
-            ownToolsRate: String(item.ownToolsRate),
+            wToolsAuto: item.wToolsRate === null,
+            wToolsRate: item.wToolsRate?.toString() ?? '',
+            ownToolsAuto: item.ownToolsRate === null,
+            ownToolsRate: item.ownToolsRate?.toString() ?? '',
           }}
           categorySuggestions={categorySuggestions}
           action={(data) => updateCatalogueItemAction(item.id, data)}

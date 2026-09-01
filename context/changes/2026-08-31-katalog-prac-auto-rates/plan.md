@@ -399,13 +399,13 @@ Locally: `pnpm exec payload migrate` against the dev DB, and `pnpm db:import:tes
 
 #### Automated
 
-- [x] 2.1 New `item-to-catalogue` spec covers the per-plane rule
-- [x] 2.2 `build-catalogue-seed` and `build-catalogue-comparison` specs pass
-- [x] 2.3 `work-catalogue-insert` and `work-catalogue-save` specs pass
+- [x] 2.1 New `item-to-catalogue` spec covers the per-plane rule — 4a0eaad1
+- [x] 2.2 `build-catalogue-seed` and `build-catalogue-comparison` specs pass — 4a0eaad1
+- [x] 2.3 `work-catalogue-insert` and `work-catalogue-save` specs pass — 4a0eaad1
 
 ### Phase 3: UI — auto jako świadomy wybór
 
 #### Automated
 
-- [ ] 3.1 Form-schema tests cover auto ticked, auto unticked with a blank field, and mixed planes
-- [ ] 3.2 The work-catalogue-item schema spec passes
+- [x] 3.1 Form-schema tests cover auto ticked, auto unticked with a blank field, and mixed planes
+- [x] 3.2 The work-catalogue-item schema spec passes

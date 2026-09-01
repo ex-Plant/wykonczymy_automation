@@ -3,6 +3,8 @@
 import { FieldGroup } from '@/components/ui/field'
 import { Combobox } from '@/components/ui/combobox'
 import { useManagedForm } from '@/components/forms/hooks/use-managed-form'
+import { useFieldValue } from '@/components/forms/hooks/use-field-value'
+import type { FormWithFieldT } from '@/components/forms/hooks/form-hooks'
 import FormBase from '@/components/forms/form-components/form-base'
 import { FormShell } from '@/components/forms/form-components/form-shell'
 import FormFooter from '@/components/forms/form-components/form-footer'
@@ -61,8 +63,8 @@ export function WorkCatalogueItemForm({
       category: value.category,
       unit: value.unit,
       clientPrice: toMoney(value.clientPrice),
-      wToolsRate: toMoney(value.wToolsRate),
-      ownToolsRate: toMoney(value.ownToolsRate),
+      wToolsRate: value.wToolsAuto ? null : toMoney(value.wToolsRate),
+      ownToolsRate: value.ownToolsAuto ? null : toMoney(value.ownToolsRate),
     }),
   })
 
@@ -115,30 +117,46 @@ export function WorkCatalogueItemForm({
           )}
         </form.AppField>
 
-        <form.AppField name="wToolsRate">
-          {(field) => (
-            <field.Input
-              label="Stawka z narzędziami (PLN)"
-              type="number"
-              placeholder="0.00"
-              showError
-            />
-          )}
-        </form.AppField>
-
-        <form.AppField name="ownToolsRate">
-          {(field) => (
-            <field.Input
-              label="Stawka bez narzędzi (PLN)"
-              type="number"
-              placeholder="0.00"
-              showError
-            />
-          )}
-        </form.AppField>
+        <RateField form={form} plane="wTools" label="Stawka z narzędziami" />
+        <RateField form={form} plane="ownTools" label="Stawka bez narzędzi" />
       </FieldGroup>
 
       <FormFooter label={submitLabel} submittingLabel={submittingLabel} className="mt-6" />
     </FormShell>
+  )
+}
+
+const AUTO_LABEL = 'Auto — licz ze współczynnika inwestycji'
+
+// The przełącznik and the kwota are one decision, so they render as one block: ticked, the katalog
+// names no stawka and the input has nothing to say, so it goes away rather than sitting there
+// disabled and inviting a value that would be thrown out.
+type RateFieldNameT = `${'wTools' | 'ownTools'}${'Auto' | 'Rate'}`
+
+function RateField({
+  form,
+  plane,
+  label,
+}: {
+  form: FormWithFieldT<RateFieldNameT>
+  plane: 'wTools' | 'ownTools'
+  label: string
+}) {
+  const auto = useFieldValue<boolean>(form, `${plane}Auto`)
+
+  return (
+    <>
+      <form.AppField name={`${plane}Auto`}>
+        {(field) => <field.Checkbox label={AUTO_LABEL} />}
+      </form.AppField>
+
+      {!auto && (
+        <form.AppField name={`${plane}Rate`}>
+          {(field) => (
+            <field.Input label={`${label} (PLN)`} type="number" placeholder="0.00" showError />
+          )}
+        </form.AppField>
+      )}
+    </>
   )
 }

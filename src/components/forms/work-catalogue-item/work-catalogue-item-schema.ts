@@ -6,26 +6,47 @@ import { parseDecimalInput } from '@/lib/utils/parse-decimal-input'
 // row, since a share of nothing has no value to show. Validating the string means the owner gets
 // „jest wymagana" under the field he left empty, instead of the domain layer's „musi być liczbą"
 // (true of a NaN, nonsense about a blank) arriving as a toast after the write was already attempted.
+const moneyIssue = (label: string, value: string): string | null => {
+  const parsed = parseDecimalInput(value)
+  if (parsed.kind === 'empty') return `${label} jest wymagana`
+  if (parsed.kind === 'invalid') return `${label} musi być liczbą`
+  if (parsed.value < 0) return `${label} nie może być ujemna`
+  return null
+}
+
 const moneyInput = (label: string) =>
   z.string().superRefine((value, ctx) => {
-    const parsed = parseDecimalInput(value)
-    if (parsed.kind === 'empty') {
-      ctx.addIssue({ code: 'custom', message: `${label} jest wymagana` })
-    } else if (parsed.kind === 'invalid') {
-      ctx.addIssue({ code: 'custom', message: `${label} musi być liczbą` })
-    } else if (parsed.value < 0) {
-      ctx.addIssue({ code: 'custom', message: `${label} nie może być ujemna` })
-    }
+    const message = moneyIssue(label, value)
+    if (message) ctx.addIssue({ code: 'custom', message })
   })
 
+// The two stawki, each with the przełącznik that decides whether it is typed at all.
+const RATE_PLANES = [
+  { rate: 'wToolsRate', auto: 'wToolsAuto', label: 'Stawka z narzędziami' },
+  { rate: 'ownToolsRate', auto: 'ownToolsAuto', label: 'Stawka bez narzędzi' },
+] as const
+
 // Form-input layer: every field is a string, as the HTML controls produce them.
-export const workCatalogueItemFormSchema = z.object({
+const baseSchema = z.object({
   description: z.string().min(1, 'Opis pracy jest wymagany'),
   category: z.string(),
   unit: z.string().min(1, 'Jednostka miary jest wymagana'),
   clientPrice: moneyInput('Cena j.m.'),
-  wToolsRate: moneyInput('Stawka z narzędziami'),
-  ownToolsRate: moneyInput('Stawka bez narzędzi'),
+  wToolsAuto: z.boolean(),
+  wToolsRate: z.string(),
+  ownToolsAuto: z.boolean(),
+  ownToolsRate: z.string(),
+})
+
+// The money guard on a stawka is conditional on ITS OWN przełącznik, and a field-level refinement
+// cannot see a sibling field — so it lives on the object. „Auto" is a decision; a blank field with
+// the przełącznik off is still „zapomniałem" and still says „jest wymagana".
+export const workCatalogueItemFormSchema = baseSchema.superRefine((value, ctx) => {
+  for (const plane of RATE_PLANES) {
+    if (value[plane.auto]) continue
+    const message = moneyIssue(plane.label, value[plane.rate])
+    if (message) ctx.addIssue({ code: 'custom', message, path: [plane.rate] })
+  }
 })
 
 export type WorkCatalogueItemFormValuesT = z.infer<typeof workCatalogueItemFormSchema>
@@ -34,16 +55,19 @@ const money = (label: string) =>
   z.number({ message: `${label} musi być liczbą` }).min(0, `${label} nie może być ujemna`)
 
 // Domain layer the action validates — the backstop for a payload that never passed through the form.
-// `matchKey` is absent on purpose: it is derived server-side from opis + j.m., and Zod strips unknown
-// keys, so a client that sends one is simply ignored.
-export const workCatalogueItemSchema = workCatalogueItemFormSchema.extend({
-  category: z.string().default(''),
-  clientPrice: money('Cena j.m.'),
-  // `null` = „auto": the katalog names no stawka and the praca prices off the target investment's
-  // współczynnik. A blank field is NOT this — the form layer above still refuses it.
-  wToolsRate: money('Stawka z narzędziami').nullable(),
-  ownToolsRate: money('Stawka bez narzędzi').nullable(),
-})
+// The przełączniki are absent: they are a form affordance, and what the katalog stores is their
+// result. `matchKey` is absent on purpose too: it is derived server-side from opis + j.m., and Zod
+// strips unknown keys, so a client that sends one is simply ignored.
+export const workCatalogueItemSchema = baseSchema
+  .omit({ wToolsAuto: true, ownToolsAuto: true })
+  .extend({
+    category: z.string().default(''),
+    clientPrice: money('Cena j.m.'),
+    // `null` = „auto": the katalog names no stawka and the praca prices off the target investment's
+    // współczynnik. A blank field is NOT this — the form layer above still refuses it.
+    wToolsRate: money('Stawka z narzędziami').nullable(),
+    ownToolsRate: money('Stawka bez narzędzi').nullable(),
+  })
 
 export type WorkCatalogueItemDataT = z.infer<typeof workCatalogueItemSchema>
 

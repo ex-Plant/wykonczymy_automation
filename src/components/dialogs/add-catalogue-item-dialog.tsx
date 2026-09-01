@@ -12,7 +12,9 @@ const EMPTY_DEFAULTS: WorkCatalogueItemFormValuesT = {
   category: '',
   unit: '',
   clientPrice: '',
+  wToolsAuto: false,
   wToolsRate: '',
+  ownToolsAuto: false,
   ownToolsRate: '',
 }
 

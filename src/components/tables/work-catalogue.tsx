@@ -10,12 +10,21 @@ import type { WorkCatalogueItemT } from '@/lib/kosztorys/work-catalogue/types'
 
 const col = createColumnHelper<WorkCatalogueItemT>()
 
-const money = (value: number) => <span className="tabular-nums">{formatPLN(value)}</span>
+// „auto" is the katalog declining to name a stawka — the kwota only exists once the praca lands in
+// an inwestycja, so there is nothing to render as money here.
+const money = (value: number | null) =>
+  value === null ? (
+    <span className="text-muted-foreground text-sm">auto</span>
+  ) : (
+    <span className="tabular-nums">{formatPLN(value)}</span>
+  )
 
 // The share of „Cena j.m." a stawka eats — its own column, sortable, because it is the figure the
 // company's rule is written in. Over the ceiling it goes red and stops there: the katalog WARNS and
 // never blocks, same stance as `appendCatalogueItems`.
-const shareOf = (rate: number, clientPrice: number) => (clientPrice > 0 ? rate / clientPrice : null)
+// An „auto" stawka has no share either: the udział belongs to an inwestycja, not to the katalog.
+const shareOf = (rate: number | null, clientPrice: number) =>
+  rate !== null && clientPrice > 0 ? rate / clientPrice : null
 
 const share = (value: number | null) =>
   value === null ? (

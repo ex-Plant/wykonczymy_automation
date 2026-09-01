@@ -34,15 +34,20 @@ describe('toMoney', () => {
 // The layer the „Nowa praca w katalogu" dialog validates against — it is what decides whether the
 // owner sees a sentence UNDER the field he left empty, or a toast after the write was attempted.
 describe('workCatalogueItemFormSchema', () => {
-  const formValues = (overrides: Partial<Record<string, string>> = {}) => ({
+  const formValues = (overrides: Partial<Record<string, string | boolean>> = {}) => ({
     description: 'Malowanie ścian',
     category: '',
     unit: 'm2',
     clientPrice: '50',
+    wToolsAuto: false,
     wToolsRate: '30',
+    ownToolsAuto: false,
     ownToolsRate: '20',
     ...overrides,
   })
+
+  const issuesFor = (overrides: Partial<Record<string, string | boolean>>) =>
+    workCatalogueItemFormSchema.safeParse(formValues(overrides)).error?.issues ?? []
 
   const issueFor = (field: string, raw: string) => {
     const result = workCatalogueItemFormSchema.safeParse(formValues({ [field]: raw }))
@@ -64,6 +69,20 @@ describe('workCatalogueItemFormSchema', () => {
 
   it('refuses a negative figure', () => {
     expect(issueFor('clientPrice', '-5')?.message).toBe('Cena j.m. nie może być ujemna')
+  })
+
+  it('„auto" zdejmuje wymóg kwoty z własnego planu', () => {
+    expect(issuesFor({ wToolsAuto: true, wToolsRate: '' })).toEqual([])
+  })
+
+  it('„auto" na jednym planie nie zdejmuje wymogu z drugiego', () => {
+    const issues = issuesFor({ wToolsAuto: true, wToolsRate: '', ownToolsRate: '' })
+    expect(issues.map((issue) => issue.path[0])).toEqual(['ownToolsRate'])
+    expect(issues[0].message).toBe('Stawka bez narzędzi jest wymagana')
+  })
+
+  it('puste pole przy odznaczonym „auto" nadal jest błędem', () => {
+    expect(issueFor('wToolsRate', '')?.message).toBe('Stawka z narzędziami jest wymagana')
   })
 
   it('accepts a comma as the decimal separator', () => {
@@ -88,5 +107,9 @@ describe('workCatalogueItemSchema', () => {
 
   it('accepts a zero stawka — a praca the company does not subcontract', () => {
     expect(workCatalogueItemSchema.safeParse(values({ ownToolsRate: 0 })).success).toBe(true)
+  })
+
+  it('przyjmuje null jako „auto" — brak stawki to nie brak liczby', () => {
+    expect(workCatalogueItemSchema.safeParse(values({ wToolsRate: null })).success).toBe(true)
   })
 })

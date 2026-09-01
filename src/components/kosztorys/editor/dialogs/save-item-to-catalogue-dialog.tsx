@@ -11,7 +11,11 @@ import { toastMessage } from '@/lib/utils/toast'
 
 const LOAD_FAILED = 'Nie udało się wczytać danych pozycji'
 
-type PricesT = { clientPrice: number; wToolsRate: number; ownToolsRate: number }
+type PricesT = { clientPrice: number; wToolsRate: number | null; ownToolsRate: number | null }
+
+// A stawka the katalog declines to name reads as „auto" — it has no kwota until the praca lands in
+// an inwestycja and its współczynnik prices it.
+const rate = (value: number | null) => (value === null ? 'auto' : formatPLN(value))
 
 // Rendered for both sides so „nadpisz" is a decision about numbers rather than about a name.
 function PriceList({ title, prices }: { title: string; prices: PricesT }) {
@@ -26,7 +30,7 @@ function PriceList({ title, prices }: { title: string; prices: PricesT }) {
       {rows.map(([label, value]) => (
         <div key={label} className="flex justify-between text-sm">
           <span className="text-muted-foreground">{label}</span>
-          <span className="tabular-nums">{formatPLN(value)}</span>
+          <span className="tabular-nums">{rate(value)}</span>
         </div>
       ))}
     </div>
@@ -98,7 +102,9 @@ export function SaveItemToCatalogueDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Zapisz do katalogu…"
-      description="Katalog prac to wspólny cennik — stawki zapisują się jako kwoty, wyliczone dla tej inwestycji."
+      description={
+        'Katalog prac to wspólny cennik. Stawka, którą ta pozycja nadpisuje sama, zapisuje się jako kwota; stawka bez nadpisania idzie jako „auto” i policzy się ze współczynnika inwestycji, do której praca trafi.'
+      }
       confirmLabel={overwrites ? 'Nadpisz…' : 'Zapisz'}
       onConfirm={requestSave}
       confirmDisabled={!preview || saving}
@@ -134,7 +140,7 @@ export function SaveItemToCatalogueDialog({
         <ConfirmDialog
           open={confirming}
           title={`Nadpisać „${preview.existing.description}" w katalogu?`}
-          description={`Stare stawki przepadną — katalog nie trzyma historii. Cena j.m. ${formatPLN(preview.existing.clientPrice)} → ${formatPLN(preview.candidate.clientPrice)}, stawka z narzędziami ${formatPLN(preview.existing.wToolsRate)} → ${formatPLN(preview.candidate.wToolsRate)}, bez narzędzi ${formatPLN(preview.existing.ownToolsRate)} → ${formatPLN(preview.candidate.ownToolsRate)}. Kosztorysy, w których ta praca już siedzi, zostają bez zmian. Jeśli chcesz dodać osobną pozycję zamiast nadpisać tę — anuluj i zmień nazwę pracy w rozpisce.`}
+          description={`Stare stawki przepadną — katalog nie trzyma historii. Cena j.m. ${formatPLN(preview.existing.clientPrice)} → ${formatPLN(preview.candidate.clientPrice)}, stawka z narzędziami ${rate(preview.existing.wToolsRate)} → ${rate(preview.candidate.wToolsRate)}, bez narzędzi ${rate(preview.existing.ownToolsRate)} → ${rate(preview.candidate.ownToolsRate)}. Kosztorysy, w których ta praca już siedzi, zostają bez zmian. Jeśli chcesz dodać osobną pozycję zamiast nadpisać tę — anuluj i zmień nazwę pracy w rozpisce.`}
           confirmLabel="Nadpisz"
           pending={saving}
           pendingLabel="Zapisuję…"
