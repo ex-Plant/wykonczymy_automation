@@ -6,6 +6,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { DataTable } from '@/components/ui/data-table/data-table'
 import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog'
 import { DialogActions } from '@/components/ui/dialog-actions'
+import { Button } from '@/components/ui/button'
+import { FILTER_NONE, FilterMultiSelect } from '@/components/filters/filter-multi-select'
 import { SearchFilterInput } from '@/components/filters/search-filter-input'
 import { SimpleSelect } from '@/components/ui/simple-select'
 import { WORK_CATALOGUE_PICKER_COLUMNS } from '@/components/tables/work-catalogue'
@@ -46,6 +48,8 @@ const INITIAL_SORTING = [
   { id: 'description', desc: false },
 ]
 
+const MAX_WARNING_TOASTS = 3
+
 const searchText = (item: WorkCatalogueItemT) => `${item.description} ${item.category ?? ''}`
 
 const SelectedIdsContext = createContext<readonly number[]>([])
@@ -84,6 +88,7 @@ export function AddItemsFromCatalogueDialog({
   const [selected, setSelected] = useState<number[]>([])
   const [sectionId, setSectionId] = useState<number | null>(initialSectionId)
   const [hideAlreadyAdded, setHideAlreadyAdded] = useState(true)
+  const [categories, setCategories] = useState<string[]>([])
   const [pending, setPending] = useState(false)
 
   const {
@@ -95,15 +100,29 @@ export function AddItemsFromCatalogueDialog({
   // Cached on the rozpiska alone, so a keystroke in the szukajka costs Set lookups and not a re-fold
   // of the whole kosztorys.
   const takenKeys = kosztorysCatalogueKeys(kosztorysItems)
+  // FilterMultiSelect's own encoding: [] = nothing filtered out, [FILTER_NONE] = every kategoria
+  // unticked.
+  const inScope =
+    categories.length === 0
+      ? filtered
+      : categories[0] === FILTER_NONE
+        ? []
+        : filtered.filter((item) => categories.includes(item.category ?? ''))
   // Split AFTER the szukajka, so the „(N)" counts what this phrase is hiding rather than the whole
   // cennik — a number about rows the owner cannot see anyway would read as a defect.
-  const { fresh, alreadyAdded } = partitionAlreadyInKosztorys(filtered, takenKeys)
+  const { fresh, alreadyAdded } = partitionAlreadyInKosztorys(inScope, takenKeys)
   // A ticked praca is never hidden, even when it is already in the kosztorys: the owner reached it by
   // unchecking the switch on purpose, and hiding it would leave it counting into „Dodaj (N)" and
   // landing in the rozpiska with no row on screen to untick.
   const keptSelected = alreadyAdded.filter((item) => selected.includes(item.id))
-  const visible = hideAlreadyAdded ? [...fresh, ...keptSelected] : filtered
+  const visible = hideAlreadyAdded ? [...fresh, ...keptSelected] : inScope
   const hiddenCount = alreadyAdded.length - keptSelected.length
+
+  // A praca with no kategoria gets its own option: without one, picking any kategoria would hide it
+  // with no way left to bring it back.
+  const categoryOptions = [...new Set((catalogue ?? []).map((item) => item.category ?? ''))]
+    .sort((a, b) => a.localeCompare(b, 'pl'))
+    .map((name) => ({ value: name, label: name || 'Bez kategorii' }))
 
   const sectionOptions = sections.map((section) => ({
     value: String(section.sectionId),
@@ -112,6 +131,15 @@ export function AddItemsFromCatalogueDialog({
 
   function toggle(id: number) {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+  }
+
+  // Appended, never replaced: a bulk button adds to what is already ticked, so the owner can sweep
+  // one kategoria, switch to the next and keep both.
+  function selectAll(items: readonly WorkCatalogueItemT[]) {
+    setSelected((prev) => [
+      ...prev,
+      ...items.map((item) => item.id).filter((id) => !prev.includes(id)),
+    ])
   }
 
   const columns = [
@@ -144,8 +172,13 @@ export function AddItemsFromCatalogueDialog({
     }
     toastMessage(selected.length === 1 ? 'Dodano pracę' : 'Dodano prace', 'success')
     // Warned, not refused: a katalog price the owner entered on purpose still goes in, but he is told
-    // which praca crossed the ceiling.
-    for (const warning of res.data.warnings) toastMessage(warning, 'error', 6000)
+    // which praca crossed the ceiling. Capped, because a hurtowe zaznaczenie can cross the ceiling on
+    // hundreds of prace at once and a wall of toasts says less than three of them plus a count.
+    for (const warning of res.data.warnings.slice(0, MAX_WARNING_TOASTS))
+      toastMessage(warning, 'error', 6000)
+    const unshownWarnings = res.data.warnings.length - MAX_WARNING_TOASTS
+    if (unshownWarnings > 0)
+      toastMessage(`…i ${unshownWarnings} dalszych ostrzeżeń o cenie`, 'error', 6000)
     onOpenChange(false)
     onInserted(res.data.section)
   }
@@ -172,6 +205,41 @@ export function AddItemsFromCatalogueDialog({
             />
             Ukryj już dodane{catalogue !== null && ` (${hiddenCount})`}
           </label>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 px-4 pb-3">
+          <FilterMultiSelect
+            values={categories}
+            onValuesChange={setCategories}
+            options={categoryOptions}
+            label="Kategorie"
+            searchable
+            contentClassName="z-[10001]"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={visible.length === 0}
+            onClick={() => selectAll(visible)}
+          >
+            Zaznacz widoczne ({visible.length})
+          </Button>
+          {/* Only while the switch is off: with it on, „widoczne" IS the niedodane, and two buttons
+              doing one thing read as two different things. */}
+          {!hideAlreadyAdded && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={fresh.length === 0}
+              onClick={() => selectAll(fresh)}
+            >
+              Zaznacz niedodane ({fresh.length})
+            </Button>
+          )}
+          {selected.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={() => setSelected([])}>
+              Odznacz wszystko
+            </Button>
+          )}
         </div>
         {catalogue === null ? (
           <p className="text-muted-foreground px-4 py-6 text-sm">Ładowanie katalogu…</p>
