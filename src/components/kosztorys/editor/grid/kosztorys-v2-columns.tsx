@@ -58,6 +58,8 @@ import {
   columnLabelForView,
 } from '@/lib/kosztorys/column-config'
 import { HEADER_TIPS } from '@/lib/kosztorys/header-tips'
+import { TOOL_PLANES } from '@/lib/kosztorys/constants'
+import { basePriceKey, planePriceKey } from '@/lib/kosztorys/plane-price-keys'
 import { LAYER_DEFAULT, layerAllows } from '@/lib/kosztorys/layer'
 import { MONEY_AXIS_DEFAULT, axisAllows } from '@/lib/kosztorys/money-axis'
 import { formatPercent, formatQty } from '@/lib/kosztorys/format'
@@ -151,7 +153,14 @@ function title(
   field: string,
   opts: Pick<BuildV2ColumnsOptsT, 'sort' | 'onSetSort' | 'onPersistKosztorysOrder' | 'view'>,
 ): ReactNode {
-  return sortableHeader(columnLabelForView(field, opts.view), field, HEADER_TIPS[field], opts)
+  return sortableHeader(
+    columnLabelForView(field, opts.view),
+    field,
+    // Base key: „Mnożnik z narzędziami" and „Mnożnik bez narzędzi" explain the same figure, so the
+    // tip is written once and both planes read it.
+    HEADER_TIPS[basePriceKey(field)],
+    opts,
+  )
 }
 
 // Header of a per-stage value column: a read-only mirror of the stage's name. One source for the
@@ -273,8 +282,20 @@ function actionColumn(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT> {
 // "which columns are there in this view" to drift.
 function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[] {
   const { stages, view } = opts
-  // Client view: a simple editable price. Subcontractor views: a "Źródło ceny" column (override)
-  // + "Cena" showing the derived/override price.
+  // Both planes' subcontractor rates in EVERY view, so the owner compares them without switching
+  // tabs. Not a copy of the columns: the same three factories called with the other plane, which is
+  // why the two can't drift — the cells read their own `columnData.view`, never the active view.
+  // They are hidden by default (DEFAULT_HIDDEN_COLUMNS) and barred from the client preview by the
+  // allowlist, which after this change is the ONLY half of that lock still standing for them.
+  const subcontractorPriceCols: Column<KosztorysV2RowT>[] = TOOL_PLANES.flatMap((plane) => [
+    subcontractorModeColumn(plane, title(planePriceKey('priceMode', plane), opts)),
+    subcontractorCoeffColumn(plane, title(planePriceKey('priceCoeff', plane), opts)),
+    subcontractorPriceColumn(plane, title(planePriceKey('price', plane), opts)),
+  ])
+  // The client's own „Cena j.m. netto" is a different figure — the offer price, editable only where
+  // the offer is read — so it stays on the client view and keeps its bare `price` id (that id is
+  // allowlisted and stored in each investment's client-view settings; renaming it would DROP it from the
+  // stored hidden set and reveal the price to clients who had hidden it).
   const priceCols: Column<KosztorysV2RowT>[] =
     view === 'client'
       ? [
@@ -284,12 +305,9 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
             title('price', opts),
             numericFieldPolicy<'clientPrice', KosztorysV2RowT>('clientPrice', formatPLN),
           ),
+          ...subcontractorPriceCols,
         ]
-      : [
-          subcontractorModeColumn(view, title('priceMode', opts)),
-          subcontractorCoeffColumn(view, title('priceCoeff', opts)),
-          subcontractorPriceColumn(view, title('price', opts)),
-        ]
+      : subcontractorPriceCols
   const identity: Column<KosztorysV2RowT>[] = [
     {
       id: 'sectionName',

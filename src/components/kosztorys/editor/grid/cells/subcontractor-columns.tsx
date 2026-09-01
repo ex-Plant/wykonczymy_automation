@@ -11,6 +11,7 @@ import { roundToCents } from '@/lib/utils/round-to-cents'
 import { effectiveCoeff, viewPrice } from '@/lib/kosztorys/calc'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
 import { OVERRIDE_FIELDS } from '@/lib/kosztorys/constants'
+import { planePriceKey } from '@/lib/kosztorys/plane-price-keys'
 import { modeChange, subcontractorPolicy } from '@/lib/kosztorys/subcontractor-price-edit'
 import { cellPaste } from '@/lib/kosztorys/cell-edit'
 import { useCellDraft } from '@/components/kosztorys/editor/grid/cells/use-cell-draft'
@@ -234,7 +235,7 @@ export function subcontractorCoeffColumn(
   // same ceiling a keystroke would have hit.
   const policy = subcontractorPolicy<KosztorysV2RowT>(view, 'coeff')
   return {
-    id: 'priceCoeff',
+    id: planePriceKey('priceCoeff', view),
     title: titleNode,
     columnData: cellData(view),
     component: SubcontractorCoeffCell,
@@ -253,7 +254,7 @@ export function subcontractorPriceColumn(
 ): Column<KosztorysV2RowT> {
   const policy = subcontractorPolicy<KosztorysV2RowT>(view, 'amount')
   return {
-    id: 'price',
+    id: planePriceKey('price', view),
     title: titleNode,
     columnData: cellData(view),
     component: SubcontractorPriceCell,
@@ -270,7 +271,7 @@ export function subcontractorModeColumn(
   const { type: typeField } = OVERRIDE_FIELDS[view]
   const { clear } = subcontractorPolicy<KosztorysV2RowT>(view, 'amount')
   return {
-    id: 'priceMode',
+    id: planePriceKey('priceMode', view),
     title: titleNode,
     // Fits the header label next to the sort icon — below this the title truncates.
     minWidth: 185,
