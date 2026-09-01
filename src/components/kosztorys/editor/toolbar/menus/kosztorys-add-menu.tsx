@@ -44,10 +44,9 @@ export function KosztorysAddMenu() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           {/* No section is preselected — any default lands the praca where the user isn't looking,
-              which is the whole reason this is a picker. Names are not unique, so the pozycja count
-              (as on the section band) is what tells two „Łazienka" apart. With nothing to pick from
-              the submenu is dropped rather than offered empty; „Praca" then goes through
-              handleAddSection, which mints a section WITH its first pozycja inside. */}
+              which is the whole reason this is a picker. With nothing to pick from the submenu is
+              dropped rather than offered empty; „Praca" then goes through handleAddSection, which
+              mints a section WITH its first pozycja inside. */}
           {subtotals.length === 0 ? (
             <DropdownMenuItem onSelect={handleAddSection}>
               <Hammer />
@@ -65,11 +64,19 @@ export function KosztorysAddMenu() {
                     key={section.sectionId}
                     onSelect={() => handleAddItem(section.sectionId)}
                   >
-                    {section.sectionName} ({section.itemCount} poz.)
+                    {section.sectionName}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuSubContent>
             </DropdownMenuSub>
+          )}
+          {/* Only with a sekcja to land in — the picker's whole first step is choosing one, and an
+              empty kosztorys has none to offer. */}
+          {subtotals.length > 0 && (
+            <DropdownMenuItem onSelect={() => setCataloguePickerOpen(true)}>
+              <ListChecks />
+              Praca z katalogu…
+            </DropdownMenuItem>
           )}
           {/* Plane is forced at creation — each etap plane is its own top-level item, so there is no
               plane-less „Etap" and no new stage is ever unconfirmed. The worker is deliberately NOT
@@ -85,14 +92,6 @@ export function KosztorysAddMenu() {
             <FolderPlus />
             Sekcja
           </DropdownMenuItem>
-          {/* Only with a sekcja to land in — the picker's whole first step is choosing one, and an
-              empty kosztorys has none to offer. */}
-          {subtotals.length > 0 && (
-            <DropdownMenuItem onSelect={() => setCataloguePickerOpen(true)}>
-              <ListChecks />
-              Praca z katalogu…
-            </DropdownMenuItem>
-          )}
           <DropdownMenuItem onSelect={() => setPickerOpen(true)}>
             <LibraryBig />
             Sekcja z szablonu…
