@@ -21,8 +21,8 @@ const money = (value: number | null) =>
 
 // The share of „Cena j.m." a stawka eats — its own column, sortable, because it is the figure the
 // company's rule is written in. Over the ceiling it goes red and stops there: the katalog WARNS and
-// never blocks, same stance as `appendCatalogueItems`.
-// An „auto" stawka has no share either: the udział belongs to an inwestycja, not to the katalog.
+// never blocks, same stance as `appendCatalogueItems`. „Auto" has no share at all — the udział
+// belongs to an inwestycja, not to the katalog.
 const shareOf = (rate: number | null, clientPrice: number) =>
   rate !== null && clientPrice > 0 ? rate / clientPrice : null
 
@@ -40,7 +40,7 @@ const share = (value: number | null) =>
 // The break is written, not guessed from a width: these four labels are long enough to wrap on
 // their own, and left to the browser they came out three lines deep.
 const twoLines = (first: string, second: string) => () => (
-  <span className="block text-right">
+  <span className="block">
     {first}
     <br />
     {second}
@@ -77,42 +77,40 @@ export function getWorkCatalogueColumns({
     col.accessor('clientPrice', {
       id: 'clientPrice',
       header: 'Cena j.m.',
-      meta: { align: 'right' },
       cell: (info) => money(info.getValue()),
     }),
 
     col.accessor('wToolsRate', {
       id: 'wToolsRate',
       header: twoLines('Stawka z', 'narzędziami'),
-      meta: { align: 'right', label: 'Stawka z narzędziami' },
+      meta: { label: 'Stawka z narzędziami' },
       cell: (info) => money(info.getValue()),
     }),
 
     col.accessor((row) => shareOf(row.wToolsRate, row.clientPrice), {
       id: 'wToolsShare',
       header: twoLines('% ceny klienta', 'z narzędziami'),
-      meta: { align: 'right', tooltip: SHARE_TOOLTIP, label: '% ceny klienta z narzędziami' },
+      meta: { tooltip: SHARE_TOOLTIP, label: '% ceny klienta z narzędziami' },
       cell: (info) => share(info.getValue()),
     }),
 
     col.accessor('ownToolsRate', {
       id: 'ownToolsRate',
       header: twoLines('Stawka bez', 'narzędzi'),
-      meta: { align: 'right', label: 'Stawka bez narzędzi' },
+      meta: { label: 'Stawka bez narzędzi' },
       cell: (info) => money(info.getValue()),
     }),
 
     col.accessor((row) => shareOf(row.ownToolsRate, row.clientPrice), {
       id: 'ownToolsShare',
       header: twoLines('% ceny klienta', 'bez narzędzi'),
-      meta: { align: 'right', tooltip: SHARE_TOOLTIP, label: '% ceny klienta bez narzędzi' },
+      meta: { tooltip: SHARE_TOOLTIP, label: '% ceny klienta bez narzędzi' },
       cell: (info) => share(info.getValue()),
     }),
 
     col.display({
       id: 'actions',
       header: 'Akcje',
-      meta: { align: 'right' },
       cell: (info) => (
         <CatalogueRowActions item={info.row.original} categorySuggestions={categorySuggestions} />
       ),
