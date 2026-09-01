@@ -455,10 +455,10 @@ Uruchamiane **raz**, po ostatniej fazie.
 
 #### Automated
 
-- [x] 3.1 Przebieg działa bez ruchu sieciowego — 60795e11
-- [x] 3.2 Podsumowanie raportu zgadza się z sekcjami szczegółowymi — 60795e11
-- [x] 3.3 Żaden kandydat nie ma stawki 0 pochodzącej z konfliktu — 60795e11
-- [x] 3.4 „już w katalogu" + „do dołożenia" = liczba unikalnych kluczy z arkuszy — 60795e11
+- [x] 3.1 Przebieg działa bez ruchu sieciowego — e18fb145
+- [x] 3.2 Podsumowanie raportu zgadza się z sekcjami szczegółowymi — e18fb145
+- [x] 3.3 Żaden kandydat nie ma stawki 0 pochodzącej z konfliktu — e18fb145
+- [x] 3.4 „już w katalogu" + „do dołożenia" = liczba unikalnych kluczy z arkuszy — e18fb145
 
 ### Phase 4: Wsad lokalny i eksport na produkcję
 
