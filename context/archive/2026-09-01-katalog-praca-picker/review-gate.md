@@ -49,8 +49,19 @@ równoległy agent. Ręczna weryfikacja zostaje w `context/foundation/manual-che
       `DataTableRow` dalej by się nie przerysował. Lekarstwem jest prop, który się zmienia
       (`isSelected`). Zamknięte, bo to jedyna tabela z checkboxami: prymityw wart jest zbudowania przy
       DRUGIEJ takiej tabeli, nie przy pierwszej — pełny zapis w anulowanym EX-759.
-- [x] filed · gate · e2e · przepływ przeglądarkowy slice'a (zaznaczanie, filtr, sekcja docelowa,
-      przełącznik) nie ma specyfikacji Playwrighta — filed EX-760 (etykieta `e2e-backlog`)
+- [x] dropped · gate · e2e · przepływ przeglądarkowy slice'a (zaznaczanie, filtr, sekcja docelowa,
+      przełącznik) nie ma specyfikacji Playwrighta — zgłoszone jako EX-760, **anulowane po przeliczeniu
+      wartości z właścicielem (2026-09-01)**. Płaszczyzna pieniędzy i trwałości jest już pokryta taniej:
+      6 testów na bazie w `lib/actions/work-catalogue-insert.test.ts` (różne `display_order`, zamrożone
+      stawki, „auto", dopisywanie na koniec, pułap 80%, praca zniknięta z katalogu) plus 7 na dopasowaniu
+      klucza. Dla E2E zostawało samo okablowanie interfejsu, którego awaria jest natychmiast widoczna
+      gołym okiem — nie klasa błędu przechodząca cicho do bazy. Po drugiej stronie: sesja przeciw
+      dialogowi Radiksa (najbardziej narowista powierzchnia tu — EX-473, EX-412), godzina na przebieg,
+      i ponad 60 zgłoszeń `e2e-backlog` przy 8 plikach specyfikacji, z których jeden jest czerwony od
+      2026-08-07 (EX-676). Reguła na przyszłość zapisana w anulowanym EX-760: odjąć od zakresu E2E to,
+      co pokrywają testy jednostkowe i bazodanowe — jeśli reszta to widoczne okablowanie, nie zakładać
+      zgłoszenia. „Nie piszemy, bo ryzyko pokryte taniej" jest rozstrzygnięciem długu, nie ucieczką od
+      niego. Weryfikacja ręczna: 16 pozycji przeklikanych, wszystkie zielone.
 - [x] dismissed · reuse-scan · `add-items-from-catalogue-dialog.tsx:168` · „czwarty ręcznie sklecony
       checkbox + label" — trzy istniejące miejsca mają trzy różne style (wiersz menu z hover, stopka
       formularza, przełącznik filtra); wspólny komponent to `<label className={…}><Checkbox/>{children}</label>`,
