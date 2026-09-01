@@ -309,10 +309,10 @@ Uruchomić **raz**, po ostatniej fazie:
 
 #### Automated
 
-- [x] 1.1 Brak testu zakresowego — złożenie istniejących części (świadomie puste)
+- [x] 1.1 Brak testu zakresowego — złożenie istniejących części (świadomie puste) — 173bbe92
 
 ### Phase 2: Sekcja docelowa i drugie wejście
 
 #### Automated
 
-- [ ] 2.1 Brak testu zakresowego — przepięcie wyzwalaczy, ryzyko przeglądarkowe (świadomie puste)
+- [x] 2.1 Brak testu zakresowego — przepięcie wyzwalaczy, ryzyko przeglądarkowe (świadomie puste)

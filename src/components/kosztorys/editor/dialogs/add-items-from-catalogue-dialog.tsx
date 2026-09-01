@@ -19,6 +19,8 @@ import { useWorkCatalogue } from './use-work-catalogue'
 
 type PropsT = {
   sections: SectionSubtotalT[]
+  // Set when the picker was opened from a row's menu — that row's section is the answer already.
+  initialSectionId?: number | null
   open: boolean
   onOpenChange: (open: boolean) => void
   // The editor patches the grid from this rather than refetching the tree.
@@ -40,10 +42,16 @@ const searchText = (item: WorkCatalogueItemT) => `${item.description} ${item.cat
 // edit actions. Selection is ordered, not a Set: the prace land in the rozpiska in the order they
 // were ticked, and that is the only ordering the user has any control over — sorting the table
 // does not touch it.
-export function AddItemsFromCatalogueDialog({ sections, open, onOpenChange, onInserted }: PropsT) {
-  const { catalogue, resetCatalogue } = useWorkCatalogue(open)
+export function AddItemsFromCatalogueDialog({
+  sections,
+  initialSectionId = null,
+  open,
+  onOpenChange,
+  onInserted,
+}: PropsT) {
+  const { catalogue } = useWorkCatalogue(open)
   const [selected, setSelected] = useState<number[]>([])
-  const [sectionId, setSectionId] = useState<number | null>(null)
+  const [sectionId, setSectionId] = useState<number | null>(initialSectionId)
   const [pending, setPending] = useState(false)
 
   const {
@@ -52,25 +60,15 @@ export function AddItemsFromCatalogueDialog({ sections, open, onOpenChange, onIn
     setSearchTerm,
   } = useSearchFilter(catalogue ?? [], searchText)
 
-  // No section is preselected — any default lands the praca where the user isn't looking. Names are
-  // not unique, so the pozycja count is what tells two „Łazienka" apart.
+  // Nothing is preselected when the picker is opened from the toolbar — any default lands the praca
+  // where the user isn't looking.
   const sectionOptions = sections.map((section) => ({
     value: String(section.sectionId),
-    label: `${section.sectionName} (${section.itemCount} poz.)`,
+    label: section.sectionName,
   }))
 
   const allFilteredSelected =
     filtered.length > 0 && filtered.every((item) => selected.includes(item.id))
-
-  function handleOpenChange(next: boolean) {
-    if (!next) {
-      setSelected([])
-      setSectionId(null)
-      resetCatalogue()
-      setSearchTerm('')
-    }
-    onOpenChange(next)
-  }
 
   function toggle(id: number) {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
@@ -121,22 +119,15 @@ export function AddItemsFromCatalogueDialog({ sections, open, onOpenChange, onIn
     // Warned, not refused: a katalog price the owner entered on purpose still goes in, but he is told
     // which praca crossed the ceiling.
     for (const warning of res.data.warnings) toastMessage(warning, 'error', 6000)
-    handleOpenChange(false)
+    onOpenChange(false)
     onInserted(res.data.section)
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-5xl">
         <DialogHeader className="px-4 pt-4" title="Dodaj pracę z katalogu" />
         <div className="flex items-center gap-3 px-4 py-3">
-          <SimpleSelect
-            value={sectionId === null ? '' : String(sectionId)}
-            onValueChange={(value) => setSectionId(value ? Number(value) : null)}
-            options={sectionOptions}
-            placeholder="Wybierz sekcję…"
-            className="w-64"
-          />
           <SearchFilterInput
             value={searchTerm}
             onChange={setSearchTerm}
@@ -158,13 +149,27 @@ export function AddItemsFromCatalogueDialog({ sections, open, onOpenChange, onIn
             <DataTable data={filtered} columns={columns} initialSorting={INITIAL_SORTING} />
           </div>
         )}
-        <DialogActions
-          className="px-4 pt-3 pb-4"
-          confirmLabel={`Dodaj${selected.length > 0 ? ` (${selected.length})` : ''}`}
-          onConfirm={() => void handleConfirm()}
-          onCancel={() => handleOpenChange(false)}
-          confirmDisabled={selected.length === 0 || sectionId === null || pending}
-        />
+        {/* The sekcja sits next to „Dodaj", not above the list: it is the last decision, taken once
+            the prace are picked. */}
+        <div className="flex items-center justify-between gap-3 px-4 pt-3 pb-4">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="text-muted-foreground shrink-0 text-sm">Dodaj do:</span>
+            <SimpleSelect
+              value={sectionId === null ? '' : String(sectionId)}
+              onValueChange={(value) => setSectionId(value ? Number(value) : null)}
+              options={sectionOptions}
+              placeholder="Wybierz sekcję…"
+              className="w-56"
+            />
+          </div>
+          <DialogActions
+            className="p-0"
+            confirmLabel={`Dodaj${selected.length > 0 ? ` (${selected.length})` : ''}`}
+            onConfirm={() => void handleConfirm()}
+            onCancel={() => onOpenChange(false)}
+            confirmDisabled={selected.length === 0 || sectionId === null || pending}
+          />
+        </div>
       </DialogContent>
     </Dialog>
   )

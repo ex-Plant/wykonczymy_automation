@@ -7,6 +7,7 @@ import {
   ArrowUp,
   ArrowUpToLine,
   BookmarkPlus,
+  ListChecks,
   Trash2,
 } from 'lucide-react'
 
@@ -37,6 +38,7 @@ type SectionActionsT = OrderActionsT & {
   name?: string
   itemCount: number
   onSetColor: (color: SectionColorKeyT | null) => void
+  onAddFromCatalogue: () => void
   onRemove: () => void
 }
 
@@ -102,6 +104,12 @@ export function KosztorysRowActionsMenu({ sortActive, item, section }: PropsT) {
               <DropdownMenuSeparator />
               <DropdownMenuLabel>Sekcja</DropdownMenuLabel>
               {orderItems(section)}
+              {/* Not disabled under a sort: the praca lands at the END of the section, so array
+                  position — the reason the four order commands go dead — is irrelevant here. */}
+              <DropdownMenuItem onSelect={section.onAddFromCatalogue}>
+                <ListChecks />
+                Praca z katalogu…
+              </DropdownMenuItem>
               <SectionColorPicker value={section.color} onChange={section.onSetColor} />
               <DropdownMenuItem variant="destructive" onSelect={() => setPendingRemoval('section')}>
                 <Trash2 />

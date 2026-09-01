@@ -9,6 +9,7 @@ import { HeaderLabel } from '@/components/ui/datasheet-grid/header-label'
 import { SimpleTooltip } from '@/components/ui/tooltip'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import { KosztorysRowActionsMenu } from '@/components/kosztorys/editor/grid/menus/kosztorys-row-actions-menu'
+import { useCataloguePicker } from '@/components/kosztorys/editor/dialogs/use-catalogue-picker'
 import { ResizableHeader } from '@/components/ui/datasheet-grid/column-resize-handle'
 import { decimalColumn } from '@/components/kosztorys/editor/grid/cells/decimal-column'
 import { computedColumn } from '@/components/kosztorys/editor/grid/cells/computed-cell'
@@ -214,6 +215,9 @@ function RowActionsCell({
   // All four section callbacks come from one `editorOnly()` gate, so this reads as a single
   // "editor mode?" test rather than four independent ones.
   const { onInsertSection, onReorderSection, onSetSectionColor, onRemoveSection } = opts
+  // Read from context rather than threaded through opts: the picker's open state must not sit
+  // anywhere the grid re-renders from (EX-496), and this opener never changes identity.
+  const openCataloguePicker = useCataloguePicker()
   const section =
     onInsertSection && onReorderSection && onSetSectionColor && onRemoveSection
       ? {
@@ -226,6 +230,7 @@ function RowActionsCell({
           onMoveDown: () => onReorderSection(rowData.sectionId, 'down'),
           onSetColor: (color: SectionColorKeyT | null) =>
             onSetSectionColor(rowData.sectionId, color),
+          onAddFromCatalogue: () => openCataloguePicker(rowData.sectionId),
           onRemove: () => onRemoveSection(rowData.sectionId),
         }
       : undefined
