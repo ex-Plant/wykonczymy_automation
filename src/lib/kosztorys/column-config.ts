@@ -25,7 +25,6 @@ export const COLUMN_LABELS: Record<string, string> = {
   divergence: 'Rozjazd między arkuszem Google a apką',
   unit: 'Jednostka miary',
   priceMode: 'Źródło ceny wykonawcy',
-  priceCoeff: 'Mnożnik',
   price: 'Cena j.m. netto',
   priceGross: 'Cena j.m. brutto',
   discountType: 'Rabat',
@@ -57,7 +56,7 @@ export const COLUMN_LABELS: Record<string, string> = {
  */
 export function columnLabelForView(id: string, view: PriceViewT): string {
   // A subcontractor rate names its plane in the label, because both planes are on screen at once and
-  // the picker is a flat list — „Mnożnik" twice would be unreadable. Same „— <wariant>" shape as
+  // the picker is a flat list — „Cena j.m. netto" twice would be unreadable. Same „— <wariant>" shape as
   // „Razem netto — po rabacie" below, and built from the base entry so one rename moves both planes.
   const plane = planeOfPriceKey(id)
   if (plane !== null) {
@@ -165,8 +164,8 @@ export const AXIS_EXEMPT_COLUMNS: ReadonlySet<string> = new Set(['price'])
 // Its reach is column IDENTITY, not price plane: `price`/`net`/`gross` are allowlisted and compute at
 // whatever `view` is active, so this set does NOT by itself keep a subcontractor figure off the page.
 // It is half a lock — the other half pins the plane, see `assertDisclosurePair`. (The subcontractor-
-// only `priceMode`/`priceCoeff` are absent here too, but that is defence in depth; they are never
-// assembled at the client plane in the first place.)
+// only `priceMode` is absent here too, but that is defence in depth; it is never assembled at the
+// client plane in the first place.)
 //
 // Written as groups because the settings dialog offers the same columns as ticks and needs headings
 // for them; the allowlist below is their flattening, so a column cannot be offerable-but-barred (or

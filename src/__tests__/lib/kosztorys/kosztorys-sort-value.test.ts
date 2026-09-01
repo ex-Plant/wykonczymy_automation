@@ -111,7 +111,7 @@ describe('reconcileSort — a sort whose column has left the grid is dropped (EX
 })
 
 // A second fixture for the keys the EX-487 rows cannot reach: two PLANED etapy (the one above has
-// `plane: null`, which belongs to neither subcontractor view), both override modes on both planes,
+// `plane: null`, which belongs to neither subcontractor view), both źródła on both planes,
 // a comment on some rows only, and a cleared „Przedmiar".
 //
 // The subcontractor rows are deliberately ordered OPPOSITELY across the two planes — reading the
@@ -134,8 +134,8 @@ const planeTree: KosztorysTreeT = makeTree({
           discountValue: 100,
           wToolsOverrideType: null, // auto → 0.65
           wToolsOverrideValue: 0,
-          ownToolsOverrideType: 'coeff',
-          ownToolsOverrideValue: 2,
+          ownToolsOverrideType: 'amount',
+          ownToolsOverrideValue: 200,
           note: 'zzz',
         },
         {
@@ -146,8 +146,8 @@ const planeTree: KosztorysTreeT = makeTree({
           // type still calls a number.
           plannedQty: null as unknown as number,
           clientPrice: 50,
-          wToolsOverrideType: 'coeff',
-          wToolsOverrideValue: 3,
+          wToolsOverrideType: 'amount',
+          wToolsOverrideValue: 150,
           ownToolsOverrideType: null, // auto → 0.55
           ownToolsOverrideValue: 0,
         },
@@ -225,43 +225,28 @@ describe('columnSortValue — the columns that used to opt out of sorting', () =
     ).toBeNull()
   })
 
-  it('sorts „Mnożnik" by the multiplier the cell SHOWS, per plane', () => {
-    // w_tools: B's own 3 > A's inherited 0.65. own_tools: A's own 2 > B's inherited 0.55 — the
-    // reversal that catches a plane-blind read.
-    expect(planeIdsSortedBy(planePriceKey('priceCoeff', 'w_tools'), 'w_tools')).toEqual([2, 1, 3])
-    expect(planeIdsSortedBy(planePriceKey('priceCoeff', 'own_tools'), 'own_tools')).toEqual([
-      1, 2, 3,
-    ])
-  })
-
-  it('sinks a flat-amount row in „Mnożnik" under BOTH directions (its cell shows „—")', () => {
-    const coeff = planePriceKey('priceCoeff', 'w_tools')
-    expect(planeIdsSortedBy(coeff, 'w_tools', 'asc').at(-1)).toBe(3)
-    expect(planeIdsSortedBy(coeff, 'w_tools', 'desc').at(-1)).toBe(3)
-  })
-
   it('sorts „Źródło ceny" inherited → hand-overridden, per plane', () => {
     expect(planeIdsSortedBy(planePriceKey('priceMode', 'w_tools'), 'w_tools', 'asc')).toEqual([
       1, 2, 3,
-    ]) // auto, coeff, amount
+    ]) // auto, kwota stała, kwota stała
     expect(planeIdsSortedBy(planePriceKey('priceMode', 'own_tools'), 'own_tools', 'asc')).toEqual([
       2, 1, 3,
     ])
   })
 
-  // The whole point of the six columns: both crews' rates readable side by side in the widok
-  // Inwestora. The active view no longer decides which plane a rate column speaks for — the id does,
-  // so each column sorts identically whichever view it is read from.
+  // The whole point of assembling both planes: the two crews' rates readable side by side in the
+  // widok Inwestora. The active view no longer decides which plane a rate column speaks for — the id
+  // does, so each column sorts identically whichever view it is read from.
   it("sorts a crew's rate columns the same in every view, because the plane is in the id", () => {
     for (const plane of ['w_tools', 'own_tools'] as const) {
-      for (const base of ['price', 'priceCoeff', 'priceMode'] as const) {
+      for (const base of ['price', 'priceMode'] as const) {
         const field = planePriceKey(base, plane)
         expect(planeIdsSortedBy(field, 'client')).toEqual(planeIdsSortedBy(field, plane))
       }
     }
     // …and the two planes genuinely disagree, so the equality above is not two nulls matching.
-    expect(planeIdsSortedBy(planePriceKey('priceCoeff', 'w_tools'), 'client')).not.toEqual(
-      planeIdsSortedBy(planePriceKey('priceCoeff', 'own_tools'), 'client'),
+    expect(planeIdsSortedBy(planePriceKey('price', 'w_tools'), 'client')).not.toEqual(
+      planeIdsSortedBy(planePriceKey('price', 'own_tools'), 'client'),
     )
   })
 })

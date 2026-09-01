@@ -16,7 +16,6 @@ export const HEADER_TIPS: Record<string, string> = {
   stageQtySum: 'Pomiar — ilość faktycznie wykonana.\nSuma ilości prac w widocznych etapach.',
   divergence:
     'Różnica między danymi zaciągiętymi z arkusza google a pracą rozpisaną na etapy \n Oznacza, że praca jest wpisana w arkuszu google jako pomiar z natury ale nie jest wpisana do etapów.',
-  priceCoeff: '0.65 = 65% ceny dla inwestora.\n„—" Kwota stała, mnożnik się nie stosuje.',
   priceMode: 'Auto = domyślny mnożnik dla danej inwestycji.',
   plannedNet: PLANNED,
   plannedGross: PLANNED,

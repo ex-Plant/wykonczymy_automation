@@ -63,15 +63,15 @@ export type RowConditionT = {
 // hand-written copies of a three-term test are two chances to change only one of them.
 const hasItemDiscount = (row: KosztorysV2RowT) => row.discountType !== null && row.discountValue > 0
 
-// Both the symptom and the cells that compute it: the price is what is wrong, „Źródło ceny wykonawcy"
-// and „Mnożnik" are the only way to make it right, so revealing the first alone shows a number nobody
-// can act on (owner, explicit). The client's cena j.m. rides along in every case — every stawka
-// wykonawcy derives from it, so it is where half of these problems are actually fixed.
+// Both the symptom and the cells that set it: the price is what is wrong, „Źródło ceny wykonawcy" and
+// „Cena j.m." are where it is made right, so revealing the figure alone shows a number nobody can act
+// on (owner, explicit). The client's cena j.m. rides along in every case — every stawka wykonawcy
+// derives from it, so it is where half of these problems are actually fixed.
 //
-// A condition that names a plane reveals THAT plane's three. Both planes assemble in every view now,
-// so revealing both would answer a question about one crew by putting six columns on screen — and the
-// old „naming them from the client view is a harmless no-op" no longer holds: from the client view
-// those ids are real columns.
+// A condition that names a plane reveals THAT plane's pair. Both planes assemble in every view now,
+// so revealing both would answer a question about one crew by putting four columns on screen — and
+// the old „naming them from the client view is a harmless no-op" no longer holds: from the client
+// view those ids are real columns.
 const priceColumnsFor = (plane: ToolPlaneT): readonly string[] => [
   'price',
   ...PLANE_PRICE_BASE_KEYS.map((base) => planePriceKey(base, plane)),

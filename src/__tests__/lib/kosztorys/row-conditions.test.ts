@@ -20,13 +20,13 @@ const STAGES: KosztorysStageT[] = [
 ]
 const CTX = { stages: STAGES, hasSettledMaterial: false }
 
-// The client's cena j.m. plus one crew's three rate cells — what a price problem on that plane is
-// repaired in. Both planes' columns exist in every view now, so a reveal that named both would answer
-// a question about one crew with the other crew's numbers beside it.
+// The client's cena j.m. plus one crew's rate pair — what a price problem on that plane is repaired
+// in. Both planes' columns exist in every view now, so a reveal that named both would answer a
+// question about one crew with the other crew's numbers beside it.
 const priceCells = (...planes: ('w_tools' | 'own_tools')[]) => [
   'price',
   ...planes.flatMap((plane) =>
-    (['priceMode', 'priceCoeff', 'price'] as const).map((base) => planePriceKey(base, plane)),
+    (['priceMode', 'price'] as const).map((base) => planePriceKey(base, plane)),
   ),
 ]
 

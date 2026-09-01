@@ -1,14 +1,13 @@
 import { useState } from 'react'
 import { Column, type CellProps } from 'react-datasheet-grid'
 import { CellSelectMenu } from '@/components/ui/datasheet-grid/cell-select-menu'
-import { ReadOnlyCellText } from '@/components/ui/datasheet-grid/read-only-cell-text'
 import { EditableCellInput } from '@/components/ui/datasheet-grid/editable-cell-input'
 import { SimpleTooltip } from '@/components/ui/tooltip'
 import { AlertIcon } from '@/components/ui/alert-icon'
 import { cn } from '@/lib/utils/cn'
 import { decimalText } from '@/lib/utils/decimal-text'
 import { roundToCents } from '@/lib/utils/round-to-cents'
-import { effectiveCoeff, viewPrice } from '@/lib/kosztorys/calc'
+import { viewPrice } from '@/lib/kosztorys/calc'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
 import { OVERRIDE_FIELDS } from '@/lib/kosztorys/constants'
 import { planePriceKey } from '@/lib/kosztorys/plane-price-keys'
@@ -19,15 +18,14 @@ import type { KosztorysV2RowT, SubcontractorOverrideTypeT, ToolPlaneT } from '@/
 import type { ReactNode } from 'react'
 
 // Where the subcontractor price comes from (a column in the subcontractor views). Labels name the
-// SOURCE of the multiplier, not the arithmetic: auto and 'coeff' both compute clientPrice × n and
-// differ only in whether n is inherited — labels describing the maths read as synonyms.
+// SOURCE, not the arithmetic: auto derives the rate from the investment's mnożnik, „kwota stała" is
+// the number typed into „Cena j.m.".
 const SUB_MODE_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'auto' },
-  { value: 'coeff', label: 'własny mnożnik' },
   { value: 'amount', label: 'kwota stała' },
 ]
 
-// Everything the three cells need to know about which plane they are editing. Travels via
+// Everything the cells need to know about which plane they are editing. Travels via
 // `columnData` so each component keeps ONE identity across renders — an inline `component:
 // ({rowData}) => …` is a fresh function type on every assembleV2Columns call, which makes
 // react-datasheet-grid remount the cell's DOM instead of reconciling it, losing both the typed text
@@ -36,13 +34,11 @@ const SUB_MODE_OPTIONS: { value: string; label: string }[] = [
 type SubcontractorCellDataT = {
   view: ToolPlaneT
   typeField: keyof KosztorysV2RowT
-  valueField: keyof KosztorysV2RowT
 }
 
 const cellData = (view: ToolPlaneT): SubcontractorCellDataT => ({
   view,
   typeField: OVERRIDE_FIELDS[view].type,
-  valueField: OVERRIDE_FIELDS[view].value,
 })
 
 // The guard has one verdict — refused — which is the alarm the rest of the app spells „destructive".
@@ -96,51 +92,7 @@ function CellTooltip({
   )
 }
 
-// Mnożnik and Cena j.m. both write the SAME pair of fields (overrideType + overrideValue) — the
-// column you type into is what picks the type. That's why each is editable only in the modes where
-// it carries the input: a mnożnik is meaningless under 'amount' (flat price), and a hand-typed price
-// is meaningless under 'coeff'/auto (it's derived). The read-only side still renders its value so
-// the row is legible in every mode.
-function SubcontractorCoeffCell({
-  rowData,
-  setRowData,
-  columnData,
-  focus,
-  stopEditing,
-}: CellProps<KosztorysV2RowT, SubcontractorCellDataT>) {
-  const { view, typeField, valueField } = columnData
-  // „Mnożnik" carries no STANDING verdict — the rule is about the price, and a red multiplier would
-  // point at the wrong cell when the client price is what moved.
-  const edit = useCellDraft(
-    rowData,
-    setRowData,
-    subcontractorPolicy<KosztorysV2RowT>(view, 'coeff'),
-    stopEditing,
-  )
-
-  const type = rowData[typeField] as SubcontractorOverrideTypeT | null
-  if (type === 'amount') {
-    return <ReadOnlyCellText muted>—</ReadOnlyCellText>
-  }
-  // auto: the row carries no multiplier of its own — show the inherited investment default as a
-  // placeholder, italic to read as "not set here".
-  const inherited = type == null
-  return (
-    <CellTooltip message={edit.blockReason} forceOpen>
-      <EditableCellInput
-        {...edit.inputProps}
-        className={
-          edit.blockReason ? REFUSED_TONE : inherited ? 'text-muted-foreground italic' : undefined
-        }
-        value={edit.draft ?? (inherited ? '' : decimalText(rowData[valueField] as number))}
-        placeholder={inherited ? decimalText(effectiveCoeff(rowData, view)) : ''}
-        focus={focus}
-      />
-    </CellTooltip>
-  )
-}
-
-// The "Cena" column in the subcontractor view. Editable in EVERY mode — a hand-typed price IS „kwota
+// The "Cena" column in the subcontractor view. Editable in both modes — a hand-typed price IS „kwota
 // stała", so the keystroke carries the mode with it rather than making the user set „Źródło" first.
 // Clearing it reverts the row to „auto".
 //
@@ -170,8 +122,8 @@ function SubcontractorPriceCell({
   const body = (
     <EditableCellInput
       {...edit.inputProps}
-      // Italic muted mirrors „Mnożnik": the row carries no price of its own, it is showing the one
-      // the investment default derives.
+      // Italic muted: the row carries no price of its own, it is showing the one the investment
+      // default derives.
       className={message ? REFUSED_TONE : inherited ? 'text-muted-foreground italic' : undefined}
       value={edit.draft ?? priceText(viewPrice(rowData, view))}
       focus={focus}
@@ -223,29 +175,6 @@ function SubcontractorModeCell({
       }
     />
   )
-}
-
-export function subcontractorCoeffColumn(
-  view: ToolPlaneT,
-  titleNode: ReactNode,
-): Column<KosztorysV2RowT> {
-  const { type: typeField } = OVERRIDE_FIELDS[view]
-  // Through the policy, so „what an emptied override means" and „what a pasted one means" are decided
-  // in one place — the same „auto" the cell settles to when the user clears the field by hand, and the
-  // same ceiling a keystroke would have hit.
-  const policy = subcontractorPolicy<KosztorysV2RowT>(view, 'coeff')
-  return {
-    id: planePriceKey('priceCoeff', view),
-    title: titleNode,
-    columnData: cellData(view),
-    component: SubcontractorCoeffCell,
-    copyValue: ({ rowData }) =>
-      (rowData[typeField] as string | null) === 'amount'
-        ? ''
-        : decimalText(effectiveCoeff(rowData, view)),
-    pasteValue: ({ rowData, value }) => cellPaste(value, rowData, policy),
-    deleteValue: ({ rowData }) => policy.clear(rowData),
-  }
 }
 
 export function subcontractorPriceColumn(

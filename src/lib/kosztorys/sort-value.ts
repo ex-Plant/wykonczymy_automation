@@ -1,5 +1,4 @@
 import {
-  effectiveCoeff,
   rowDiscountForView,
   rowDoneFraction,
   rowPlannedNetForView,
@@ -43,20 +42,6 @@ function stageValueNetSortValue(
   )
 }
 
-// The multiplier „Mnożnik" actually SHOWS, which is not one field: own under 'coeff', the inherited
-// investment/section default under auto, and nothing at all under 'amount' (the cell renders „—").
-// Reading `effectiveCoeff` unconditionally would sort every hand-set row by the default it overrode.
-function viewCoeffSortValue(row: KosztorysV2RowT, view: ToolPlaneT): number | null {
-  const { type, value } = overrideSnapshot(row, view)
-  if (type === 'amount') return null
-  if (type === 'coeff') return value ?? null
-  return effectiveCoeff(row, view)
-}
-
-// „Źródło ceny wykonawcy" ascending runs inherited → hand-overridden, which is the only question
-// asked of that column. Alphabetical would split the two override modes around „auto".
-const PRICE_MODE_RANK = { auto: 0, coeff: 1, amount: 2 } as const
-
 // The sort key for a grid column. Most columns in kosztorys-v2-columns.tsx are COMPUTED — their
 // value is derived at render from calc/settlement, never stored on the row — so a `row[field]` read
 // returns undefined for them and the sort silently no-ops (EX-487). Each computed case here composes
@@ -82,7 +67,7 @@ export function columnSortValue(
     return net === null ? null : toGross(net, row.vatRate)
   }
 
-  // The three subcontractor-rate namespaces, for the same reason: their ids are not row fields (the
+  // The two subcontractor-rate namespaces, for the same reason: their ids are not row fields (the
   // fields are per-plane, OVERRIDE_FIELDS), and the plane they price rides in the id now that every
   // view assembles both. Reading the ACTIVE view here would sort „bez narzędzi" by the „z
   // narzędziami" numbers — a wrong order that looks like a plausible one.
@@ -90,8 +75,9 @@ export function columnSortValue(
   if (pricePart !== null) {
     const { base, plane } = pricePart
     if (base === 'price') return viewPrice(row, plane)
-    if (base === 'priceCoeff') return viewCoeffSortValue(row, plane)
-    return PRICE_MODE_RANK[overrideSnapshot(row, plane).type ?? 'auto']
+    // „Źródło ceny wykonawcy" ascending runs inherited → hand-overridden, which is the only question
+    // asked of that column. Alphabetical would put „auto" after „kwota stała".
+    return overrideSnapshot(row, plane).type === null ? 0 : 1
   }
 
   switch (field) {

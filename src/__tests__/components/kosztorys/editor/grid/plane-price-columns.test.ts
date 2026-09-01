@@ -6,7 +6,7 @@ import {
 import type { BuildV2ColumnsOptsT } from '@/components/kosztorys/editor/grid/kosztorys-v2-column-opts'
 import { DEFAULT_HIDDEN_COLUMNS } from '@/lib/kosztorys/column-config'
 import { axisAllows } from '@/lib/kosztorys/money-axis'
-import { PLANE_PRICE_BASE_KEYS, planePriceKey } from '@/lib/kosztorys/plane-price-keys'
+import { planePriceKey } from '@/lib/kosztorys/plane-price-keys'
 import type { KosztorysStageT, ToolPlaneT } from '@/lib/kosztorys/types'
 
 // Both crews' rates on screen at once, in every view — the reading the owner asked for. The point of
@@ -18,11 +18,10 @@ const STAGES: KosztorysStageT[] = [
   { id: 7, ordinal: 1, label: 'Etap 1', plane: null, workerId: null },
 ]
 
-const VIEWS = ['client', 'w_tools', 'own_tools'] as const
+const PLANES: ToolPlaneT[] = ['w_tools', 'own_tools']
 
-const PLANE_PRICE_IDS = (['w_tools', 'own_tools'] as ToolPlaneT[]).flatMap((plane) =>
-  PLANE_PRICE_BASE_KEYS.map((base) => planePriceKey(base, plane)),
-)
+const PRICE_IDS = PLANES.map((plane) => planePriceKey('price', plane))
+const MODE_IDS = PLANES.map((plane) => planePriceKey('priceMode', plane))
 
 function ids(opts: Partial<BuildV2ColumnsOptsT> & Pick<BuildV2ColumnsOptsT, 'view'>): string[] {
   return buildV2Columns({ stages: STAGES, ...opts })
@@ -31,10 +30,19 @@ function ids(opts: Partial<BuildV2ColumnsOptsT> & Pick<BuildV2ColumnsOptsT, 'vie
 }
 
 describe('subcontractor rate columns, both planes', () => {
-  it('assembles all six in every view', () => {
-    for (const view of VIEWS) {
-      expect(ids({ view })).toEqual(expect.arrayContaining(PLANE_PRICE_IDS))
+  it('assembles both planes’ rate in every view', () => {
+    for (const view of ['client', 'w_tools', 'own_tools'] as const) {
+      expect(ids({ view })).toEqual(expect.arrayContaining(PRICE_IDS))
     }
+  })
+
+  // „Źródło" is an edit control, not a figure to compare — the client view is where the offer is
+  // read, and there is nothing there to set with it.
+  it('assembles the source column only in the subcontractor views', () => {
+    for (const view of ['w_tools', 'own_tools'] as const) {
+      expect(ids({ view })).toEqual(expect.arrayContaining(MODE_IDS))
+    }
+    for (const id of MODE_IDS) expect(ids({ view: 'client' })).not.toContain(id)
   })
 
   // The client's own „Cena j.m. netto" keeps the bare id and stays where the offer is read. It is a
@@ -45,33 +53,42 @@ describe('subcontractor rate columns, both planes', () => {
     expect(ids({ view: 'w_tools' })).not.toContain('price')
   })
 
-  it('offers each of the six as its own picker entry, named by plane', () => {
-    const { columnToggleItems } = buildV2Grid({ view: 'client', stages: STAGES })
-    const entries = columnToggleItems.filter((item) => PLANE_PRICE_IDS.includes(item.id))
+  it('offers each rate column as its own picker entry, named by plane', () => {
+    const { columnToggleItems } = buildV2Grid({ view: 'w_tools', stages: STAGES })
+    const planeIds = [...MODE_IDS, ...PRICE_IDS]
+    const entries = columnToggleItems.filter((item) => planeIds.includes(item.id))
 
-    expect(entries).toHaveLength(PLANE_PRICE_IDS.length)
+    expect(entries).toHaveLength(planeIds.length)
     // Collapsing them into one entry the way the stage axes collapse would make the comparison
-    // impossible to set up: you could never show one plane's multiplier without the other's.
-    expect(new Set(entries.map((item) => item.id)).size).toBe(PLANE_PRICE_IDS.length)
+    // impossible to set up: you could never show one plane's rate without the other's.
+    expect(new Set(entries.map((item) => item.id)).size).toBe(planeIds.length)
     expect(entries.map((item) => item.label)).toEqual(
       expect.arrayContaining([
-        'Mnożnik — z narzędziami',
-        'Mnożnik — bez narzędzi',
         'Cena j.m. netto — z narzędziami',
+        'Cena j.m. netto — bez narzędzi',
+        'Źródło ceny wykonawcy — z narzędziami',
         'Źródło ceny wykonawcy — bez narzędzi',
       ]),
     )
   })
 
-  it('starts hidden in every view, so nobody meets six new columns unasked', () => {
-    for (const id of PLANE_PRICE_IDS) expect(DEFAULT_HIDDEN_COLUMNS.has(id)).toBe(true)
+  it('offers no source entry in the picker of the client view', () => {
+    const { columnToggleItems } = buildV2Grid({ view: 'client', stages: STAGES })
+    for (const id of MODE_IDS) {
+      expect(columnToggleItems.some((item) => item.id === id)).toBe(false)
+    }
+  })
+
+  it('starts hidden in every view, so nobody meets new columns unasked', () => {
+    for (const id of [...MODE_IDS, ...PRICE_IDS]) expect(DEFAULT_HIDDEN_COLUMNS.has(id)).toBe(true)
 
     const { columnToggleItems } = buildV2Grid({
-      view: 'client',
+      view: 'w_tools',
       stages: STAGES,
       isHidden: (id) => DEFAULT_HIDDEN_COLUMNS.has(id),
     })
-    for (const item of columnToggleItems.filter((entry) => PLANE_PRICE_IDS.includes(entry.id))) {
+    const planeIds = [...MODE_IDS, ...PRICE_IDS]
+    for (const item of columnToggleItems.filter((entry) => planeIds.includes(entry.id))) {
       expect(item.visible).toBe(false)
     }
   })
@@ -80,9 +97,8 @@ describe('subcontractor rate columns, both planes', () => {
   // away. This exemption did nothing for these columns until they reached the client plane, where the
   // axis is live.
   it('survives the brutto reading, like the client price it derives from', () => {
-    for (const plane of ['w_tools', 'own_tools'] as ToolPlaneT[]) {
+    for (const plane of PLANES) {
       expect(axisAllows(planePriceKey('price', plane), 'gross')).toBe(true)
-      expect(axisAllows(planePriceKey('priceCoeff', plane), 'gross')).toBe(true)
     }
   })
 

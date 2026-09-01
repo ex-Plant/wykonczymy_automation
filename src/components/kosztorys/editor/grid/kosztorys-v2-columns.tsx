@@ -15,7 +15,6 @@ import { decimalColumn } from '@/components/kosztorys/editor/grid/cells/decimal-
 import { computedColumn } from '@/components/kosztorys/editor/grid/cells/computed-cell'
 import { divergenceColumn } from '@/components/kosztorys/editor/grid/cells/divergence-cell'
 import {
-  subcontractorCoeffColumn,
   subcontractorModeColumn,
   subcontractorPriceColumn,
 } from '@/components/kosztorys/editor/grid/cells/subcontractor-columns'
@@ -283,13 +282,17 @@ function actionColumn(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT> {
 function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[] {
   const { stages, view } = opts
   // Both planes' subcontractor rates in EVERY view, so the owner compares them without switching
-  // tabs. Not a copy of the columns: the same three factories called with the other plane, which is
-  // why the two can't drift — the cells read their own `columnData.view`, never the active view.
-  // They are hidden by default (DEFAULT_HIDDEN_COLUMNS) and barred from the client preview by the
-  // allowlist, which after this change is the ONLY half of that lock still standing for them.
+  // tabs. Not a copy of the columns: the same factories called with the other plane, which is why the
+  // two can't drift — the cells read their own `columnData.view`, never the active view.
+  //
+  // „Źródło ceny wykonawcy" is the exception: it is an EDIT control, not a figure to compare, and the
+  // client view is where the offer is read, so it assembles only on the subcontractor planes. The
+  // rates themselves are hidden by default (DEFAULT_HIDDEN_COLUMNS) and barred from the client
+  // preview by the allowlist.
   const subcontractorPriceCols: Column<KosztorysV2RowT>[] = TOOL_PLANES.flatMap((plane) => [
-    subcontractorModeColumn(plane, title(planePriceKey('priceMode', plane), opts)),
-    subcontractorCoeffColumn(plane, title(planePriceKey('priceCoeff', plane), opts)),
+    ...(view === 'client'
+      ? []
+      : [subcontractorModeColumn(plane, title(planePriceKey('priceMode', plane), opts))]),
     subcontractorPriceColumn(plane, title(planePriceKey('price', plane), opts)),
   ])
   // The client's own „Cena j.m. netto" is a different figure — the offer price, editable only where

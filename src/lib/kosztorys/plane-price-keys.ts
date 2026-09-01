@@ -4,10 +4,10 @@ import type { ToolPlaneT } from '@/lib/kosztorys/types'
 // One home for the subcontractor-price column key namespace, so the builder, its inverse and the
 // base-key resolver are decided together. Every view assembles BOTH planes' price columns, so the
 // plane can no longer be inferred from the active view — it has to travel in the column id, which is
-// the one thing the three factories in grid/cells/subcontractor-columns.tsx did not parameterise.
+// the one thing the factories in grid/cells/subcontractor-columns.tsx did not parameterise.
 
-// The three column families that exist per plane, in assembly order.
-export const PLANE_PRICE_BASE_KEYS = ['priceMode', 'priceCoeff', 'price'] as const
+// The two column families that exist per plane, in assembly order.
+export const PLANE_PRICE_BASE_KEYS = ['priceMode', 'price'] as const
 
 export type PlanePriceBaseKeyT = (typeof PLANE_PRICE_BASE_KEYS)[number]
 
@@ -42,8 +42,8 @@ export function planeOfPriceKey(key: string): ToolPlaneT | null {
 }
 
 // The key configuration maps are keyed by — label, tooltip, money axis, layer. Resolving to the base
-// is what keeps one concept at one entry per map: six entries per map would be six chances for the
-// planes to drift apart, which is the exact failure this change must not have.
+// is what keeps one concept at one entry per map: an entry per plane would be a chance for the two
+// to drift apart, which is the exact failure this change must not have.
 //
 // NOT for the disclosure allowlist (PREVIEW_VISIBLE_COLUMNS / CLIENT_VIEW_GROUPS /
 // sanitizeClientViewVariant): resolving there would let `price__own_tools` inherit `price`'s pass to

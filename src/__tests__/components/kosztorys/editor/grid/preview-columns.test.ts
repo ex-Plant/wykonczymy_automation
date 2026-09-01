@@ -149,20 +149,21 @@ describe('the pair: allowlist + price plane', () => {
     expect(() => previewIds()).not.toThrow()
   })
 
-  // The allowlist is now the ONLY half holding these back. They used to be held by the plane as well
-  // — assembled solely at `view !== 'client'` — but a crew's stawki are assembled in every view since
-  // the owner asked to compare both planes from „Inwestor", so the client view reaches them too and
-  // only their absence from PREVIEW_VISIBLE_COLUMNS keeps them off a client's document.
+  // For „Cena j.m." the allowlist is the ONLY half holding it back: a crew's stawka is assembled in
+  // every view since the owner asked to compare both planes from „Inwestor", so the client view
+  // reaches it too and only its absence from PREVIEW_VISIBLE_COLUMNS keeps it off a client's
+  // document. „Źródło" has both halves again — it is not assembled at the client plane at all.
   it('cannot reach the subcontractor rate columns, in either plane', () => {
     const visible = previewIds()
     for (const plane of ['w_tools', 'own_tools'] as const) {
-      for (const base of ['priceMode', 'priceCoeff', 'price'] as const) {
+      for (const base of ['priceMode', 'price'] as const) {
         expect(visible).not.toContain(planePriceKey(base, plane))
       }
     }
-    // The editor gets them — in the client view too, which is exactly why the allowlist is load-bearing.
+    // The editor gets the rate in the client view too, which is exactly why the allowlist is
+    // load-bearing.
     const editorIds = buildV2Columns({ view: 'client', stages: STAGES }).map((c) => c.id)
-    expect(editorIds).toContain(planePriceKey('priceMode', 'w_tools'))
+    expect(editorIds).toContain(planePriceKey('price', 'w_tools'))
     expect(editorIds).toContain(planePriceKey('price', 'own_tools'))
   })
 
