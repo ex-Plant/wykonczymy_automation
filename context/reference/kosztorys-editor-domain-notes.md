@@ -629,6 +629,25 @@ adresu (data, typ, kasa, …) sięgają tylko do jednego z nich:
 Reguła generalna dla nowych liczb w tym panelu: jeśli liczba pochodzi z kosztorysu, oznacz ją
 gwiazdką; jeśli porównuje kosztorys z transakcjami — wycisz ją pod filtrem.
 
+### Picker „Dodaj pracę z katalogu" — rozstrzygnięcia właściciela (2026-09-01)
+
+Cztery decyzje, o które przy kolejnej zmianie w tym oknie nie trzeba pytać drugi raz — wszystkie
+padły wprost od właściciela, nie są domysłem implementacji:
+
+- **Cennik pokazuje przy pracy cenę i obie stawki, ale NIE oba `%` udziału stawki w cenie klienta.**
+  Kolumny procentowe to narzędzie do układania cennika na `/katalog-prac`, nie do wybierania pracy.
+  Świadomy koszt: ostrzeżenie o przekroczonym pułapie udziału pojawia się dopiero **toastem po
+  wstawieniu**, nie przed.
+- **„Już dodane" liczymy dla CAŁEGO kosztorysu, nie dla sekcji docelowej.** Ta sama praca legalnie
+  stoi w kilku pokojach, ale właściciel chce ją mieć z drogi — nie chodzi o zapobieganie
+  duplikatowi, bo przełącznik wolno odznaczyć i dodać ją drugi raz.
+- **Dopasowanie idzie po `matchKey` katalogu** — tą samą regułą, co „Porównaj z katalogiem" i indeks
+  UNIQUE (opis + j.m., po sfałdowaniu). Znany i zaakceptowany skutek: pozycja z **ręcznie zmienioną
+  nazwą** przestaje się liczyć jako dodana i wraca na listę. To ta sama martwa strefa, co
+  w porównaniu z katalogiem — jedna reguła, nie druga do pamiętania.
+- **Select sekcji docelowej nie pokazuje licznika `(n poz.)`** — tak samo jak menu „Dodaj", gdzie
+  właściciel to zaakceptował. Koszt: dwie sekcje o tej samej nazwie są w selekcie nierozróżnialne.
+
 ## Domyślne
 
 PLN • netto+brutto z `vat_rate` per pozycja • hard-delete • reorder strzałkami

@@ -3710,39 +3710,6 @@ została usunięta.
 - [ ] Wstawiona z katalogu praca auto ma w rozpisce pustą komórkę nadpisania i liczy się ze
       współczynnika inwestycji
 
-## katalog-praca-picker — picker „Dodaj pracę z katalogu"
-
-### Phase 1: Picker to tabela katalogu
-
-- [x] Picker pokazuje opis, kategorię, j.m., cenę i obie stawki — bez „Akcji" i bez kolumn `%`
-- [x] Ekran „Katalog prac" wygląda i sortuje się dokładnie jak przed zmianą, z ośmioma kolumnami
-- [x] Sortowanie po „Kategoria" grupuje prace; sortowanie po dowolnej kolumnie nie gubi zaznaczenia
-- [x] Wpisanie frazy nie odznacza tego, co już zaznaczone; licznik na „Dodaj (N)" to pokazuje
-- [x] Prace lądują w sekcji w kolejności klikania, nie w kolejności sortowania
-
-### Phase 2: Sekcja docelowa i drugie wejście
-
-- [x] Select sekcji stoi w stopce, bez licznika pozycji przy nazwach
-- [x] „Dodaj" z toolbara otwiera picker bez ustawionej sekcji
-- [x] „…" na wierszu → „Wybierz pozycję z katalogu prac" otwiera picker z sekcją tego wiersza; dodanie ląduje właśnie w niej
-- [x] Zamknięcie i ponowne otwarcie czyści zaznaczenie i szukajkę, a sekcję wraca do tej, z którą otwarto
-- [x] Otwarcie i zamknięcie dialogu nie rusza pozycji przewijania siatki ani aktywnej celi
-      (przewijanie zachowane; aktywna cela znika — zachowanie wspólne dla każdego dialogu,
-      „Sekcja z szablonu…" gubi ją tak samo i dodatkowo przesuwa przewijanie, więc nie jest to defekt tego slice'a)
-
-### Phase 3: Ukrywanie prac już dodanych
-
-- [x] Picker otwarty na kosztorysie, który ma już część prac z cennika: „Ukryj już dodane" jest
-      zaznaczone od razu, a te prace nie są na liście
-- [x] Licznik przy przełączniku pokazuje, ile pozycji jest ukrytych, i zmienia się razem z frazą
-      w szukajce
-- [x] Odznaczenie przełącznika przywraca ukryte prace na listę (można je dodać drugi raz)
-- [x] Praca zaznaczona przy odznaczonym przełączniku NIE znika po ponownym jego włączeniu —
-      licznik „Dodaj (N)" i to, co widać na liście, muszą się zgadzać
-- [x] Praca dodana wcześniej do INNEJ sekcji też jest ukryta — liczymy cały kosztorys
-- [x] Pozycja z ręcznie zmienioną nazwą wraca na listę jako „niedodana" (znane ograniczenie,
-      to samo co w „Porównaj z katalogiem")
-
 ## katalog-nadpisanie-kategorii — kategoria przy nadpisaniu pozycji w katalogu
 
 Setup: baza testowa 5435 z rozpisanym kosztorysem (`pnpm seed:kosztorys:test`) i katalogiem prac,

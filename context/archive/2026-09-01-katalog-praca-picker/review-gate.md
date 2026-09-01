@@ -9,50 +9,11 @@ równoległy agent. Ręczna weryfikacja zostaje w `context/foundation/manual-che
 
 ## Findings
 
-- [x] 🔴 CRITICAL · fixed · impl-review · `src/lib/kosztorys/work-catalogue/already-in-kosztorys.ts:19`
-      · `prace` / `praca` / `KosztorysPracaT` łamią `local/no-domain-drift`, `pnpm lint` padał na 5
-      błędach — przemianowane na `kosztorysItems` / `item` / `KosztorysItemRefT`
-      test: no automated test · — lint jest testem tej reguły i jest w bramce
-- [x] 🟡 WARNING · fixed · code-review · `add-items-from-catalogue-dialog.tsx:126` · odrzucone RPC
-      (zerwane połączenie, klient na starym deployu) nie rozwiązuje się do `{success:false}`, więc
-      „Dodaj" zostawało wyłączone na zawsze i bez komunikatu — `try/catch/finally` + toast
-      test: no automated test · unit — nie ma tu harnessu do renderu komponentów; ścieżka wchodzi
-      do manual-checks jako pozycja o zachowaniu przy błędzie
-- [x] 🟡 WARNING · fixed · code-review · `add-items-from-catalogue-dialog.tsx:104` · zaznaczona praca
-      mogła zostać ukryta przez przełącznik, dalej licząc się do „Dodaj (N)" i lądując w rozpisce bez
-      wiersza do odznaczenia — zaznaczone pozycje nie są ukrywane nigdy
-      test: no automated test · e2e — czysto interakcyjne; wpisane do manual-checks
-- [x] 🟡 WARNING · fixed · code-review + impl-review · `already-in-kosztorys.ts:19` · cała rozpiska
-      przefałdowywana na każdy znak w szukajce (~45 przebiegów na pozycję × 1000 pozycji) —
-      `kosztorysCatalogueKeys` wydzielone, cache'uje się na samej rozpisce
-- [x] 🟡 WARNING · fixed · impl-review + comment-noise ·
-      `kosztorys-row-actions-menu.tsx:49` · komentarz twierdził, że `onAddFromCatalogue` dzieli bramkę
-      z `savableItemId` — nieprawda i sprzeczność z `kosztorys-v2-columns.tsx:247`
-- [x] 🟡 WARNING · fixed · impl-review · `plan.md` · faza 3 istniała wyłącznie jako wiersz w Progress —
-      dopisana sekcja z decyzjami (domyślnie ukryte, zakres = cały kosztorys, dopasowanie po
-      `matchKey`, zaznaczone nigdy nie znika) i kontraktem
-- [x] fixed · structure-scatter + feature-first · `editor/dialogs/use-catalogue-picker.tsx` · piąty
-      wariant wzorca „wyzwalacz w menu + dialog, który nie może być jego dzieckiem", z powtórzonym
-      uzasadnieniem — przeniesione do udokumentowanego domu jako
-      `editor/actions/catalogue-picker-host.tsx`, komentarz wskazuje na `KosztorysActionsProvider`
-- [x] fixed · module-cohesion · `add-items-from-catalogue-dialog.tsx:25` · typ kontraktu zadeklarowany
-      dwa razy — `KosztorysItemRefT` eksportowany z helpera i użyty w propsie
-- [x] fixed · module-cohesion + feature-first · `add-items-from-catalogue-dialog.tsx:16` · dwa osobne
-      `import type` z tego samego modułu + jedyny import względny w slicie — scalone, alias
-- [x] fixed · impl-review · `kosztorys-add-menu.tsx:33` · `pickerOpen` po przeniesieniu pickera trzymał
-      już tylko dialog szablonów — `presetDialogOpen`
-- [x] fixed · impl-review · `already-in-kosztorys.test.ts` · `matchKey` wyliczany funkcją, którą test
-      bada, więc asercja o fałdowaniu nie mogła paść; brak przypadku `unit: null`; zduplikowane id —
-      klucze wpisane wprost, dwa nowe przypadki, rozłączne id
-- [x] fixed · code-review · `add-items-from-catalogue-dialog.tsx:173` · „Ukryj już dodane (0)" nad
-      „Ładowanie katalogu…" — licznik wstrzymany do czasu wczytania cennika
-- [x] fixed · comment-noise · `kosztorys-row-actions-menu.tsx:87` · komentarz o `size-full` nad
-      elementem, który tej klasy nie ma; pełniejsza wersja stoi w `cell-menu-trigger.tsx:8`
-- [x] fixed · comment-noise · `add-items-from-catalogue-dialog.tsx:67`, `:164`,
-      `kosztorys-add-menu.tsx:31`, `:45`, `already-in-kosztorys.ts` · zdania powtarzające kod przycięte,
-      uzasadnienia zostawione
-- [x] fixed · feature-first · `AGENTS.md:267` · reguła „katalog hooka idzie za liczbą katalogów
-      konsumentów" podawała nieaktualną ścieżkę `useInlineRename` (`src/hooks/` → `editor/hooks/`)
+> Przycięte przy archiwizacji (2026-09-01). Przed przycięciem: **15 fixed, 6 dismissed, 5 dropped,
+> 2 skipped, 2 filed · 0 otwartych**. Zniknęły wyłącznie znaleziska `fixed` — ich trwałym zapisem
+> jest commit i sam kod. Zostaje to, czego git nie unosi: co świadomie odrzucono, co zbagatelizowano
+> i dlaczego, oraz co poszło do Lineara.
+
 - [x] dismissed · impl-review · `kosztorys-row-actions-menu.tsx:51` · `onAddFromCatalogue` siedzi w
       pakiecie `item`, a nie w `SectionActionsT` jak mówił kontrakt fazy 2 — mechaniczny skutek
       zatwierdzonej decyzji „oba polecenia katalogowe w grupie »Praca«"; kontrakt poprawiony w planie
