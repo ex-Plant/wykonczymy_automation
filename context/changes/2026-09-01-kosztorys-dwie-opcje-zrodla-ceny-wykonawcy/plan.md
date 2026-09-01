@@ -384,4 +384,4 @@ Kolumny `*_override_type` zostają w bazie jako `varchar` i nie wymagają zmiany
 
 #### Automated
 
-- [x] 4.1 faza prozatorska — brak weryfikacji automatycznej specyficznej dla fazy — PH4
+- [x] 4.1 faza prozatorska — brak weryfikacji automatycznej specyficznej dla fazy — ff04c4a4

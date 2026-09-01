@@ -21,7 +21,7 @@ import {
   stageKey,
 } from '@/lib/kosztorys/stage-keys'
 import { overrideSnapshot } from '@/lib/kosztorys/subcontractor-price-edit'
-import type { KosztorysStageT, KosztorysV2RowT, ToolPlaneT } from '@/lib/kosztorys/types'
+import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 // The wartość of one etap, as its cell computes it. The denominator is Σ etapów of the whole VIEW,
 // never a narrowed list (kosztorys-v2-columns.tsx) — `rowTotalQtyDone` applies that filter itself, so

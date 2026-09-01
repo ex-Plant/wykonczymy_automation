@@ -3736,12 +3736,29 @@ Faza 4 — wsad lokalny (755 pozycji dołożonych; katalog ~940 po przeglądzie 
 
 - [ ] Świeża przeglądarka (wyczyszczony localStorage): w żadnym widoku nie widać kolumn stawek,
       dopóki nie odznaczy się ich w pikerze
-- [ ] Widok Inwestora → picker → sześć nowych pozycji z nazwą planu w etykiecie; wpisana stawka
+- [ ] Widok Inwestora → picker → dwie nowe pozycje z nazwą planu w etykiecie; wpisana stawka
       w planie „bez narzędzi" pokazuje się identycznie po przełączeniu na widok „Bez narzędzi"
-- [ ] Kliknięcie nagłówka „Mnożnik — z narzędziami" przestawia kolejność wierszy, drugie kliknięcie
-      ją odwraca, a sortowanie po kolumnie drugiego planu daje inną kolejność na tych samych danych
+- [ ] Kliknięcie nagłówka „Cena j.m. netto — z narzędziami" przestawia kolejność wierszy, drugie
+      kliknięcie ją odwraca, a sortowanie po kolumnie drugiego planu daje inną kolejność na tych
+      samych danych
 - [ ] Tryb „Brutto" w widoku Inwestora: „Cena j.m. netto — z narzędziami" zostaje na ekranie
 - [ ] Filtr „Problemy" ze stawką zawyżoną w planie „bez narzędzi" odsłania kolumny tego planu,
       a nie planu „z narzędziami"
-- [ ] Podgląd inwestora (owner odznaczył wszystkie sześć): żadna się nie pokazuje, slim header nie ma
-      pickera
+- [ ] Podgląd inwestora (owner odznaczył obie): żadna się nie pokazuje, slim header nie ma pickera
+
+> Lista przycięta 2026-09-01 wraz z cięciem trybu „własny mnożnik": kolumny „Mnożnik" już nie ma,
+> a źródło ceny wykonawcy nie składa się w widoku Inwestora.
+
+## Dwie opcje źródła ceny wykonawcy (2026-09-01, `kosztorys-dwie-opcje-zrodla-ceny-wykonawcy`)
+
+- [ ] Lista „Źródło ceny wykonawcy" ma dokładnie dwie pozycje w obu widokach wykonawcy
+- [ ] Kolumny „Mnożnik" nie ma ani w siatce, ani na liście kolumn do pokazania/ukrycia
+- [ ] W widoku inwestora są tylko „Cena j.m. netto — z narzędziami" i „— bez narzędzi"; kolumny
+      „Źródło ceny wykonawcy" nie ma tam ani w siatce, ani na liście kolumn
+- [ ] Wyczyszczenie „Cena j.m." wykonawcy wraca na auto, a cena renderuje się kursywą i wyszarzona
+- [ ] Diagnostyka „ze stawką wykonawcy wpisaną ręcznie" ujawnia „Źródło" i „Cena j.m.", i nic poza tym
+- [ ] Import wypełnionego arkusza testowego kończy się bez pozycji na własnym mnożniku, a stawki
+      wykonawcy zgadzają się co do grosza z arkuszem
+- [ ] Należność wykonawcy w podsumowaniu zgadza się z sumą kolumny „Cena j.m." wykonawcy razy ilości,
+      na obu planach (dwie wyceny, TypeScript i SQL, muszą dawać tę samą liczbę)
+- [ ] Zapis pozycji do katalogu prac: pozycja na auto ląduje jako „auto", pozycja z kwotą jako kwota

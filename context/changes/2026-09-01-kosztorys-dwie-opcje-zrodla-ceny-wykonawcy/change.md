@@ -1,7 +1,7 @@
 ---
 change_id: kosztorys-dwie-opcje-zrodla-ceny-wykonawcy
 title: Źródło ceny wykonawcy tylko z dwiema opcjami — cięcie trybu „własny mnożnik"
-status: implementing
+status: implemented
 created: 2026-09-01
 updated: 2026-09-01
 archived_at: null
