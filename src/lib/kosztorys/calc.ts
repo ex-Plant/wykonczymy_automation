@@ -100,12 +100,11 @@ export function asViewPricing(
   }
 }
 
-/** Subcontractor price by view: null→derived (client×coeff), coeff→client×%, amount→flat. */
+/** Subcontractor price by view: 'amount'→flat, null („auto")→derived (client × coeff). */
 export function subcontractorPrice(row: ViewPricingT, view: ToolPlaneT): number {
-  const type = overrideTypeFor(row, view)
-  const value = view === 'w_tools' ? row.wToolsOverrideValue : row.ownToolsOverrideValue
-  if (type === 'amount') return value
-  if (type === 'coeff') return row.clientPrice * value
+  if (overrideTypeFor(row, view) === 'amount') {
+    return view === 'w_tools' ? row.wToolsOverrideValue : row.ownToolsOverrideValue
+  }
   return row.clientPrice * effectiveCoeff(row, view)
 }
 

@@ -42,7 +42,7 @@ import type { ItemPatchT, StagePatchT, ToolPlaneT } from '@/lib/kosztorys/types'
 // Derived from TOOL_PLANES rather than re-listing the union, so a plane added to the pickers can't
 // be silently rejected by validation.
 const stagePlaneSchema = z.enum(TOOL_PLANES)
-const overrideTypeSchema = z.enum(['coeff', 'amount'])
+const overrideTypeSchema = z.enum(['amount'])
 
 const SECTION_MISSING = 'Sekcja nie istnieje.'
 const ITEM_MISSING = 'Pozycja nie istnieje.'

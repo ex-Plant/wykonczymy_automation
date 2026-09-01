@@ -368,17 +368,17 @@ Kolumny `*_override_type` zostają w bazie jako `varchar` i nie wymagają zmiany
 
 #### Automated
 
-- [x] 2.1 build-import-plan.test.ts — inny iloraz daje kwotę stałą równą stawce z arkusza
-- [x] 2.2 build-sheet-comparison.test.ts
+- [x] 2.1 build-import-plan.test.ts — inny iloraz daje kwotę stałą równą stawce z arkusza — f847ae70
+- [x] 2.2 build-sheet-comparison.test.ts — f847ae70
 
 ### Phase 3: Typ, wycena i SQL — zawężenie unii
 
 #### Automated
 
-- [ ] 3.1 kosztorys-calc / subcontractor-price-edit / subcontractor-due-by-plane
-- [ ] 3.2 work-catalogue / serialize-restore-roundtrip / append-preset-sections
-- [ ] 3.3 kosztorys-subcontractor-due.test.ts @ 5435
-- [ ] 3.4 grep na `'coeff'` w src zwraca zero trafień
+- [x] 3.1 kosztorys-calc / subcontractor-price-edit / subcontractor-due-by-plane — 1b4e55e8
+- [x] 3.2 work-catalogue / serialize-restore-roundtrip / append-preset-sections — 1b4e55e8
+- [x] 3.3 kosztorys-subcontractor-due.test.ts @ 5435 — 1b4e55e8
+- [x] 3.4 grep na `'coeff'` w src zwraca zero trafień — 1b4e55e8
 
 ### Phase 4: Dokumentacja
 

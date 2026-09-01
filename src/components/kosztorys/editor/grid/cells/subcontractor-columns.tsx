@@ -110,7 +110,7 @@ function SubcontractorPriceCell({
   const edit = useCellDraft(
     rowData,
     setRowData,
-    subcontractorPolicy<KosztorysV2RowT>(view, 'amount'),
+    subcontractorPolicy<KosztorysV2RowT>(view),
     stopEditing,
   )
 
@@ -181,7 +181,7 @@ export function subcontractorPriceColumn(
   view: ToolPlaneT,
   titleNode: ReactNode,
 ): Column<KosztorysV2RowT> {
-  const policy = subcontractorPolicy<KosztorysV2RowT>(view, 'amount')
+  const policy = subcontractorPolicy<KosztorysV2RowT>(view)
   return {
     id: planePriceKey('price', view),
     title: titleNode,
@@ -198,7 +198,7 @@ export function subcontractorModeColumn(
   titleNode: ReactNode,
 ): Column<KosztorysV2RowT> {
   const { type: typeField } = OVERRIDE_FIELDS[view]
-  const { clear } = subcontractorPolicy<KosztorysV2RowT>(view, 'amount')
+  const { clear } = subcontractorPolicy<KosztorysV2RowT>(view)
   return {
     id: planePriceKey('priceMode', view),
     title: titleNode,

@@ -23,14 +23,6 @@ describe('toCatalogueCandidate', () => {
     expect(candidate.wToolsRate).toBe(90)
   })
 
-  it('zamraża kwotę wynikającą z własnego mnożnika', () => {
-    const candidate = toCatalogueCandidate(
-      source({ wToolsOverrideType: 'coeff', wToolsOverrideValue: 0.65 }),
-    )
-
-    expect(candidate.wToolsRate).toBe(130)
-  })
-
   it('bez nadpisania stawka trafia do cennika jako „auto"', () => {
     const candidate = toCatalogueCandidate(source())
 

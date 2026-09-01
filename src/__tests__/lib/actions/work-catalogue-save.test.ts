@@ -165,8 +165,8 @@ describe.skipIf(!ENV_READY)('saveItemToCatalogueAction (DB)', () => {
     const itemId = await createItem(description, {
       wToolsOverrideType: 'amount',
       wToolsOverrideValue: 42,
-      ownToolsOverrideType: 'coeff',
-      ownToolsOverrideValue: 0.3,
+      ownToolsOverrideType: 'amount',
+      ownToolsOverrideValue: 30,
     })
 
     await saveItemToCatalogueAction(itemId, 'new')

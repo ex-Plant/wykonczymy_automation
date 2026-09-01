@@ -118,8 +118,10 @@ export async function getCatalogueSourceItem(
   const row = result.rows[0]
   if (!row) return undefined
 
+  // Anything else — including a legacy coefficient type left by a database that predates the two-źródła cut — reads
+  // as „auto", which is what the row now prices at.
   const overrideType = (value: unknown): SubcontractorOverrideTypeT | null =>
-    value === 'coeff' || value === 'amount' ? value : null
+    value === 'amount' ? value : null
 
   return {
     description: (row.description as string | null) ?? '',

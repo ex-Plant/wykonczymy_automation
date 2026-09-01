@@ -35,12 +35,6 @@ const amount = (value: number): ViewPricingT => ({
   wToolsOverrideValue: value,
 })
 
-const coeff = (value: number): ViewPricingT => ({
-  ...row,
-  wToolsOverrideType: 'coeff',
-  wToolsOverrideValue: value,
-})
-
 describe('maxSubcontractorPrice', () => {
   it('to udział ceny klienta', () => {
     expect(maxSubcontractorPrice(row)).toBe(80)
@@ -57,11 +51,6 @@ describe('checkSubcontractorPrice — sufit 80% ceny klienta', () => {
 
   it('włos powyżej sufitu jest odrzucany, a komunikat nazywa maksimum', () => {
     expect(checkSubcontractorPrice(amount(80.02), 'w_tools')).toContain('80,00')
-  })
-
-  it('własny mnożnik mierzy się tym samym sufitem', () => {
-    expect(checkSubcontractorPrice(coeff(0.81), 'w_tools')).not.toBeNull()
-    expect(checkSubcontractorPrice(coeff(0.8), 'w_tools')).toBeNull()
   })
 
   // A price landing on odd grosze (0.8 × 100.01) is retyped off the screen rounded to two decimals;
@@ -136,7 +125,6 @@ describe('checkSubcontractorPrice — sufit liczy się od ceny przed rabatem', (
 describe('checkSubcontractorPrice — cena ujemna', () => {
   it('jest odrzucana', () => {
     expect(checkSubcontractorPrice(amount(-1), 'w_tools')).not.toBeNull()
-    expect(checkSubcontractorPrice(coeff(-0.5), 'w_tools')).not.toBeNull()
   })
 
   it('jest odrzucana także tam, gdzie sufit nie ma czego mierzyć', () => {

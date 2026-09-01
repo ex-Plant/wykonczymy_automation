@@ -120,12 +120,12 @@ describe('subcontractorDueByPlane', () => {
   })
 
   it('respects per-row price overrides per plane', () => {
-    // Row 1 gets a coeff override on the own_tools plane; the bez-narzędzi bucket must use it.
+    // Row 1 gets a flat override on the own_tools plane; the bez-narzędzi bucket must use it.
     const tree = makePlaneTree(mixed)
-    tree.sections[0].items[0].ownToolsOverrideType = 'coeff'
-    tree.sections[0].items[0].ownToolsOverrideValue = 0.5 // 20 · 0.5 = 10 per unit (same as flat here)
+    tree.sections[0].items[0].ownToolsOverrideType = 'amount'
+    tree.sections[0].items[0].ownToolsOverrideValue = 10
     const due = subcontractorDueByPlane(treeToRows(tree), tree.stages)
-    // Stage 101 (own_tools) still only holds row1's 3 qty → 3 · (20·0.5) = 30.
+    // Stage 101 (own_tools) still only holds row1's 3 qty → 3 · 10 = 30.
     expect(due.ownTools).toBeCloseTo(30)
   })
 

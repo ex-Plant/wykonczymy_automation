@@ -215,7 +215,7 @@ describe('the conditions, each on its boundary', () => {
       row({ discountType: 'percent', discountValue: 10 }),
       row({ discountType: null, discountValue: 10 }),
       row({ wToolsOverrideType: 'amount', wToolsOverrideValue: 80 }),
-      row({ ownToolsOverrideType: 'coeff', ownToolsOverrideValue: 0.4 }),
+      row({ ownToolsOverrideType: 'amount', ownToolsOverrideValue: 40 }),
       row({ note: 'do potwierdzenia z klientem' }),
       row({ note: '   ' }),
     ]
@@ -267,8 +267,6 @@ describe('the conditions, each on its boundary', () => {
     // The same row is still on the formula for the plane it says nothing about.
     expect(matches('manual-rate-own-tools', manualWithTools)).toBe(false)
     expect(matches('formula-rate-own-tools', manualWithTools)).toBe(true)
-    // 'coeff' is a hand-typed multiplier, not the derived one — still „wpisana ręcznie".
-    expect(matches('manual-rate-own-tools', row({ ownToolsOverrideType: 'coeff' }))).toBe(true)
   })
 
   it('„bez komentarza" reads a blank as no comment, and null and empty alike', () => {
@@ -318,18 +316,6 @@ describe('„ze stawką wykonawcy od ceny z materiałem" — the overpaid-crew g
     expect(
       fires('material-percent-rate-w-tools', { ...typed, [stageKey(1)]: 4 } as KosztorysV2RowT),
     ).toBe(false)
-  })
-
-  // A hand-typed multiplier is still a multiplier: 0,6 × a price that contains material hands the crew
-  // a cut of the material just like the default 0,65 does. Only a flat amount escapes.
-  it('fires on a hand-typed multiplier too, not just the inherited one', () => {
-    const multiplied = row({ wToolsOverrideType: 'coeff', wToolsOverrideValue: 0.6 })
-    expect(
-      fires('material-percent-rate-w-tools', {
-        ...multiplied,
-        [stageKey(1)]: 4,
-      } as KosztorysV2RowT),
-    ).toBe(true)
   })
 
   // The case that decides the whole design: one plane typed by hand, the other left on a multiplier.

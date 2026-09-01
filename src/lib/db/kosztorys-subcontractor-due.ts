@@ -32,20 +32,18 @@ export async function selectKosztorysSubcontractorDue(
         ks.investment_id,
         ks.plane,
         sp.qty_done,
-        -- subcontractorPrice (calc.ts): 'amount' → the stored value, 'coeff' → client × value,
-        -- unset → client × the investment's coefficient for that plane. Written per plane rather
-        -- than once over a picked column pair, because the two pairs are disjoint columns.
+        -- subcontractorPrice (calc.ts): 'amount' → the stored value, unset („auto") → client × the
+        -- investment's coefficient for that plane. Written per plane rather than once over a picked
+        -- column pair, because the two pairs are disjoint columns.
         CASE ks.plane
           WHEN 'w_tools' THEN
             CASE ki.w_tools_override_type
               WHEN 'amount' THEN coalesce(ki.w_tools_override_value, 0)
-              WHEN 'coeff' THEN ki.client_price * coalesce(ki.w_tools_override_value, 0)
               ELSE ki.client_price * coalesce(inv.w_tools_coeff, ${DEFAULT_COEFFS.wTools})
             END
           WHEN 'own_tools' THEN
             CASE ki.own_tools_override_type
               WHEN 'amount' THEN coalesce(ki.own_tools_override_value, 0)
-              WHEN 'coeff' THEN ki.client_price * coalesce(ki.own_tools_override_value, 0)
               ELSE ki.client_price * coalesce(inv.own_tools_coeff, ${DEFAULT_COEFFS.ownTools})
             END
         END AS price

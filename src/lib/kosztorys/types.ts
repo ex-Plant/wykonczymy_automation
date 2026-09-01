@@ -19,9 +19,9 @@ export type DiscountTypeT = 'percent' | 'amount'
 // total (PLN netto). Amount-only: a percent rabat isn't stored here — it's a one-shot tool that
 // stamps a percent into every per-item rabat (see applyPercentDiscountToAllItemsAction).
 export type GlobalDiscountT = { type: 'amount' | null; value: number }
-// Per-item subcontractor price override: 'coeff' = client × value (tracks the client
-// price), 'amount' = flat frozen amount, null = derive from the effective coefficient.
-export type SubcontractorOverrideTypeT = 'coeff' | 'amount'
+// Per-item subcontractor price override: 'amount' = flat frozen amount, null = „auto", derive from
+// the effective coefficient. Two źródła, so the value slot has ONE meaning — a price.
+export type SubcontractorOverrideTypeT = 'amount'
 
 export type KosztorysSectionT = {
   id: number
