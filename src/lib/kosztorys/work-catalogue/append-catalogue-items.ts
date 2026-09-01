@@ -1,10 +1,11 @@
 import 'server-only'
 import type { Payload, PayloadRequest } from 'payload'
 import { getDb } from '@/lib/db/get-db'
+import { asViewPricing, overrideTypeFor } from '@/lib/kosztorys/calc'
 import { sectionOwnerAndNextItemOrder } from '@/lib/kosztorys/create-item'
 import { insertItems } from '@/lib/kosztorys/insert-rows'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
-import type { KosztorysItemT, ViewPricingT } from '@/lib/kosztorys/types'
+import type { KosztorysItemT } from '@/lib/kosztorys/types'
 import type {
   AppendedCatalogueSliceT,
   WorkCatalogueItemT,
@@ -35,16 +36,6 @@ const asItem = (
   ownToolsOverrideType: catalogueItem.ownToolsRate === null ? null : 'amount',
   ownToolsOverrideValue: catalogueItem.ownToolsRate ?? 0,
   note: null,
-})
-
-// Only planes frozen to an amount are ever passed to the guard (see `warnings` below), and on those
-// the global coefficients are unreachable — so the guard needs no investment context to reach its
-// verdict.
-const asPricing = (item: KosztorysItemT): ViewPricingT => ({
-  ...item,
-  globalDiscountActive: false,
-  globalWToolsCoeff: 0,
-  globalOwnToolsCoeff: 0,
 })
 
 /**
@@ -80,10 +71,10 @@ export async function appendCatalogueItems(
   // silence the guard already keeps when cena j.m. is 0.
   const warnings = items.flatMap((item) => {
     const problems = (['w_tools', 'own_tools'] as const)
-      .filter((plane) =>
-        plane === 'w_tools' ? item.wToolsOverrideType !== null : item.ownToolsOverrideType !== null,
-      )
-      .flatMap((plane) => checkSubcontractorPrice(asPricing(item), plane) ?? [])
+      .filter((plane) => overrideTypeFor(item, plane) !== null)
+      // Zero globals: this filter leaves only planes frozen to a kwota, and a kwota never reads a
+      // współczynnik — so the guard needs no investment context to reach its verdict.
+      .flatMap((plane) => checkSubcontractorPrice(asViewPricing(item), plane) ?? [])
     return problems.map((problem) => `„${item.description}": ${problem}`)
   })
 

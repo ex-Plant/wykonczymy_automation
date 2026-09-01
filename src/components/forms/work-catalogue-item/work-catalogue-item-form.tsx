@@ -117,8 +117,8 @@ export function WorkCatalogueItemForm({
           )}
         </form.AppField>
 
-        <RateField form={form} plane="wTools" label="Stawka z narzędziami" />
-        <RateField form={form} plane="ownTools" label="Stawka bez narzędzi" />
+        <RateField form={form} plane="wTools" />
+        <RateField form={form} plane="ownTools" />
       </FieldGroup>
 
       <FormFooter label={submitLabel} submittingLabel={submittingLabel} className="mt-6" />
@@ -126,30 +126,32 @@ export function WorkCatalogueItemForm({
   )
 }
 
-const AUTO_LABEL = 'Auto — licz ze współczynnika inwestycji'
-
-// The przełącznik and the kwota are one decision, so they render as one block: ticked, the katalog
-// names no stawka and the input has nothing to say, so it goes away rather than sitting there
-// disabled and inviting a value that would be thrown out.
 type RateFieldNameT = `${'wTools' | 'ownTools'}${'Auto' | 'Rate'}`
 
+const PLANE_LABEL = {
+  wTools: 'Stawka z narzędziami',
+  ownTools: 'Stawka bez narzędzi',
+} as const
+
+// The przełącznik carries the plane's own name: with both ticked the two kwota inputs are gone, so
+// the checkboxes are the only thing left to tell the planes apart.
 function RateField({
   form,
   plane,
-  label,
 }: {
   form: FormWithFieldT<RateFieldNameT>
   plane: 'wTools' | 'ownTools'
-  label: string
 }) {
+  const label = PLANE_LABEL[plane]
   const auto = useFieldValue<boolean>(form, `${plane}Auto`)
 
   return (
     <>
       <form.AppField name={`${plane}Auto`}>
-        {(field) => <field.Checkbox label={AUTO_LABEL} />}
+        {(field) => <field.Checkbox label={`${label}: auto — ze współczynnika inwestycji`} />}
       </form.AppField>
 
+      {/* Hidden, not disabled: a disabled input still invites a kwota that would be thrown out. */}
       {!auto && (
         <form.AppField name={`${plane}Rate`}>
           {(field) => (

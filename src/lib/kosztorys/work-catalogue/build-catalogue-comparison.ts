@@ -1,4 +1,4 @@
-import { MONEY_TOLERANCE, subcontractorPrice } from '@/lib/kosztorys/calc'
+import { MONEY_TOLERANCE, asViewPricing, subcontractorPrice } from '@/lib/kosztorys/calc'
 import type { KosztorysItemT, ViewPricingT } from '@/lib/kosztorys/types'
 import { foldDescription } from '@/lib/kosztorys/sheet-import/item-key'
 import { catalogueKey } from '@/lib/kosztorys/work-catalogue/catalogue-key'
@@ -17,22 +17,14 @@ import { bigrams, diceSimilarity } from '@/lib/utils/string-similarity'
 // who reads „może chodzi o…" over an unrelated praca stops reading the hints at all.
 const HINT_THRESHOLD = 0.55
 
-const asPricing = (item: KosztorysItemT, settings: CatalogueComparisonSettingsT): ViewPricingT => ({
-  ...item,
-  globalDiscountActive: false,
-  globalWToolsCoeff: settings.wToolsCoeff,
-  globalOwnToolsCoeff: settings.ownToolsCoeff,
-})
+const asPricing = (item: KosztorysItemT, settings: CatalogueComparisonSettingsT): ViewPricingT =>
+  asViewPricing(item, { wTools: settings.wToolsCoeff, ownTools: settings.ownToolsCoeff })
 
-// The rozpiska row's own nadpisania say nothing about what the CENNIK holds, so pricing the
-// cennik's „auto" side has to strip them — otherwise an auto entry would be priced by the very
-// override it is being compared against, and every such row would match itself.
-const NO_OVERRIDES = {
-  wToolsOverrideType: null,
-  wToolsOverrideValue: 0,
-  ownToolsOverrideType: null,
-  ownToolsOverrideValue: 0,
-} as const
+// An „auto" cennik stawka is compared as the kwota it implies FOR THIS INWESTYCJA. The base is the
+// CENNIK's cena j.m. and the inwestycja's współczynnik — never the rozpiska row's own nadpisanie,
+// which says nothing about what the cennik holds and would make every auto row match itself.
+const catalogueRate = (rate: number | null, clientPrice: number, coeff: number): number =>
+  rate ?? clientPrice * coeff
 
 type HintCandidateT = { description: string; pairs: string[] }
 
@@ -103,27 +95,17 @@ export function buildCatalogueComparison(
     }
 
     const pricing = asPricing(item, settings)
-    // An „auto" cennik stawka is compared as the kwota it implies FOR THIS INWESTYCJA, so a
-    // rozpiska row carrying its own kwota against a cennik that says auto still surfaces. The base
-    // is the CENNIK's cena j.m., not the rozpiska's — where the two also differ, the report says so
-    // on its own „Cena j.m." line and this one inherits the same gap.
-    const autoPricing = asPricing(
-      { ...item, clientPrice: entry.clientPrice, ...NO_OVERRIDES },
-      settings,
-    )
-    const catalogueRate = (plane: 'w_tools' | 'own_tools', rate: number | null) =>
-      rate ?? subcontractorPrice(autoPricing, plane)
     const figures = [
       figure('Cena j.m.', item.clientPrice, entry.clientPrice),
       figure(
         'Stawka z narzędziami',
         subcontractorPrice(pricing, 'w_tools'),
-        catalogueRate('w_tools', entry.wToolsRate),
+        catalogueRate(entry.wToolsRate, entry.clientPrice, settings.wToolsCoeff),
       ),
       figure(
         'Stawka bez narzędzi',
         subcontractorPrice(pricing, 'own_tools'),
-        catalogueRate('own_tools', entry.ownToolsRate),
+        catalogueRate(entry.ownToolsRate, entry.clientPrice, settings.ownToolsCoeff),
       ),
     ].filter((diff) => diff !== null)
 

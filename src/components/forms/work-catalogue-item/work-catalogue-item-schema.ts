@@ -14,13 +14,6 @@ const moneyIssue = (label: string, value: string): string | null => {
   return null
 }
 
-const moneyInput = (label: string) =>
-  z.string().superRefine((value, ctx) => {
-    const message = moneyIssue(label, value)
-    if (message) ctx.addIssue({ code: 'custom', message })
-  })
-
-// The two stawki, each with the przełącznik that decides whether it is typed at all.
 const RATE_PLANES = [
   { rate: 'wToolsRate', auto: 'wToolsAuto', label: 'Stawka z narzędziami' },
   { rate: 'ownToolsRate', auto: 'ownToolsAuto', label: 'Stawka bez narzędzi' },
@@ -31,7 +24,10 @@ const baseSchema = z.object({
   description: z.string().min(1, 'Opis pracy jest wymagany'),
   category: z.string(),
   unit: z.string().min(1, 'Jednostka miary jest wymagana'),
-  clientPrice: moneyInput('Cena j.m.'),
+  clientPrice: z.string().superRefine((value, ctx) => {
+    const message = moneyIssue('Cena j.m.', value)
+    if (message) ctx.addIssue({ code: 'custom', message })
+  }),
   wToolsAuto: z.boolean(),
   wToolsRate: z.string(),
   ownToolsAuto: z.boolean(),
@@ -63,8 +59,7 @@ export const workCatalogueItemSchema = baseSchema
   .extend({
     category: z.string().default(''),
     clientPrice: money('Cena j.m.'),
-    // `null` = „auto": the katalog names no stawka and the praca prices off the target investment's
-    // współczynnik. A blank field is NOT this — the form layer above still refuses it.
+    // A blank field is NOT „auto" — the form layer above still refuses it.
     wToolsRate: money('Stawka z narzędziami').nullable(),
     ownToolsRate: money('Stawka bez narzędzi').nullable(),
   })

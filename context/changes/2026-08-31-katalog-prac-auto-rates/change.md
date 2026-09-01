@@ -30,9 +30,19 @@ Ustalenia właściciela (2026-08-31):
    kasuje jedyny powód, dla którego guard musiałby dostać kontekst inwestycji.
 
 Powierzchnia zmiany: migracja (`w_tools_rate` / `own_tools_rate` na nullowalne — tabela jest nowa,
-na produkcji pusta), kolekcja, formularz „Nowa praca w katalogu" (puste pole = auto, nie błąd „jest
-wymagana"), lista /katalog-prac, `toCatalogueCandidate`, `append-catalogue-items` (null → brak
+na produkcji pusta), kolekcja, formularz „Nowa praca w katalogu" (przełącznik „auto"; puste
+pole przy odznaczonym przełączniku nadal jest błędem „jest wymagana"), lista /katalog-prac, `toCatalogueCandidate`, `append-catalogue-items` (null → brak
 nadpisania, więc wiersz bierze współczynnik inwestycji docelowej) oraz dialog „Zapisz do katalogu…",
 który dziś pokazuje trzy kwoty.
+
+Ustalenia z bramki review (2026-09-01):
+
+- Wyrównanie tekstu w tabeli /katalog-prac zdjęte do lewej na wyraźne polecenie właściciela w trakcie
+  implementacji — spójnie z pozostałymi tabelami, żadnych nadpisań per kolumna. To nie jest regresja
+  doklejona do slice'a o nullowalności.
+- `getCatalogueSourceItem` świadomie nie dołącza już `investments` i `CatalogueSourceItemT` nie nosi
+  współczynników, wbrew literze planu. Plan się mylił: `subcontractorPrice` wycenia `'coeff'` jako
+  `clientPrice * value` i globalnego współczynnika nigdy nie czyta, więc te pola były nieosiągalne.
+  Nie „przywracać" ich przy czytaniu planu.
 
 Poprzedni slice: `context/changes/2026-08-31-work-item-catalog/` (tam też rejestr bramki review).

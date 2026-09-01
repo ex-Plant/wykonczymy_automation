@@ -135,6 +135,18 @@ describe.skipIf(!ENV_READY)('work catalogue actions (DB)', () => {
     expect(Number(stored.clientPrice)).toBe(13)
   })
 
+  it('zmiana kwoty na „auto" zapisuje NULL, a nie 0 zł', async () => {
+    const [existing] = await rowsFor(item({ unit: 'szt' }))
+    const id = Number(existing!.id)
+
+    const result = await updateCatalogueItemAction(id, item({ unit: 'szt', wToolsRate: null }))
+    expect(result.success).toBe(true)
+
+    const stored = await payload.findByID({ collection: 'work-catalogue-items', id, depth: 0 })
+    expect(stored.wToolsRate).toBeNull()
+    expect(Number(stored.ownToolsRate)).toBe(15)
+  })
+
   it('deletes a row', async () => {
     const [existing] = await rowsFor(item({ unit: 'szt' }))
     const id = Number(existing!.id)

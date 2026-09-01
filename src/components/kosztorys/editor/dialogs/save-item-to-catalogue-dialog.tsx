@@ -6,16 +6,12 @@ import { Description } from '@/components/ui/description'
 import { FormDialogShell } from '@/components/ui/form-dialog-shell'
 import { catalogueSavePreviewAction, saveItemToCatalogueAction } from '@/lib/actions/work-catalogue'
 import type { CatalogueSavePreviewT } from '@/lib/kosztorys/work-catalogue/types'
-import { formatPLN } from '@/lib/utils/format-currency'
+import { formatPLN, formatPLNOrAuto } from '@/lib/utils/format-currency'
 import { toastMessage } from '@/lib/utils/toast'
 
 const LOAD_FAILED = 'Nie udało się wczytać danych pozycji'
 
 type PricesT = { clientPrice: number; wToolsRate: number | null; ownToolsRate: number | null }
-
-// A stawka the katalog declines to name reads as „auto" — it has no kwota until the praca lands in
-// an inwestycja and its współczynnik prices it.
-const rate = (value: number | null) => (value === null ? 'auto' : formatPLN(value))
 
 // Rendered for both sides so „nadpisz" is a decision about numbers rather than about a name.
 function PriceList({ title, prices }: { title: string; prices: PricesT }) {
@@ -30,7 +26,7 @@ function PriceList({ title, prices }: { title: string; prices: PricesT }) {
       {rows.map(([label, value]) => (
         <div key={label} className="flex justify-between text-sm">
           <span className="text-muted-foreground">{label}</span>
-          <span className="tabular-nums">{rate(value)}</span>
+          <span className="tabular-nums">{formatPLNOrAuto(value)}</span>
         </div>
       ))}
     </div>
@@ -140,7 +136,7 @@ export function SaveItemToCatalogueDialog({
         <ConfirmDialog
           open={confirming}
           title={`Nadpisać „${preview.existing.description}" w katalogu?`}
-          description={`Stare stawki przepadną — katalog nie trzyma historii. Cena j.m. ${formatPLN(preview.existing.clientPrice)} → ${formatPLN(preview.candidate.clientPrice)}, stawka z narzędziami ${rate(preview.existing.wToolsRate)} → ${rate(preview.candidate.wToolsRate)}, bez narzędzi ${rate(preview.existing.ownToolsRate)} → ${rate(preview.candidate.ownToolsRate)}. Kosztorysy, w których ta praca już siedzi, zostają bez zmian. Jeśli chcesz dodać osobną pozycję zamiast nadpisać tę — anuluj i zmień nazwę pracy w rozpisce.`}
+          description={`Stare stawki przepadną — katalog nie trzyma historii. Cena j.m. ${formatPLN(preview.existing.clientPrice)} → ${formatPLN(preview.candidate.clientPrice)}, stawka z narzędziami ${formatPLNOrAuto(preview.existing.wToolsRate)} → ${formatPLNOrAuto(preview.candidate.wToolsRate)}, bez narzędzi ${formatPLNOrAuto(preview.existing.ownToolsRate)} → ${formatPLNOrAuto(preview.candidate.ownToolsRate)}. Kosztorysy, w których ta praca już siedzi, zostają bez zmian. Jeśli chcesz dodać osobną pozycję zamiast nadpisać tę — anuluj i zmień nazwę pracy w rozpisce.`}
           confirmLabel="Nadpisz"
           pending={saving}
           pendingLabel="Zapisuję…"

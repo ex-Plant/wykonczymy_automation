@@ -85,7 +85,7 @@ describe.skipIf(!ENV_READY)('insertCatalogueItemsAction (DB)', () => {
 
   async function createCatalogueItem(
     description: string,
-    prices: { clientPrice: number; wToolsRate: number; ownToolsRate: number },
+    prices: { clientPrice: number; wToolsRate: number | null; ownToolsRate: number | null },
   ): Promise<number> {
     const created = await payload.create({
       collection: 'work-catalogue-items',
@@ -151,6 +151,24 @@ describe.skipIf(!ENV_READY)('insertCatalogueItemsAction (DB)', () => {
     expect(row.own_tools_override_type).toBe('amount')
     expect(Number(row.own_tools_override_value)).toBe(40)
     expect(Number(row.planned_qty)).toBe(0)
+  })
+
+  it('praca „auto" ląduje bez nadpisania i nie budzi pułapu 80%', async () => {
+    const sectionId = await createSection()
+    const id = await createCatalogueItem(`Auto ${suffix}`, {
+      clientPrice: 100,
+      wToolsRate: null,
+      ownToolsRate: 40,
+    })
+
+    const result = await insertCatalogueItemsAction(sectionId, [id])
+    expect(result.success).toBe(true)
+    expect(result.success && result.data.warnings).toEqual([])
+
+    const [row] = await itemsOf(sectionId)
+    expect(row.w_tools_override_type).toBeNull()
+    expect(row.own_tools_override_type).toBe('amount')
+    expect(Number(row.own_tools_override_value)).toBe(40)
   })
 
   it('dopisuje na koniec sekcji, za istniejącymi pracami', async () => {

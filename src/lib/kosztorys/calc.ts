@@ -1,4 +1,11 @@
-import type { GlobalDiscountT, ToolPlaneT, ViewPricingT } from '@/lib/kosztorys/types'
+import type {
+  GlobalDiscountT,
+  KosztorysGlobalCoeffsT,
+  KosztorysItemT,
+  SubcontractorOverrideTypeT,
+  ToolPlaneT,
+  ViewPricingT,
+} from '@/lib/kosztorys/types'
 
 // VAT: a single rate per investment (vatRate), carried on the row. No section→item cascade.
 
@@ -64,9 +71,38 @@ export function effectiveCoeff(row: ViewPricingT, view: ToolPlaneT): number {
   return view === 'w_tools' ? row.globalWToolsCoeff : row.globalOwnToolsCoeff
 }
 
+/**
+ * Whether this plane carries its own nadpisanie, and of which kind. `null` is the load-bearing
+ * answer — it is what „the row said nothing, derive it from the global współczynnik" looks like,
+ * which is also what a cennik „auto" means one layer up.
+ */
+export function overrideTypeFor(
+  row: Pick<ViewPricingT, 'wToolsOverrideType' | 'ownToolsOverrideType'>,
+  view: ToolPlaneT,
+): SubcontractorOverrideTypeT | null {
+  return view === 'w_tools' ? row.wToolsOverrideType : row.ownToolsOverrideType
+}
+
+/**
+ * A `KosztorysItemT` seen as a priceable row. The globals default to 0 for callers that price only
+ * planes carrying their OWN nadpisanie — neither a kwota nor a mnożnik reads a global, so there the
+ * zeros are inert rather than a stand-in for a real współczynnik.
+ */
+export function asViewPricing(
+  item: KosztorysItemT,
+  coeffs: KosztorysGlobalCoeffsT = { wTools: 0, ownTools: 0 },
+): ViewPricingT {
+  return {
+    ...item,
+    globalDiscountActive: false,
+    globalWToolsCoeff: coeffs.wTools,
+    globalOwnToolsCoeff: coeffs.ownTools,
+  }
+}
+
 /** Subcontractor price by view: null→derived (client×coeff), coeff→client×%, amount→flat. */
 export function subcontractorPrice(row: ViewPricingT, view: ToolPlaneT): number {
-  const type = view === 'w_tools' ? row.wToolsOverrideType : row.ownToolsOverrideType
+  const type = overrideTypeFor(row, view)
   const value = view === 'w_tools' ? row.wToolsOverrideValue : row.ownToolsOverrideValue
   if (type === 'amount') return value
   if (type === 'coeff') return row.clientPrice * value

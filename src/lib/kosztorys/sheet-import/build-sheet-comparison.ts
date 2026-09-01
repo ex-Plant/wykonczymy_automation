@@ -1,6 +1,7 @@
 import { columnLetter } from '@/lib/google/sheet-configs'
 import {
   MONEY_TOLERANCE,
+  asViewPricing,
   globalDiscountAmount,
   isGlobalDiscountActive,
   netForQtyForView,
@@ -110,12 +111,8 @@ const asClientPricing = (item: ParsedItemT | KosztorysItemT): ViewPricingT => ({
 
 // The one place the investment's global coefficients matter: an item with no override inherits them,
 // so a stawka read without them would look like a 0 zł crew cost on every such praca.
-const asPlanePricing = (item: KosztorysItemT, settings: SnapshotSettingsT): ViewPricingT => ({
-  ...item,
-  globalDiscountActive: false,
-  globalWToolsCoeff: settings.wToolsCoeff,
-  globalOwnToolsCoeff: settings.ownToolsCoeff,
-})
+const asPlanePricing = (item: KosztorysItemT, settings: SnapshotSettingsT): ViewPricingT =>
+  asViewPricing(item, { wTools: settings.wToolsCoeff, ownTools: settings.ownToolsCoeff })
 
 function sumQtyDone(progress: readonly StageProgressT[]): Map<number, number> {
   const byItem = new Map<number, number>()

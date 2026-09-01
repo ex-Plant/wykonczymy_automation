@@ -10,8 +10,6 @@ import type { WorkCatalogueItemT } from '@/lib/kosztorys/work-catalogue/types'
 
 const col = createColumnHelper<WorkCatalogueItemT>()
 
-// „auto" is the katalog declining to name a stawka — the kwota only exists once the praca lands in
-// an inwestycja, so there is nothing to render as money here.
 const money = (value: number | null) =>
   value === null ? (
     <span className="text-muted-foreground text-sm">auto</span>

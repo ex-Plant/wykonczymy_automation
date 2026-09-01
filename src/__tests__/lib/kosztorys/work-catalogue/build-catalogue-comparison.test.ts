@@ -75,6 +75,29 @@ describe('buildCatalogueComparison', () => {
     expect(result.matching).toBe(1)
   })
 
+  it('stawka „auto" w cenniku wycenia się współczynnikiem tej inwestycji', () => {
+    const result = buildCatalogueComparison(
+      [item()],
+      [entry({ wToolsRate: null, ownToolsRate: null })],
+      SETTINGS,
+    )
+
+    expect(result.diffs).toHaveLength(0)
+    expect(result.matching).toBe(1)
+  })
+
+  it('„auto" liczy się z ceny KATALOGU, nie z ceny rozpiski', () => {
+    const result = buildCatalogueComparison(
+      [item({ clientPrice: 200 })],
+      [entry({ clientPrice: 100, wToolsRate: null, ownToolsRate: null })],
+      SETTINGS,
+    )
+
+    const wTools = result.diffs[0].figures.find((f) => f.label === 'Stawka z narzędziami')
+    expect(wTools?.catalogue).toBeCloseTo(65, 6)
+    expect(wTools?.kosztorys).toBeCloseTo(130, 6)
+  })
+
   it('sortuje rozjazdy od największej różnicy', () => {
     const result = buildCatalogueComparison(
       [

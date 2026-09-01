@@ -1,7 +1,7 @@
-import { MONEY_TOLERANCE, subcontractorPrice } from '@/lib/kosztorys/calc'
+import { MONEY_TOLERANCE, asViewPricing } from '@/lib/kosztorys/calc'
 import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
-import type { KosztorysItemT, ViewPricingT } from '@/lib/kosztorys/types'
 import { catalogueKey } from '@/lib/kosztorys/work-catalogue/catalogue-key'
+import { impliedCatalogueRate } from '@/lib/kosztorys/work-catalogue/catalogue-rate'
 import { stripSectionOrdinal } from '@/lib/kosztorys/work-catalogue/section-category'
 import type {
   CatalogueSeedItemT,
@@ -22,7 +22,7 @@ const toGrosz = (value: number): number => Math.round(value * GROSZ)
  * in grosze because both stawki are computed (`clientPrice × coeff`), and float noise would otherwise
  * split one value into two near-identical buckets that each lose to a genuine minority.
  */
-function winningValue(values: readonly number[]): number {
+function winningBucket(values: readonly number[]): { value: number; count: number } {
   const counts = new Map<number, number>()
   for (const value of values) {
     const grosze = toGrosz(value)
@@ -36,8 +36,10 @@ function winningValue(values: readonly number[]): number {
       winnerCount = count
     }
   }
-  return winner / GROSZ
+  return { value: winner / GROSZ, count: Math.max(winnerCount, 0) }
 }
+
+const winningValue = (values: readonly number[]): number => winningBucket(values).value
 
 /**
  * Same rule for a stawka, where „auto" (`null`) is a fourth possible answer and counts as its own
@@ -48,9 +50,10 @@ function winningRate(values: readonly (number | null)[]): number | null {
   const amounts = values.filter((value) => value !== null)
   const autoCount = values.length - amounts.length
   if (amounts.length === 0) return null
-  const winner = winningValue(amounts)
-  const winnerCount = amounts.filter((value) => Math.abs(value - winner) <= MONEY_TOLERANCE).length
-  return autoCount > winnerCount ? null : winner
+  // The winning bucket's OWN count, not a recount: a second pass with a different notion of „same
+  // amount" could disagree with the one that picked the winner and flip auto/kwota on a knife edge.
+  const winner = winningBucket(amounts)
+  return autoCount > winner.count ? null : winner.value
 }
 
 const CONFLICT_FIELDS: readonly SeedConflictFieldT[] = ['clientPrice', 'wToolsRate', 'ownToolsRate']
@@ -84,13 +87,6 @@ export function buildCatalogueSeed(payload: SnapshotPayloadT): {
 } {
   const sectionName = new Map(payload.sections.map((section) => [section.id, section.name]))
 
-  const asPlanePricing = (item: KosztorysItemT): ViewPricingT => ({
-    ...item,
-    globalDiscountActive: false,
-    globalWToolsCoeff: 0,
-    globalOwnToolsCoeff: 0,
-  })
-
   const groups = new Map<string, GroupT>()
   for (const item of payload.items) {
     const description = item.description?.trim()
@@ -101,17 +97,8 @@ export function buildCatalogueSeed(payload: SnapshotPayloadT): {
     group.occurrences.push({
       sectionName: stripSectionOrdinal(sectionName.get(item.sectionId) ?? ''),
       clientPrice: item.clientPrice,
-      // Same rule as „Zapisz do katalogu…": a pozycja that overrode nothing was only riding the
-      // szablon investment's współczynnik, so it seeds as „auto" rather than welding that
-      // współczynnik into the global cennik.
-      wToolsRate:
-        item.wToolsOverrideType === null
-          ? null
-          : subcontractorPrice(asPlanePricing(item), 'w_tools'),
-      ownToolsRate:
-        item.ownToolsOverrideType === null
-          ? null
-          : subcontractorPrice(asPlanePricing(item), 'own_tools'),
+      wToolsRate: impliedCatalogueRate(asViewPricing(item), 'w_tools'),
+      ownToolsRate: impliedCatalogueRate(asViewPricing(item), 'own_tools'),
     })
     groups.set(key, group)
   }
