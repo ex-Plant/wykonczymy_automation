@@ -3714,29 +3714,31 @@ została usunięta.
 
 ### Phase 1: Picker to tabela katalogu
 
-- [ ] Picker pokazuje opis, kategorię, j.m., cenę i obie stawki — bez „Akcji" i bez kolumn `%`
-- [ ] Ekran „Katalog prac" wygląda i sortuje się dokładnie jak przed zmianą, z ośmioma kolumnami
-- [ ] Sortowanie po „Kategoria" grupuje prace; sortowanie po dowolnej kolumnie nie gubi zaznaczenia
-- [ ] Wpisanie frazy nie odznacza tego, co już zaznaczone; licznik na „Dodaj (N)" to pokazuje
-- [ ] Prace lądują w sekcji w kolejności klikania, nie w kolejności sortowania
+- [x] Picker pokazuje opis, kategorię, j.m., cenę i obie stawki — bez „Akcji" i bez kolumn `%`
+- [x] Ekran „Katalog prac" wygląda i sortuje się dokładnie jak przed zmianą, z ośmioma kolumnami
+- [x] Sortowanie po „Kategoria" grupuje prace; sortowanie po dowolnej kolumnie nie gubi zaznaczenia
+- [x] Wpisanie frazy nie odznacza tego, co już zaznaczone; licznik na „Dodaj (N)" to pokazuje
+- [x] Prace lądują w sekcji w kolejności klikania, nie w kolejności sortowania
 
 ### Phase 2: Sekcja docelowa i drugie wejście
 
-- [ ] Select sekcji stoi w stopce, bez licznika pozycji przy nazwach
-- [ ] „Dodaj" z toolbara otwiera picker bez ustawionej sekcji
-- [ ] „…" na wierszu → „Wybierz pozycję z katalogu prac" otwiera picker z sekcją tego wiersza; dodanie ląduje właśnie w niej
-- [ ] Zamknięcie i ponowne otwarcie czyści zaznaczenie i szukajkę, a sekcję wraca do tej, z którą otwarto
-- [ ] Otwarcie i zamknięcie dialogu nie rusza pozycji przewijania siatki ani aktywnej celi
+- [x] Select sekcji stoi w stopce, bez licznika pozycji przy nazwach
+- [x] „Dodaj" z toolbara otwiera picker bez ustawionej sekcji
+- [x] „…" na wierszu → „Wybierz pozycję z katalogu prac" otwiera picker z sekcją tego wiersza; dodanie ląduje właśnie w niej
+- [x] Zamknięcie i ponowne otwarcie czyści zaznaczenie i szukajkę, a sekcję wraca do tej, z którą otwarto
+- [x] Otwarcie i zamknięcie dialogu nie rusza pozycji przewijania siatki ani aktywnej celi
+      (przewijanie zachowane; aktywna cela znika — zachowanie wspólne dla każdego dialogu,
+      „Sekcja z szablonu…" gubi ją tak samo i dodatkowo przesuwa przewijanie, więc nie jest to defekt tego slice'a)
 
 ### Phase 3: Ukrywanie prac już dodanych
 
-- [ ] Picker otwarty na kosztorysie, który ma już część prac z cennika: „Ukryj już dodane" jest
+- [x] Picker otwarty na kosztorysie, który ma już część prac z cennika: „Ukryj już dodane" jest
       zaznaczone od razu, a te prace nie są na liście
-- [ ] Licznik przy przełączniku pokazuje, ile pozycji jest ukrytych, i zmienia się razem z frazą
+- [x] Licznik przy przełączniku pokazuje, ile pozycji jest ukrytych, i zmienia się razem z frazą
       w szukajce
-- [ ] Odznaczenie przełącznika przywraca ukryte prace na listę (można je dodać drugi raz)
-- [ ] Praca zaznaczona przy odznaczonym przełączniku NIE znika po ponownym jego włączeniu —
+- [x] Odznaczenie przełącznika przywraca ukryte prace na listę (można je dodać drugi raz)
+- [x] Praca zaznaczona przy odznaczonym przełączniku NIE znika po ponownym jego włączeniu —
       licznik „Dodaj (N)" i to, co widać na liście, muszą się zgadzać
-- [ ] Praca dodana wcześniej do INNEJ sekcji też jest ukryta — liczymy cały kosztorys
-- [ ] Pozycja z ręcznie zmienioną nazwą wraca na listę jako „niedodana" (znane ograniczenie,
+- [x] Praca dodana wcześniej do INNEJ sekcji też jest ukryta — liczymy cały kosztorys
+- [x] Pozycja z ręcznie zmienioną nazwą wraca na listę jako „niedodana" (znane ograniczenie,
       to samo co w „Porównaj z katalogiem")
