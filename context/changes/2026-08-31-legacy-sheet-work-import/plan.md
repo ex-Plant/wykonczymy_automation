@@ -447,18 +447,18 @@ Uruchamiane **raz**, po ostatniej fazie.
 
 #### Automated
 
-- [x] 2.1 Katalog roboczy zawiera plik dla każdego z 57 arkuszy
-- [x] 2.2 Powtórne uruchomienie nie odpytuje Google
-- [x] 2.3 Przebieg kończy się kodem 0 mimo arkuszy nieprzeczytanych
+- [x] 2.1 Katalog roboczy zawiera plik dla każdego z 57 arkuszy — 7dc6c4e9
+- [x] 2.2 Powtórne uruchomienie nie odpytuje Google — 7dc6c4e9
+- [x] 2.3 Przebieg kończy się kodem 0 mimo arkuszy nieprzeczytanych — 7dc6c4e9
 
 ### Phase 3: Przebieg B — analiza offline i raport
 
 #### Automated
 
-- [ ] 3.1 Przebieg działa bez ruchu sieciowego
-- [ ] 3.2 Podsumowanie raportu zgadza się z sekcjami szczegółowymi
-- [ ] 3.3 Żaden kandydat nie ma stawki 0 pochodzącej z konfliktu
-- [ ] 3.4 „już w katalogu" + „do dołożenia" = liczba unikalnych kluczy z arkuszy
+- [x] 3.1 Przebieg działa bez ruchu sieciowego — 60795e11
+- [x] 3.2 Podsumowanie raportu zgadza się z sekcjami szczegółowymi — 60795e11
+- [x] 3.3 Żaden kandydat nie ma stawki 0 pochodzącej z konfliktu — 60795e11
+- [x] 3.4 „już w katalogu" + „do dołożenia" = liczba unikalnych kluczy z arkuszy — 60795e11
 
 ### Phase 4: Wsad lokalny i eksport na produkcję
 
