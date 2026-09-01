@@ -315,4 +315,4 @@ Uruchomić **raz**, po ostatniej fazie:
 
 #### Automated
 
-- [x] 2.1 Brak testu zakresowego — przepięcie wyzwalaczy, ryzyko przeglądarkowe (świadomie puste)
+- [x] 2.1 Brak testu zakresowego — przepięcie wyzwalaczy, ryzyko przeglądarkowe (świadomie puste) — 08393235

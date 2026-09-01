@@ -3709,3 +3709,22 @@ została usunięta.
 - [ ] „Zapisz do katalogu…" pokazuje „auto" w podglądzie i w potwierdzeniu nadpisania
 - [ ] Wstawiona z katalogu praca auto ma w rozpisce pustą komórkę nadpisania i liczy się ze
       współczynnika inwestycji
+
+## katalog-praca-picker — picker „Dodaj pracę z katalogu"
+
+### Phase 1: Picker to tabela katalogu
+
+- [ ] Picker pokazuje opis, kategorię, j.m., cenę i obie stawki — bez „Akcji" i bez kolumn `%`
+- [ ] Ekran „Katalog prac" wygląda i sortuje się dokładnie jak przed zmianą, z ośmioma kolumnami
+- [ ] Sortowanie po „Kategoria" grupuje prace; sortowanie po dowolnej kolumnie nie gubi zaznaczenia
+- [ ] Wpisanie frazy nie odznacza tego, co już zaznaczone; licznik „Wybrano: N" to pokazuje
+- [ ] Checkbox w nagłówku zaznacza i odznacza wiersze widoczne po filtrze
+- [ ] Prace lądują w sekcji w kolejności klikania, nie w kolejności sortowania
+
+### Phase 2: Sekcja docelowa i drugie wejście
+
+- [ ] Select sekcji stoi w stopce, bez licznika pozycji przy nazwach
+- [ ] „Dodaj" z toolbara otwiera picker bez ustawionej sekcji
+- [ ] „…" na wierszu → „Praca z katalogu…" otwiera picker z sekcją tego wiersza; dodanie ląduje właśnie w niej
+- [ ] Zamknięcie i ponowne otwarcie czyści zaznaczenie i szukajkę, a sekcję wraca do tej, z którą otwarto
+- [ ] Otwarcie i zamknięcie dialogu nie rusza pozycji przewijania siatki ani aktywnej celi

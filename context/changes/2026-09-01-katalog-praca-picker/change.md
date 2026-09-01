@@ -1,7 +1,7 @@
 ---
 change_id: katalog-praca-picker
 title: Picker „Dodaj pracę z katalogu" — dwa panele, kumulowane zaznaczenie, sekcja na końcu
-status: implementing
+status: implemented
 created: 2026-09-01
 updated: 2026-09-01
 archived_at: null
