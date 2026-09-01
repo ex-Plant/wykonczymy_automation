@@ -494,16 +494,16 @@ Uruchomić **raz**, po ostatniej fazie:
 
 #### Automated
 
-- [ ] 3.1 Brak testu jednostkowego — faza czysto prezentacyjna (świadomie)
+- [x] 3.1 Brak testu jednostkowego — faza czysto prezentacyjna (świadomie); zweryfikowana w przeglądarce
 
 ### Phase 4: Ręczna wysokość wiersza w edytorze
 
 #### Automated
 
-- [ ] 4.1 Testy rozstrzygania wysokości wiersza
+- [x] 4.1 Testy rozstrzygania wysokości wiersza (13 testów, zielone)
 
 ### Phase 5: Wysokość z treści w podglądzie klienta
 
 #### Automated
 
-- [ ] 5.1 Testy wysokości z treści w trybie podglądu
+- [x] 5.1 Testy wysokości z treści w trybie podglądu (5 testów, zielone)

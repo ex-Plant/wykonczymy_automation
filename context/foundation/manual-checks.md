@@ -3616,3 +3616,87 @@ uruchamiane ręcznie i **nigdy** przeciwko produkcji bez jawnej zmiennej bazy.
 - [ ] Podpowiedzi przy „brak w katalogu" trafiają w rzeczywiste odpowiedniki
 - [ ] Kolumny „% z narzędziami" / „% bez narzędzi" pokazują udział stawki w „Cenie j.m.", a powyżej 80% świecą na czerwono
 - [ ] Sortowanie po kolumnie procentowej ustawia najdroższe prace na górze
+
+## EX-699 — wysokość wiersza w edytorze i dopasowanie do treści w podglądzie klienta
+
+Setup: **baza deweloperska 5433** (odstępstwo od reguły powyżej — sprawdzane na żywym kosztorysie
+inw. 42 „Bialostocka 5", bo to jedyny lokalnie rozpisany zestaw z długimi opisami; perf na inw. 7,
+zasianym `perf-seed-kosztorys.ts`, 10 sekcji × 1000 pozycji). Rola OWNER, Chromium przez Playwright,
+2026-08-31. Stan localStorage przywrócony po sprawdzeniach.
+
+### Faza 1 — unieważnianie pamięci podręcznej wysokości
+
+- [x] Wstawienie sekcji w środek listy: belka rysuje się na wysokości belki, nie zwykłego wiersza
+      _Verified: „Wstaw poniżej" z grupy „Sekcja" na poz. 6 „Prace dodatkowe" → nowa belka
+      „Nowa sekcja (1 poz.)" 52 px, jej pozycja 32 px, „Razem" 32 px. Sąsiednie wiersze bez zmian
+      (poz. 1 nadal 52 px, dwulinijkowa). Wiersze kafelkują się co do piksela: top(n) = top(n−1) +
+      h(n−1) na całym oknie wirtualizacji — potwierdzona wcześniej wada (belka 32 px / pozycja 52 px)
+      nie występuje._
+- [x] Skasowanie wiersza w środku listy nie rozjeżdża wysokości wierszy poniżej
+      _Verified: „Usuń pozycję" na wierszu rozciągniętym do 76 px w „Klimatyzacji" → wiersze poniżej
+      dalej kafelkują się bez dziur i nakładek._
+- [x] Pozycja przewijania i aktywna cela zostają na miejscu po wstawieniu wiersza
+      _Verified: przy scrollTop 400 i aktywnej celi w „Opis prac" — po przeciągnięciu innego wiersza
+      aktywna cela stoi w tym samym punkcie (top 185 / left 102), scrollTop nadal 400._
+
+### Faza 3 — zawijanie w komórkach
+
+- [x] Długi „Opis prac" w wierszu na dzisiejszej wysokości nie wylewa się na sąsiednie wiersze
+      _Verified: 32 px, tekst na dwie linie → widoczna cała pierwsza linia, druga ucięta na krawędzi
+      wiersza, bez nachodzenia na wiersz niżej (zrzut siatki). Bez sygnału „…" — decyzja właściciela._
+- [x] Belka sekcji nadal pokazuje pełną nazwę rozlaną na sąsiednie kolumny
+      _Verified: „Prace dodatkowe (11 poz.)" rozlewa się poza wąską komórkę, jak dotąd._
+- [x] Dymek z pełną treścią otwiera się na wierszu niższym niż jego treść i nie otwiera się, gdy treść się mieści
+      _Verified w podglądzie klienta (komórki tylko do odczytu): przy wysokości liczonej z treści nic
+      nie jest ucięte i klik nie otwiera dymka (0 dymków na dwóch wierszach); po wymuszeniu wiersza
+      32 px pod dwulinijkowym opisem klik otwiera dymek z pełnym „zakup, transport i wniesienie towaru
+      budowlanego (cały okres remontu)…". Wykrywanie po wysokości działa._
+
+### Faza 4 — ręczna wysokość wiersza w edytorze
+
+- [x] Przeciągnięcie krawędzi wiersza zmienia jego wysokość, opis zawija się na tyle linii, ile wchodzi
+      _Verified: poz. 1 z 32 na 92 px, opis rozwinął się na dwie linie, zapis `{"3673":92}`._
+- [x] Wysokość przeżywa odświeżenie strony
+      _Verified: po `reload` wiersz nadal 92 px, wpis w localStorage bez zmian._
+- [x] Dwuklik na krawędzi rozwija wiersz dokładnie do pełnej treści, bez ucięcia i bez pustego pasa
+      _Verified: 92 → 52 px (dokładnie dwie linie) na dwulinijkowym opisie, 32 px na jednolinijkowym.
+      Przy przewinięciu w bok (scrollLeft 329) ten sam wiersz dopasowuje się nadal do 52 px — regresja
+      „dopasowanie mierzy puste komórki poza widokiem" nie wraca._
+- [x] Przewijanie i aktywna cela zostają na miejscu w trakcie i po przeciągnięciu
+      _Verified: patrz faza 1._
+- [x] Skasowanie wiersza nie zostawia po sobie wpisu, który przykleiłby wysokość do nowego wiersza
+      _Verified: przed usunięciem `{"3673":52,"3677":32,"3687":76}`, po usunięciu wiersza 3687 →
+      `{"3673":52,"3677":32}`._
+- [x] Pozostałe wiersze nie zmieniają wysokości
+      _Verified: przy każdym przeciągnięciu zmieniał się wyłącznie ciągnięty wiersz._
+- [x] Belka sekcji i wiersz nagłówka też dają się przeciągać (uzupełnienie z 2026-08-31)
+      _Verified: belka 52 → 82 px (wpis `-1148`), nagłówek 56 → 96 px (wpis `header`). Nagłówek ma
+      własny opis uchwytu i nie reaguje na dwuklik — nie ma treści, do której miałby się dopasować._
+
+### Faza 5 — wysokość z treści w podglądzie klienta
+
+- [x] Podgląd klienta pokazuje każdą nazwę pracy w całości, bez klikania
+      _Verified: `/podglad-inwestora/42` — 96 komórek tekstowych, **zero** obciętych
+      (`scrollHeight > clientHeight` nigdzie)._
+- [x] Zwężenie kolumny „Opis prac" podwyższa wiersze, poszerzenie obniża — bez przeładowania strony
+      _Verified: 434 → 234 px na żywo → wiersze 52→92, 52→112, 32→72, nadal zero obciętych._
+- [x] Kosztorys z ~1000 pozycji (`INV=7`) przewija się płynnie i otwiera bez wyczuwalnej zwłoki
+      _Verified: podgląd klienta inw. 7 (1000 pozycji, wysokość przewijania 33 008 px) otwiera się
+      w 0,41 s; 25 skoków przewijania — mediana 33 ms (czyli koszt samej klatki), najgorszy 125 ms.
+      Edytor tego samego kosztorysu: otwarcie 0,65 s, mediana 51 ms, najgorszy 219 ms. Build
+      deweloperski, więc to górna granica._
+- [x] Bardzo długi opis daje bardzo wysoki wiersz — tak ma być, bez limitu
+      _Verified: kolumna zwężona do 120 px → wiersze do 192 px, zero obciętych._
+
+### Wyśrodkowanie tekstu w pionie (2026-08-31, prośba właściciela)
+
+- [x] Tekst stoi na środku wiersza, a gdy się nie mieści — zaczyna od góry, z całą pierwszą linią
+      _Verified: wiersz 92 px z jednolinijkowym opisem → 38 px odstępu u góry i u dołu; wiersz 32 px
+      z dwulinijkowym → tekst od góry, pierwsza linia cała (`justify-content: safe center`)._
+
+### Ślady po sprawdzeniach
+
+Sprawdzenia szły po bazie **deweloperskiej**, nie testowej, więc zostawiły dwa ślady: skasowaną
+pozycję w sekcji „Klimatyzacja" inwestycji 42 (użyta do sprawdzenia, czy wpis wysokości znika razem
+z wierszem) oraz zasiany od nowa syntetyczny kosztorys inwestycji 7. Wstawiona testowo „Nowa sekcja"
+została usunięta.
