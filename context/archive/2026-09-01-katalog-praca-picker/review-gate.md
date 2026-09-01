@@ -39,10 +39,16 @@ równoległy agent. Ręczna weryfikacja zostaje w `context/foundation/manual-che
       jednym pliku to dwa złożenia tego samego zbioru, nie dwie sprawy; rozdzielenie rozwidliłoby
       definicje kolumn
 
-- [x] filed · reuse-scan · `add-items-from-catalogue-dialog.tsx:51` · zaznaczanie wierszy obchodzi
-      brak modelu w `DataTable` (kolumna `select` + `SelectedIdsContext`) — zmiana współdzielonego
-      prymitywu używanego przez kilkanaście tabel, własny przegląd — filed EX-759
-      test: TDD · unit — zapisane w zgłoszeniu
+- [x] dropped · reuse-scan · `add-items-from-catalogue-dialog.tsx:51` · zaznaczanie wierszy obchodzi
+      brak modelu w `DataTable` (kolumna `select` + `SelectedIdsContext`) — pierwotnie zgłoszone jako
+      EX-759 z uzasadnieniem „zmiana współdzielonego prymitywu"; **anulowane po weryfikacji
+      z właścicielem (2026-09-01)**. Dwa błędy w tamtym uzasadnieniu: (1) ryzyko oceniałem po liczbie
+      importów `DataTable`, a zmiana jest czysto dokładająca — opcjonalny prop, pozostałych dwanaście
+      tabel bez zmian; (2) wbudowany `rowSelection` TanStacka tego NIE naprawia, bo `getIsSelected()`
+      czyta stan tabeli w momencie wywołania, a model wierszy się nie przebudowuje — zapamiętany
+      `DataTableRow` dalej by się nie przerysował. Lekarstwem jest prop, który się zmienia
+      (`isSelected`). Zamknięte, bo to jedyna tabela z checkboxami: prymityw wart jest zbudowania przy
+      DRUGIEJ takiej tabeli, nie przy pierwszej — pełny zapis w anulowanym EX-759.
 - [x] filed · gate · e2e · przepływ przeglądarkowy slice'a (zaznaczanie, filtr, sekcja docelowa,
       przełącznik) nie ma specyfikacji Playwrighta — filed EX-760 (etykieta `e2e-backlog`)
 - [x] dismissed · reuse-scan · `add-items-from-catalogue-dialog.tsx:168` · „czwarty ręcznie sklecony
