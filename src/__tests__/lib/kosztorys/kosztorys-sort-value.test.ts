@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { columnSortValue, reconcileSort } from '@/lib/kosztorys/sort-value'
 import { sortRows } from '@/lib/kosztorys/row-view'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
+import { planePriceKey } from '@/lib/kosztorys/plane-price-keys'
 import { stageKey, stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
 import type { PriceViewT } from '@/lib/kosztorys/calc'
 import type { KosztorysTreeT } from '@/lib/kosztorys/types'
@@ -227,23 +228,41 @@ describe('columnSortValue — the columns that used to opt out of sorting', () =
   it('sorts „Mnożnik" by the multiplier the cell SHOWS, per plane', () => {
     // w_tools: B's own 3 > A's inherited 0.65. own_tools: A's own 2 > B's inherited 0.55 — the
     // reversal that catches a plane-blind read.
-    expect(planeIdsSortedBy('priceCoeff', 'w_tools')).toEqual([2, 1, 3])
-    expect(planeIdsSortedBy('priceCoeff', 'own_tools')).toEqual([1, 2, 3])
+    expect(planeIdsSortedBy(planePriceKey('priceCoeff', 'w_tools'), 'w_tools')).toEqual([2, 1, 3])
+    expect(planeIdsSortedBy(planePriceKey('priceCoeff', 'own_tools'), 'own_tools')).toEqual([
+      1, 2, 3,
+    ])
   })
 
   it('sinks a flat-amount row in „Mnożnik" under BOTH directions (its cell shows „—")', () => {
-    expect(planeIdsSortedBy('priceCoeff', 'w_tools', 'asc').at(-1)).toBe(3)
-    expect(planeIdsSortedBy('priceCoeff', 'w_tools', 'desc').at(-1)).toBe(3)
+    const coeff = planePriceKey('priceCoeff', 'w_tools')
+    expect(planeIdsSortedBy(coeff, 'w_tools', 'asc').at(-1)).toBe(3)
+    expect(planeIdsSortedBy(coeff, 'w_tools', 'desc').at(-1)).toBe(3)
   })
 
   it('sorts „Źródło ceny" inherited → hand-overridden, per plane', () => {
-    expect(planeIdsSortedBy('priceMode', 'w_tools', 'asc')).toEqual([1, 2, 3]) // auto, coeff, amount
-    expect(planeIdsSortedBy('priceMode', 'own_tools', 'asc')).toEqual([2, 1, 3])
+    expect(planeIdsSortedBy(planePriceKey('priceMode', 'w_tools'), 'w_tools', 'asc')).toEqual([
+      1, 2, 3,
+    ]) // auto, coeff, amount
+    expect(planeIdsSortedBy(planePriceKey('priceMode', 'own_tools'), 'own_tools', 'asc')).toEqual([
+      2, 1, 3,
+    ])
   })
 
-  it('has no subcontractor pricing to sort by in the client view', () => {
-    expect(columnSortValue(planeRow(1), 'priceCoeff', 'client', planeTree.stages)).toBeNull()
-    expect(columnSortValue(planeRow(1), 'priceMode', 'client', planeTree.stages)).toBeNull()
+  // The whole point of the six columns: both crews' rates readable side by side in the widok
+  // Inwestora. The active view no longer decides which plane a rate column speaks for — the id does,
+  // so each column sorts identically whichever view it is read from.
+  it("sorts a crew's rate columns the same in every view, because the plane is in the id", () => {
+    for (const plane of ['w_tools', 'own_tools'] as const) {
+      for (const base of ['price', 'priceCoeff', 'priceMode'] as const) {
+        const field = planePriceKey(base, plane)
+        expect(planeIdsSortedBy(field, 'client')).toEqual(planeIdsSortedBy(field, plane))
+      }
+    }
+    // …and the two planes genuinely disagree, so the equality above is not two nulls matching.
+    expect(planeIdsSortedBy(planePriceKey('priceCoeff', 'w_tools'), 'client')).not.toEqual(
+      planeIdsSortedBy(planePriceKey('priceCoeff', 'own_tools'), 'client'),
+    )
   })
 })
 

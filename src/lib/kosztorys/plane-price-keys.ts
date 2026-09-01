@@ -22,7 +22,9 @@ export function planePriceKey(base: PlanePriceBaseKeyT, plane: ToolPlaneT): stri
 // Both halves of a key, or null for anything outside this namespace — including the bare `price` of
 // the client's own price column, which is a DIFFERENT figure (the offer price) and must never be
 // mistaken for an unqualified subcontractor rate.
-function splitPlanePriceKey(key: string): { base: PlanePriceBaseKeyT; plane: ToolPlaneT } | null {
+export function planePriceKeyParts(
+  key: string,
+): { base: PlanePriceBaseKeyT; plane: ToolPlaneT } | null {
   const separatorAt = key.indexOf(PLANE_SEPARATOR)
   if (separatorAt === -1) return null
   const base = key.slice(0, separatorAt)
@@ -36,7 +38,7 @@ function splitPlanePriceKey(key: string): { base: PlanePriceBaseKeyT; plane: Too
 }
 
 export function planeOfPriceKey(key: string): ToolPlaneT | null {
-  return splitPlanePriceKey(key)?.plane ?? null
+  return planePriceKeyParts(key)?.plane ?? null
 }
 
 // The key configuration maps are keyed by — label, tooltip, money axis, layer. Resolving to the base
@@ -47,5 +49,5 @@ export function planeOfPriceKey(key: string): ToolPlaneT | null {
 // sanitizeClientViewVariant): resolving there would let `price__own_tools` inherit `price`'s pass to
 // the client preview and leak a subcontractor rate. Those match the full id, always.
 export function basePriceKey(key: string): string {
-  return splitPlanePriceKey(key)?.base ?? key
+  return planePriceKeyParts(key)?.base ?? key
 }

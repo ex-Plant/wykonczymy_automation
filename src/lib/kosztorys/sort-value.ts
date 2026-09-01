@@ -15,6 +15,7 @@ import {
   rowValueForView,
 } from '@/lib/kosztorys/settlement-rows'
 import { stagesForView } from '@/lib/kosztorys/settlement-view'
+import { planePriceKeyParts } from '@/lib/kosztorys/plane-price-keys'
 import {
   stageIdFromValueGrossKey,
   stageIdFromValueNetKey,
@@ -81,8 +82,21 @@ export function columnSortValue(
     return net === null ? null : toGross(net, row.vatRate)
   }
 
+  // The three subcontractor-rate namespaces, for the same reason: their ids are not row fields (the
+  // fields are per-plane, OVERRIDE_FIELDS), and the plane they price rides in the id now that every
+  // view assembles both. Reading the ACTIVE view here would sort „bez narzędzi" by the „z
+  // narzędziami" numbers — a wrong order that looks like a plausible one.
+  const pricePart = planePriceKeyParts(field)
+  if (pricePart !== null) {
+    const { base, plane } = pricePart
+    if (base === 'price') return viewPrice(row, plane)
+    if (base === 'priceCoeff') return viewCoeffSortValue(row, plane)
+    return PRICE_MODE_RANK[overrideSnapshot(row, plane).type ?? 'auto']
+  }
+
   switch (field) {
-    // Editable (client) / subcontractor price column: the value is the view's price, not a stored field.
+    // The client's own price column — the only price id left without a plane, and assembled only in
+    // the client view, so `view` is the plane to read.
     case 'price':
       return viewPrice(row, view)
     case 'priceGross':
@@ -112,13 +126,6 @@ export function columnSortValue(
       return rowRemainingForView(row, stages, view)
     case 'remainingGross':
       return toGross(rowRemainingForView(row, stages, view), row.vatRate)
-    // The two subcontractor columns are the other shape no exact-match case could reach: their ids
-    // are not row fields — the fields are per-plane (OVERRIDE_FIELDS). Neither column is assembled in
-    // the client view, and `effectiveCoeff` has no client plane to read.
-    case 'priceCoeff':
-      return view === 'client' ? null : viewCoeffSortValue(row, view)
-    case 'priceMode':
-      return view === 'client' ? null : PRICE_MODE_RANK[overrideSnapshot(row, view).type ?? 'auto']
     default: {
       const value = row[field as keyof KosztorysV2RowT]
       if (typeof value === 'number') return value

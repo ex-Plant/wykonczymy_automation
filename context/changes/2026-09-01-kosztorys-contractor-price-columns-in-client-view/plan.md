@@ -344,16 +344,16 @@ Raz, po ostatniej fazie:
 
 #### Automated
 
-- [x] 1.1 Nowy spec kolumn planów przechodzi
-- [x] 1.2 Inwarianty map konfiguracji dalej trzymają
-- [x] 1.3 Kolejność i tryb tylko-do-odczytu kolumn bez regresji
+- [x] 1.1 Nowy spec kolumn planów przechodzi — 847b02c2
+- [x] 1.2 Inwarianty map konfiguracji dalej trzymają — 847b02c2
+- [x] 1.3 Kolejność i tryb tylko-do-odczytu kolumn bez regresji — 847b02c2
 
 ### Phase 2: Sortowanie czyta plan z id
 
 #### Automated
 
-- [ ] 2.1 Sortowanie obu planów
-- [ ] 2.2 Zakres i porządek sortowania bez regresji
+- [x] 2.1 Sortowanie obu planów
+- [x] 2.2 Zakres i porządek sortowania bez regresji
 
 ### Phase 3: Widoczność, oś, reveal problemów i zamek podglądu
 
