@@ -23,46 +23,14 @@ szara linijka czyta `kpl` przy nadpisaniu i `kpl · Prace dodatkowe` przy tworze
 
 ## Findings
 
-- [x] 🟡 WARNING · fixed · impl-review + code-review · `save-item-to-catalogue-dialog.tsx:143` ·
-      szara linijka nagłówka nadal renderowała `preview.candidate.category` bezwarunkowo, więc przy
-      nadpisaniu z zaznaczonym przełącznikiem dialog mówił dwie sprzeczne rzeczy naraz („· Hydraulika"
-      w nagłówku, „Kategoria: Łazienka" w „Po zapisie") — i była to jawna rozbieżność z kontraktem
-      plan.md Phase 2 §1. Fix: sufiks kategorii tylko w przypadku tworzenia nowej pozycji.
-      test: no automated test · manual — repo nie ma harnessu do renderu komponentów; zamiast tego
-      doszło szóste ręczne sprawdzenie wprost o tę linijkę (`manual-checks.md`).
-- [x] 🟡 WARNING · fixed · impl-review · `save-item-to-catalogue-dialog.tsx:161` · wiersz `label` +
-      `Checkbox` skopiowany bajt w bajt z prywatnego `CheckboxRow` w `client-view-settings-form.tsx`.
-      Fix: promocja do `src/components/ui/checkbox-row.tsx`, oba dialogi renderują jeden komponent.
-      (Dedup nigdy nie jest „poza zakresem" — sięgnięcie do sąsiedniego pliku było wliczone.)
-- [x] 🟡 WARNING · fixed · impl-review · `review-gate.md` vs `manual-checks.md` · ledger twierdził,
-      że właściciel odklikał wszystkie pięć sprawdzeń, podczas gdy potwierdził jeden przypadek.
-      Fix: pięć boxów wróciło na `[ ]`, potwierdzony został z notatką, ledger mówi prawdę.
-- [x] 🔵 OBSERVATION · fixed · impl-review · `manual-checks.md` · z planu wypadło sprawdzenie
-      „pozycja bez kategorii". Fix: zamiast checka na oko — dziewiąty przypadek w
-      `work-catalogue-save.test.ts` asercjujący, że pusta kategoria w katalogu przeżywa nadpisanie
-      jako `NULL` (sekcja o nazwie samego numeru → `stripSectionOrdinal` zwraca puste).
-      test: TDD · integration — najtańsza warstwa, która to widzi; utrwalony wiersz, nie return.
-- [x] 🔵 OBSERVATION · fixed · code-review + impl-review ·
-      `save-item-to-catalogue-dialog.tsx:95` · `??` nie składa `''` z `null`, więc wiersz z pustym
-      stringiem wstawionym przez panel Payloada pokazałby przełącznik między dwoma „bez kategorii".
-      Fix: `|| null` po obu stronach; martwe `?? null` przy okazji zniknęło.
+_Przycięte przy archiwizacji (2026-09-01): trwałym zapisem naprawionego findingu jest commit,
+więc zostaje tylko to, czego git nie trzyma — decyzje bez zmiany w kodzie. Bilans przed
+przycięciem: 10 fixed, 1 dismissed, 0 otwartych._
+
 - [x] 🔵 OBSERVATION · dismissed · code-review · `work-catalogue.ts:236` · przełącznik jest
       ignorowany na ścieżce create-after-race. Benign z definicji: gdy wiersz zniknął między
       podglądem a potwierdzeniem, nie ma żadnej kategorii do zostawienia — `candidate.category` to
       jedyna, jaka istnieje. Plan tę gałąź świadomie wyłączył.
-- [x] 🔵 OBSERVATION · fixed · impl-review · `save-item-to-catalogue-dialog.tsx:31` · `rows`
-      straciło typowanie krotką przy dołożeniu spreadu. Fix: jawne `[string, string, boolean][]`,
-      trzecie pole niesie przy okazji `tabular-nums` (kategoria to tekst, nie kwota — osobne
-      znalezisko code-review, złożone w ten sam edit).
-- [x] fixed · comment-noise · `save-item-to-catalogue-dialog.tsx:94` · komentarz nad
-      `categoryDiffers` powtarzał kod. Zastąpiony tym, czego kod nie mówi: dlaczego `||`, nie `??`.
-- [x] fixed · comment-noise · `save-item-to-catalogue-dialog.tsx:19` + `work-catalogue-save.test.ts:33,210`
-      · trzy komentarze przycięte do samego „dlaczego" (narracja i powtórzenia nazw testów wycięte).
-- [x] fixed · comment-noise · `save-item-to-catalogue-dialog.tsx:64` · z komentarza o braku efektu
-      synchronizującego `keepCategory` wypadła druga połowa — code-review wykazał, że opisywała
-      sekwencję nieosiągalną (checkbox renderuje się dopiero po rozwiązaniu podglądu).
-- [x] fixed · comment-noise · `work-catalogue.ts:210` · ostatnie zdanie akapitu powtarzało zdanie
-      dwie linijki wyżej; skrócone do „Reclassifying has to be asked for.".
 
 ## Simplify pass
 
