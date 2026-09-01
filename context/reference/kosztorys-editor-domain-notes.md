@@ -400,7 +400,7 @@ zapis działa od następnego żądania bez tagu cache, a zmiana domyślnych firm
   formułę (`P×0,65`, a bez narzędzi `R−R×0,15`), albo **pustą — a pusta w arkuszu znaczy 0**: `suma wykonanej
 pracy` (`SUM(W:AF)`) nie dolicza takiego wiersza. Arkusz **nie zna pojęcia „dziedzicz
   domyślny współczynnik"** — każda stawka jest jawna. Wniosek dla seeda: importuj **każdą
-  jawną wartość** (override `coeff`/`amount`), **nigdy `null`** — `null` w `calc.ts` znaczy
+  jawną wartość** (override kwotą stałą), **nigdy `null`** — `null` w `calc.ts` znaczy
   „dziedzicz sekcyjny/globalny współczynnik" i wymyśliłby koszt, którego arkusz nie ma
   (dawało +~9 000 na `suma wykonanej pracy`, plan „bez narzędzi": 65 638 zamiast ~57 114 ≈
   56 431 z arkusza). Pusta stawka → `{ type: 'amount', value: 0 }`.
@@ -408,11 +408,11 @@ pracy` (`SUM(W:AF)`) nie dolicza takiego wiersza. Arkusz **nie zna pojęcia „d
   Białostockiej 2026-08-17, EX-554). W arkuszu stawka jest albo policzona (`=P×0,65`), albo
   **wpisana z palca** — i to drugie jest w cenniku `z narzędziami` **większością** (229 z 336
   wierszy, `bez narzędzi` 63). Odczyt `UNFORMATTED_VALUE` zwraca w obu wypadkach samą liczbę, więc
-  dzielenie jej przez cenę klienta robiło z każdej ręcznej stawki „własny mnożnik" typu `0,294118`:
-  mnożnik, którego właściciel nigdy nie wybrał, mnożący się z powrotem do wartości rozjechanej
-  o ogon zaokrąglenia i **wędrujący przy każdej edycji „Cena j.m."**. Reguła: **policzona → `coeff`,
-  wpisana → `amount` w wartości nominalnej**. Dlatego import czyta zakładkę cennika **drugi raz pod
-  renderem `FORMULA`** (`readRateRows`).
+  dzielenie jej przez cenę klienta wiązało każdą ręczną stawkę z „Cena j.m." ilorazem typu
+  `0,294118`: powiązaniem, którego właściciel nigdy nie wybrał, wracającym do wartości rozjechanej
+  o ogon zaokrąglenia i **wędrującym przy każdej edycji „Cena j.m."**. Reguła: **tylko policzona może
+  trafić na „auto", wpisana zawsze zamarza kwotą stałą w wartości nominalnej**. Dlatego import czyta
+  zakładkę cennika **drugi raz pod renderem `FORMULA`** (`readRateRows`).
 - **`bez narzędzi` nie jest niezależną stawką — to `z narzędziami` minus 15%** (`=R−R*0,15`, 309
   z 309 formuł w Białostockiej; `z narzędziami` to `=P×0,65`, 138 z 138 — żadnego innego wariantu).
   Stąd domyślne `0,65 × 0,85 = 0,5525` względem ceny klienta (`DEFAULT_COEFFS`), i stąd **konsekwencja
@@ -422,9 +422,9 @@ pracy` (`SUM(W:AF)`) nie dolicza takiego wiersza. Arkusz **nie zna pojęcia „d
   (`sheet-coeffs.ts`). Arkusz nie ma komórki z narzutką — jest ona powielona w setkach kopii tej
   samej formuły, więc jedyny sposób jej odczytania to **policzyć dominujący iloraz `stawka / Cena
 j.m.` wśród wierszy policzonych** (wpisane z palca są wykluczone: to decyzje o jednej pracy).
-  Dopiero to pozwala wierszom zgodnym z tą narzutką wejść jako **`null` = „auto"** zamiast jako
-  „własny mnożnik" — kolumna „Mnożnik" pokazuje wtedy wyłącznie prawdziwe wyjątki, a globalna zmiana
-  narzutki działa jak w arkuszu. To **jedyny** przypadek, w którym `null` jest bezpieczny mimo reguły
+  Dopiero to pozwala wierszom zgodnym z tą narzutką wejść jako **`null` = „auto"** zamiast zamarzać
+  kwotą stałą — kolumna „Źródło ceny wykonawcy" pokazuje wtedy „kwota stała" wyłącznie na prawdziwych
+  wyjątkach, a globalna zmiana narzutki działa jak w arkuszu. To **jedyny** przypadek, w którym `null` jest bezpieczny mimo reguły
   z EX-554 wyżej: znaczy dokładnie tę samą liczbę, bo globalny mnożnik został właśnie ustawiony na
   arkuszowy. Cennik bez ani jednej formuły śledzącej cenę → mnożniki inwestycji zostają nietknięte.
   VAT nie ma w arkuszu odpowiednika i zawsze przechodzi z inwestycji.
@@ -744,6 +744,29 @@ się w widoku klienta, który pokazuje wszystkie etapy, więc zwężenie kolumn 
 **Konsekwencja przyjęta świadomie:** dopóki jakiś etap nie ma wybranego wariantu, dwa rachunki **nie
 sumują się** do całości pracy wykonanej — brakującą kwotę zgłasza tylko plakietka ostrzeżenia. Lepsza
 brakująca kwota niż kwota dopisana ekipie, której nikt nie wskazał.
+
+### Stawka wykonawcy ma dwa źródła: „auto" i „kwota stała" (2026-09-01)
+
+„Źródło ceny wykonawcy" odpowiada na jedno pytanie: czy ta pozycja idzie za mnożnikiem inwestycji, czy
+niesie własną kwotę.
+
+- **„auto"** — cena wylicza się z ceny klienta przez mnożnik inwestycji (osobny per plan, domyślnie
+  `0,65` z narzędziami i `0,5525` bez). Zmiana narzutki przelicza wszystkie takie pozycje naraz.
+- **„kwota stała"** — pozycja niesie własną stawkę w złotówkach i żadna zmiana narzutki ani ceny
+  klienta jej nie rusza.
+
+Wpisanie liczby w „Cena j.m." wykonawcy **samo** przestawia źródło na „kwota stała", a wyczyszczenie
+komórki wraca na „auto" — kolumna źródła jest podglądem tej decyzji i drogą powrotną, nie osobnym
+krokiem, który trzeba wykonać przed wpisaniem ceny. W podglądzie inwestora kolumna źródła nie składa
+się w ogóle: dokument klienta nie pokazuje, skąd firma bierze stawkę ekipy.
+
+**Trzecie źródło — „własny mnożnik" per pozycja — zostało wycięte** (właściciel, 2026-09-01). Nie
+używał go nikt: zero wierszy w jakiejkolwiek bazie, katalog prac nigdy go nie przechowywał (zapisuje
+stawkę wyliczoną, nie iloraz), a import z arkusza sprowadzał się do niego tylko przez to samo
+dzielenie przez „Cena j.m.", które opisano wyżej jako pułapkę. Kosztem był wspólny slot na wartość,
+w którym „200" znaczyło raz 200 zł, a raz mnożnik ×200 — i sześć kolumn ceny wykonawcy w siatce
+zamiast czterech. Dane były jednorazowe, więc cięcie poszło bez migracji: gdyby taki wiersz gdzieś
+został, policzy się z mnożnika inwestycji.
 
 ### Pozycja z materiałem w cenie j.m. dostaje stawkę podwykonawcy kwotą stałą (EX-649, 2026-08-17)
 

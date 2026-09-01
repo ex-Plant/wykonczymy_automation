@@ -375,13 +375,13 @@ Kolumny `*_override_type` zostają w bazie jako `varchar` i nie wymagają zmiany
 
 #### Automated
 
-- [x] 3.1 kosztorys-calc / subcontractor-price-edit / subcontractor-due-by-plane — 1b4e55e8
-- [x] 3.2 work-catalogue / serialize-restore-roundtrip / append-preset-sections — 1b4e55e8
-- [x] 3.3 kosztorys-subcontractor-due.test.ts @ 5435 — 1b4e55e8
-- [x] 3.4 grep na `'coeff'` w src zwraca zero trafień — 1b4e55e8
+- [x] 3.1 kosztorys-calc / subcontractor-price-edit / subcontractor-due-by-plane — 866d3459
+- [x] 3.2 work-catalogue / serialize-restore-roundtrip / append-preset-sections — 866d3459
+- [x] 3.3 kosztorys-subcontractor-due.test.ts @ 5435 — 866d3459
+- [x] 3.4 grep na `'coeff'` w src zwraca zero trafień — 866d3459
 
 ### Phase 4: Dokumentacja
 
 #### Automated
 
-- [ ] 4.1 faza prozatorska — brak weryfikacji automatycznej specyficznej dla fazy
+- [x] 4.1 faza prozatorska — brak weryfikacji automatycznej specyficznej dla fazy — PH4
