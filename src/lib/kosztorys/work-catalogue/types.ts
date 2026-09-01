@@ -4,18 +4,20 @@ import type {
   SubcontractorOverrideTypeT,
 } from '@/lib/kosztorys/types'
 
-// The catalogue row as every reader sees it. Both stawki are frozen ZŁOTÓWKI, never współczynniki:
-// a coefficient would silently re-price the praca against the target investment's global coeffs the
-// moment it left the katalog, so the number the owner saw when saving would not be the number the
-// rozpiska got.
+// The catalogue row as every reader sees it. A stawka is one of two things, decided per plane:
+// a frozen ZŁOTÓWKA that travels into every rozpiska verbatim, or `null` = „auto", meaning the
+// katalog declines to name one and the praca prices off the TARGET investment's global
+// współczynnik. What the katalog still never holds is a coefficient of its own — that would be a
+// third concept re-pricing a frozen decision behind the owner's back, whereas `null` simply says
+// no decision was made here.
 export type WorkCatalogueItemT = {
   id: number
   description: string
   category: string | null
   unit: string
   clientPrice: number
-  wToolsRate: number
-  ownToolsRate: number
+  wToolsRate: number | null
+  ownToolsRate: number | null
   matchKey: string
 }
 
@@ -26,8 +28,8 @@ export type CatalogueSeedItemT = Omit<WorkCatalogueItemT, 'id'>
 export type SeedOccurrenceT = {
   sectionName: string
   clientPrice: number
-  wToolsRate: number
-  ownToolsRate: number
+  wToolsRate: number | null
+  ownToolsRate: number | null
 }
 
 // Which of the three liczby a rozbieżność is about — the cennik diverges on the stawki far more

@@ -13,6 +13,8 @@ import type { DbExecutorT } from './get-db'
 // Every read of the cennik selects the same seven columns, and `toCatalogueItem` maps exactly them.
 const CATALOGUE_COLUMNS = sql`id, description, category, unit, client_price, w_tools_rate, own_tools_rate, match_key`
 
+const toRate = (value: unknown): number | null => (value == null ? null : Number(value))
+
 export function toCatalogueItem(row: Record<string, unknown>): WorkCatalogueItemT {
   return {
     id: Number(row.id),
@@ -20,8 +22,10 @@ export function toCatalogueItem(row: Record<string, unknown>): WorkCatalogueItem
     category: (row.category as string | null) ?? null,
     unit: row.unit as string,
     clientPrice: Number(row.client_price),
-    wToolsRate: Number(row.w_tools_rate),
-    ownToolsRate: Number(row.own_tools_rate),
+    // NOT `Number(...)`: `Number(null)` is 0, which would silently turn every „auto" row into a
+    // 0 zł stawka on read.
+    wToolsRate: toRate(row.w_tools_rate),
+    ownToolsRate: toRate(row.own_tools_rate),
     matchKey: row.match_key as string,
   }
 }

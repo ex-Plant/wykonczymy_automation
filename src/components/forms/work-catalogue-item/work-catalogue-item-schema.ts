@@ -39,8 +39,10 @@ const money = (label: string) =>
 export const workCatalogueItemSchema = workCatalogueItemFormSchema.extend({
   category: z.string().default(''),
   clientPrice: money('Cena j.m.'),
-  wToolsRate: money('Stawka z narzędziami'),
-  ownToolsRate: money('Stawka bez narzędzi'),
+  // `null` = „auto": the katalog names no stawka and the praca prices off the target investment's
+  // współczynnik. A blank field is NOT this — the form layer above still refuses it.
+  wToolsRate: money('Stawka z narzędziami').nullable(),
+  ownToolsRate: money('Stawka bez narzędzi').nullable(),
 })
 
 export type WorkCatalogueItemDataT = z.infer<typeof workCatalogueItemSchema>

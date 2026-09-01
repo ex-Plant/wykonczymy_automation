@@ -49,16 +49,16 @@ export const WorkCatalogueItems: CollectionConfig = {
       label: { en: 'Client price', pl: 'Cena j.m.' },
     },
     {
+      // Absent = „auto": the katalog holds no stawka and the praca prices off the target
+      // investment's global współczynnik once it lands in a rozpiska.
       name: 'wToolsRate',
       type: 'number',
-      required: true,
       min: 0,
       label: { en: 'Rate with tools', pl: 'Stawka z narzędziami' },
     },
     {
       name: 'ownToolsRate',
       type: 'number',
-      required: true,
       min: 0,
       label: { en: 'Rate without tools', pl: 'Stawka bez narzędzi' },
     },
