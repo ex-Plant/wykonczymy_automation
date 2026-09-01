@@ -9,8 +9,8 @@ export type MeasureTextWidthT = (text: string) => number
 // thing row height exists to prevent.
 const EDGE_TOLERANCE_PX = 1
 
-// How many lines `text` occupies when wrapped into `availableWidth`. Words break onto the next line
-// whole; a single word wider than the column breaks mid-word, matching `overflow-wrap: break-word`.
+// Words break onto the next line whole; a single word wider than the column breaks mid-word,
+// matching `overflow-wrap: break-word` in the cell's CSS.
 export function countWrappedLines(
   text: string,
   availableWidth: number,

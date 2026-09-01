@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countWrappedLines } from '@/lib/kosztorys/text-wrap'
+import { countWrappedLines } from '@/lib/utils/text-wrap'
 
 // Every character is 10px wide, so a width of N pixels holds N/10 characters — line counts are
 // arithmetic rather than font-dependent, which is the point of injecting the measurer.
@@ -54,7 +54,10 @@ describe('countWrappedLines', () => {
     expect(countWrappedLines('aaaaaaaaaa', 100, tenPxPerChar)).toBe(2)
   })
 
-  it('collapses runs of whitespace the way layout does', () => {
+  it('collapses runs of whitespace, which is why the cell is whitespace-pre-line', () => {
+    // `pre-wrap` would PRESERVE the run and lay out ten characters where this counts seven, so a
+    // pasted double space would under-count the lines and the row would clip. The cell's own
+    // white-space rule is the other half of this assertion.
     expect(countWrappedLines('aaa    bbb', 70 + TOLERANCE, tenPxPerChar)).toBe(1)
   })
 })
