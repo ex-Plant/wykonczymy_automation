@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { createContext, use, useState } from 'react'
 import { createColumnHelper } from '@tanstack/react-table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { DataTable } from '@/components/ui/data-table/data-table'
@@ -38,10 +38,31 @@ const INITIAL_SORTING = [
 
 const searchText = (item: WorkCatalogueItemT) => `${item.description} ${item.category ?? ''}`
 
-// „Dodaj → Praca z katalogu…" — the same table as /katalog-prac, with a checkbox instead of the
-// edit actions. Selection is ordered, not a Set: the prace land in the rozpiska in the order they
-// were ticked, and that is the only ordering the user has any control over — sorting the table
-// does not touch it.
+const SelectedIdsContext = createContext<readonly number[]>([])
+
+// A context consumer, not a `checked` prop: DataTable memoises a row's cells on the TanStack row
+// object, which ticking a checkbox does not touch — so a prop would never arrive. React re-renders
+// a consumer through a memoised parent, which is the one path into an already-cached cell.
+function SelectCell({
+  item,
+  onToggle,
+}: {
+  item: WorkCatalogueItemT
+  onToggle: (id: number) => void
+}) {
+  const selected = use(SelectedIdsContext)
+  return (
+    <Checkbox
+      checked={selected.includes(item.id)}
+      onCheckedChange={() => onToggle(item.id)}
+      aria-label={item.description}
+    />
+  )
+}
+
+// „Dodaj → Praca z katalogu…" — the same table as /katalog-prac, with a checkbox instead of the edit
+// actions. Selection is ordered, not a Set: the prace land in the rozpiska in the order they were
+// ticked, which sorting the table does not touch.
 export function AddItemsFromCatalogueDialog({
   sections,
   initialSectionId = null,
@@ -67,41 +88,15 @@ export function AddItemsFromCatalogueDialog({
     label: section.sectionName,
   }))
 
-  const allFilteredSelected =
-    filtered.length > 0 && filtered.every((item) => selected.includes(item.id))
-
   function toggle(id: number) {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
-  }
-
-  // Acts on what the filter currently shows, never on the whole cennik — the second click has to
-  // undo exactly what the first one did, whatever is typed in the szukajka.
-  function toggleFiltered() {
-    const ids = filtered.map((item) => item.id)
-    setSelected((prev) =>
-      allFilteredSelected
-        ? prev.filter((id) => !ids.includes(id))
-        : [...prev, ...ids.filter((id) => !prev.includes(id))],
-    )
   }
 
   const columns = [
     col.display({
       id: 'select',
-      header: () => (
-        <Checkbox
-          checked={allFilteredSelected}
-          onCheckedChange={toggleFiltered}
-          aria-label="Zaznacz wszystkie widoczne prace"
-        />
-      ),
-      cell: (info) => (
-        <Checkbox
-          checked={selected.includes(info.row.original.id)}
-          onCheckedChange={() => toggle(info.row.original.id)}
-          aria-label={info.row.original.description}
-        />
-      ),
+      header: '',
+      cell: (info) => <SelectCell item={info.row.original} onToggle={toggle} />,
     }),
     ...WORK_CATALOGUE_PICKER_COLUMNS,
   ]
@@ -127,26 +122,21 @@ export function AddItemsFromCatalogueDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-5xl">
         <DialogHeader className="px-4 pt-4" title="Dodaj pracę z katalogu" />
-        <div className="flex items-center gap-3 px-4 py-3">
-          <SearchFilterInput
-            value={searchTerm}
-            onChange={setSearchTerm}
-            placeholder="Szukaj pracy…"
-            className="flex-1"
-          />
-          {/* Outside the table on purpose: the zaznaczenie survives every filter, so its count has to
-              stay legible while the rows underneath change. */}
-          <span className="text-muted-foreground shrink-0 text-sm tabular-nums">
-            Wybrano: {selected.length}
-          </span>
-        </div>
+        <SearchFilterInput
+          value={searchTerm}
+          onChange={setSearchTerm}
+          placeholder="Szukaj pracy…"
+          className="mx-4 my-3"
+        />
         {catalogue === null ? (
           <p className="text-muted-foreground px-4 py-6 text-sm">Ładowanie katalogu…</p>
         ) : catalogue.length === 0 ? (
           <p className="text-muted-foreground px-4 py-6 text-sm">Katalog prac jest pusty.</p>
         ) : (
           <div className="max-h-[55vh] min-h-0 overflow-y-auto px-4 pb-3">
-            <DataTable data={filtered} columns={columns} initialSorting={INITIAL_SORTING} />
+            <SelectedIdsContext value={selected}>
+              <DataTable data={filtered} columns={columns} initialSorting={INITIAL_SORTING} />
+            </SelectedIdsContext>
           </div>
         )}
         {/* The sekcja sits next to „Dodaj", not above the list: it is the last decision, taken once

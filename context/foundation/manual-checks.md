@@ -3717,8 +3717,7 @@ została usunięta.
 - [ ] Picker pokazuje opis, kategorię, j.m., cenę i obie stawki — bez „Akcji" i bez kolumn `%`
 - [ ] Ekran „Katalog prac" wygląda i sortuje się dokładnie jak przed zmianą, z ośmioma kolumnami
 - [ ] Sortowanie po „Kategoria" grupuje prace; sortowanie po dowolnej kolumnie nie gubi zaznaczenia
-- [ ] Wpisanie frazy nie odznacza tego, co już zaznaczone; licznik „Wybrano: N" to pokazuje
-- [ ] Checkbox w nagłówku zaznacza i odznacza wiersze widoczne po filtrze
+- [ ] Wpisanie frazy nie odznacza tego, co już zaznaczone; licznik na „Dodaj (N)" to pokazuje
 - [ ] Prace lądują w sekcji w kolejności klikania, nie w kolejności sortowania
 
 ### Phase 2: Sekcja docelowa i drugie wejście

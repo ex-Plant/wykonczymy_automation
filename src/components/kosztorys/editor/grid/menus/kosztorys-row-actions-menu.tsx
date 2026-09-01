@@ -38,7 +38,6 @@ type SectionActionsT = OrderActionsT & {
   name?: string
   itemCount: number
   onSetColor: (color: SectionColorKeyT | null) => void
-  onAddFromCatalogue: () => void
   onRemove: () => void
 }
 
@@ -48,7 +47,12 @@ type PropsT = {
   sortActive: boolean
   // The POZYCJA's id, not a catalogue row's — an id rather than a callback because the dialog reads
   // every figure it shows from the server by it. Absent (read-only view) → no „Zapisz do katalogu…".
-  item: OrderActionsT & { onRemove: () => void; savableItemId?: number }
+  // `onAddFromCatalogue` shares `savableItemId`'s gate — both are absent in the read-only view.
+  item: OrderActionsT & {
+    onRemove: () => void
+    savableItemId?: number
+    onAddFromCatalogue?: () => void
+  }
   // Absent (read-only view) → the whole „Sekcja" group is hidden.
   section?: SectionActionsT
 }
@@ -92,7 +96,15 @@ export function KosztorysRowActionsMenu({ sortActive, item, section }: PropsT) {
           {item.savableItemId !== undefined && (
             <DropdownMenuItem onSelect={() => setCatalogueSaveOpen(true)}>
               <BookmarkPlus />
-              Zapisz do katalogu…
+              Zapisz pozycję do katalogu prac
+            </DropdownMenuItem>
+          )}
+          {/* Not disabled under a sort, unlike the four commands above it: the praca lands at the END
+              of this row's section, so array position — the reason those go dead — is irrelevant. */}
+          {item.onAddFromCatalogue && (
+            <DropdownMenuItem onSelect={item.onAddFromCatalogue}>
+              <ListChecks />
+              Wybierz pozycję z katalogu prac
             </DropdownMenuItem>
           )}
           <DropdownMenuItem variant="destructive" onSelect={() => setPendingRemoval('item')}>
@@ -104,12 +116,6 @@ export function KosztorysRowActionsMenu({ sortActive, item, section }: PropsT) {
               <DropdownMenuSeparator />
               <DropdownMenuLabel>Sekcja</DropdownMenuLabel>
               {orderItems(section)}
-              {/* Not disabled under a sort: the praca lands at the END of the section, so array
-                  position — the reason the four order commands go dead — is irrelevant here. */}
-              <DropdownMenuItem onSelect={section.onAddFromCatalogue}>
-                <ListChecks />
-                Praca z katalogu…
-              </DropdownMenuItem>
               <SectionColorPicker value={section.color} onChange={section.onSetColor} />
               <DropdownMenuItem variant="destructive" onSelect={() => setPendingRemoval('section')}>
                 <Trash2 />

@@ -230,7 +230,6 @@ function RowActionsCell({
           onMoveDown: () => onReorderSection(rowData.sectionId, 'down'),
           onSetColor: (color: SectionColorKeyT | null) =>
             onSetSectionColor(rowData.sectionId, color),
-          onAddFromCatalogue: () => openCataloguePicker(rowData.sectionId),
           onRemove: () => onRemoveSection(rowData.sectionId),
         }
       : undefined
@@ -245,6 +244,8 @@ function RowActionsCell({
         onMoveDown: () => opts.onReorderItem?.(rowData, 'down'),
         onRemove: () => opts.onRemoveItem?.(rowData),
         savableItemId: opts.canSaveItemToCatalogue ? rowData.id : undefined,
+        // Lands in this row's SECTION, which is why it rides the section gate rather than its own.
+        onAddFromCatalogue: section ? () => openCataloguePicker(rowData.sectionId) : undefined,
       }}
       section={section}
     />
