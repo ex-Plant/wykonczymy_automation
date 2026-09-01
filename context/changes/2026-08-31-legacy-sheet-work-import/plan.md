@@ -464,9 +464,16 @@ Uruchamiane **raz**, po ostatniej fazie.
 
 #### Automated
 
-- [ ] 4.1 Dry-run nie zmienia liczby wierszy
-- [ ] 4.2 Po `--apply` przyrost zgadza się z raportem
-- [ ] 4.3 194 pozycje wzoru mają niezmienione ceny i stawki
-- [ ] 4.4 Każda nowa pozycja niesie prefiks `[stary arkusz] `
-- [ ] 4.5 Eksport round-trip daje tę samą liczbę wierszy
-- [ ] 4.6 Powtórne uruchomienie wsadu tworzy 0 pozycji
+- [x] 4.1 Dry-run nie zmienia liczby wierszy
+- [x] 4.2 Po `--apply` przyrost zgadza się z raportem (755)
+- [x] 4.3 Pozycje wzoru mają niezmienione ceny i stawki (191, nie 194 — faza 1 zdjęła duplikat)
+- [x] 4.4 Każda nowa pozycja niesie prefiks `[stary arkusz] `
+- [x] 4.5 Eksport round-trip daje tę samą liczbę wierszy (946)
+- [x] 4.6 Powtórne uruchomienie wsadu tworzy 0 pozycji
+
+#### Whole-tree Gate
+
+- [x] typecheck
+- [x] lint — 4 błędy, wszystkie zastane (`(legal)/*`, `test.js`), żaden w tej zmianie
+- [x] test — 3150 zielonych
+- [x] build

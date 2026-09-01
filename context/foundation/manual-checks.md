@@ -3709,3 +3709,35 @@ została usunięta.
 - [ ] „Zapisz do katalogu…" pokazuje „auto" w podglądzie i w potwierdzeniu nadpisania
 - [ ] Wstawiona z katalogu praca auto ma w rozpisce pustą komórkę nadpisania i liczy się ze
       współczynnika inwestycji
+
+## EX-753 — legacy-sheet-work-import (2026-09-01)
+
+Faza 1 — normalizacja j.m. w kluczu katalogu:
+
+- [ ] Picker „Dodaj z katalogu" nadal pokazuje komplet pozycji i poprawnie oznacza te już wstawione
+      do kosztorysu
+- [ ] „Porównaj z cennikiem" na inwestycji z pozycjami w `m²` przestaje raportować je jako brak
+      w cenniku
+
+Faza 2 — zassanie arkuszy:
+
+- [x] Liczba arkuszy zakończonych porażką i rozkład powodów są sensowne
+      _Verified: 56 z 57 zassanych; jedyna porażka to Topiel 6 — `forbidden`, arkusz nieudostępniony
+      kontu odczytowemu._
+
+Faza 3 — raport (`~/.local/share/wykonczymy-legacy-sheets/raport.md`):
+
+- [ ] Prace na liście „do dołożenia" wyglądają na realne prace, nie na wiersze nagłówkowe ani stopkę
+- [ ] Rozrzut cen przy pozycjach z wieloma wystąpieniami jest wiarygodny (nie: 12 zł do 12 000 zł)
+- [x] Lista arkuszy nieprzeczytanych jest krótka na tyle, żeby akcja miała sens
+      _Verified: 41 z 57 sparsowanych, 16 nie — 1 nieudostępniony, 15 na rozpoznaniu kolumn
+      (9× brak „Wartość netto", 5× brak kolumny sekcji, 1× brak „Przedmiar"). Wąskie layouty,
+      dla których aplikacja ma ręczne wskazanie kolumn; plan nie każe ich naprawiać._
+
+Faza 4 — wsad lokalny (755 pozycji dołożonych, katalog ma 946):
+
+- [ ] Katalog w aplikacji daje się przejrzeć: dopisane pozycje kleją się w grupę, dopisek widać
+- [ ] Skasowanie dopisku przez edycję pozycji działa i nie psuje dopasowania w „Porównaj z cennikiem"
+- [ ] Picker „Dodaj z katalogu" wstawia dołożoną pracę do kosztorysu z poprawną ceną i stawkami
+- [ ] 56 pozycji weszło ze stawką 0 zł z cennika arkusza (nie z konfliktu) — do sprawdzenia przy
+      przeglądzie, czy to realna wycena podwykonawcy

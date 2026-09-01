@@ -1,7 +1,7 @@
 ---
 change_id: legacy-sheet-work-import
 title: Import brakujących prac ze starych arkuszy do katalogu prac
-status: implementing
+status: implemented
 created: 2026-08-31
 updated: 2026-09-01
 archived_at: null
