@@ -264,7 +264,7 @@ Most are self-describing (`src/collections`, `src/access`, `src/stores`, …). T
   second form uses it.
   The counting is over **directories, not files**: three cells in one directory sharing a hook is
   still one consumer, so `useCellDraft` stays colocated in `editor/grid/cells/` while
-  `useInlineRename` — read from two directories — sits in `src/hooks/`. Promote a hook when a second
+  `useInlineRename` — read from two directories — sits in `editor/hooks/`. Promote a hook when a second
   directory reaches for it, not when a third file in the same one does.
 - `src/components/ui` is the domain-agnostic primitives layer — a component that knows it is filtering
   a list belongs in `src/components/filters/` (EX-730 moved the last four out of `ui/`; git history and
