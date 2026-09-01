@@ -11,12 +11,14 @@ against the 5435 test DB, `pnpm typecheck` clean, `pnpm lint` clean in slice fil
 
 ## Findings
 
-- [ ] 🟡 WARNING · surfaced · impl-review · `src/lib/actions/work-catalogue.ts:212` · „Nadpisz" writes
+- [x] 🟡 WARNING · fixed · impl-review · `src/lib/actions/work-catalogue.ts:212` · „Nadpisz" writes
       the whole candidate, so `category` derived from THIS kosztorys' sekcja overwrites a kategoria the
       owner curated on /katalog-prac — and neither `PriceList` nor the confirm text mentions it.
-      Not auto-applied: it changes what an overwrite MEANS, which is the owner's call. Box closes on
-      that decision (keep `existing.category`, or show the kategoria change in the confirm).
-      test: test-driven-debugging · integration — a DB-backed overwrite spec asserting the persisted category
+      Owner's decision (2026-09-01): an overwrite keeps the katalog's kategoria by default and the
+      dialog offers „Zostaw kategorię z katalogu". Shipped as change
+      `context/changes/2026-09-01-katalog-nadpisanie-kategorii/`.
+      test: test-driven-debugging · integration — two DB-backed overwrite cases asserting the persisted
+      category in both trybach (`src/__tests__/lib/actions/work-catalogue-save.test.ts`)
 - [x] 🟡 WARNING · fixed · code-review · `src/components/ui/combobox.tsx:85` · Enter committed
       `items[0]` instead of the typed text whenever the draft matched an existing option — typing
       „malowanie" in Kategoria silently stored „Elektryka". Fix: an untouched highlight commits the

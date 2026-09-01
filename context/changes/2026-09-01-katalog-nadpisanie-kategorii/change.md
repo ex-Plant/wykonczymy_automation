@@ -1,7 +1,7 @@
 ---
 change_id: katalog-nadpisanie-kategorii
 title: Kategoria kontrolowalna przy nadpisaniu pozycji w katalogu prac
-status: implementing
+status: implemented
 created: 2026-09-01
 updated: 2026-09-01
 archived_at: null

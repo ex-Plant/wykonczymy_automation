@@ -3742,3 +3742,20 @@ została usunięta.
 - [x] Praca dodana wcześniej do INNEJ sekcji też jest ukryta — liczymy cały kosztorys
 - [x] Pozycja z ręcznie zmienioną nazwą wraca na listę jako „niedodana" (znane ograniczenie,
       to samo co w „Porównaj z katalogiem")
+
+## katalog-nadpisanie-kategorii — kategoria przy nadpisaniu pozycji w katalogu
+
+Setup: baza testowa 5435 z rozpisanym kosztorysem (`pnpm seed:kosztorys:test`) i katalogiem prac,
+w którym ta sama praca (ten sam opis + j.m.) siedzi pod INNĄ kategorią niż nazwa sekcji, z której ją
+zapisujesz. Zalogowany jako OWNER.
+
+- [ ] „…" na wierszu → „Zapisz pozycję do katalogu prac": gdy kategoria w katalogu jest inna niż
+      sekcja, oba bloki („W katalogu" / „Po zapisie") mają czwarty wiersz „Kategoria"
+- [ ] Przełącznik „Zostaw kategorię z katalogu" jest zaznaczony od razu, a wiersz „Po zapisie"
+      pokazuje kategorię z katalogu
+- [ ] Odznaczenie przełącznika zmienia „Po zapisie" na kategorię z sekcji, a zdanie w potwierdzeniu
+      dostaje zdanie o zmianie kategorii (przy zaznaczonym — nie ma go)
+- [ ] Zapis z zaznaczonym przełącznikiem: pozycja na /katalog-prac ma NADAL starą kategorię,
+      a stawki nowe
+- [ ] Gdy kategoria w katalogu jest taka sama jak sekcja — nie ma ani wiersza „Kategoria",
+      ani przełącznika

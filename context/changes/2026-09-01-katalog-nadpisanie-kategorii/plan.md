@@ -247,11 +247,11 @@ the suite is not run unprompted.
 
 #### Automated
 
-- [x] 1.1 Dwa nowe przypadki w work-catalogue-save.test.ts czerwone przed zmianą akcji, zielone po
-- [x] 1.2 Cztery istniejące przypadki w tym pliku nadal przechodzą
+- [x] 1.1 Dwa nowe przypadki w work-catalogue-save.test.ts czerwone przed zmianą akcji, zielone po — a95f9a04
+- [x] 1.2 Cztery istniejące przypadki w tym pliku nadal przechodzą — a95f9a04
 
 ### Phase 2: Dialog — czwarty wiersz i przełącznik
 
 #### Automated
 
-- [ ] 2.1 work-catalogue-save.test.ts przechodzi z podpiętym dialogiem
+- [x] 2.1 work-catalogue-save.test.ts przechodzi z podpiętym dialogiem
