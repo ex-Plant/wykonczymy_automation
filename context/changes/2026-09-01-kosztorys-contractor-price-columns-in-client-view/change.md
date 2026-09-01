@@ -1,11 +1,11 @@
 ---
 change_id: kosztorys-contractor-price-columns-in-client-view
 title: Kolumny ceny wykonawcy (obu planów) w widoku Inwestora
-status: planned
+status: implemented
 created: 2026-09-01
 updated: 2026-09-01
 archived_at: null
-branch: null
+branch: kosztorys-contractor-price-columns-in-client-view
 worktree: null
 ---
 
@@ -27,6 +27,8 @@ Ustalenia z rozmowy przed planem:
   zapisanych preferencji kolumn.
 - Sortowanie: `columnSortValue` liczy `priceCoeff`/`priceMode`/`price` po `view` — musi czytać plan
   z sufiksu id.
+- Rozstrzygnięcie właściciela odwróciło jeden punkt powyżej: sufiks planu wchodzi do **wszystkich**
+  widoków, nie tylko do Inwestora (rozstrzygnięcia w `research.md`).
 - Do ruszenia też: `COLUMN_LABELS`/`HEADER_TIPS` (najlepiej rozwiązywane po sufiksie z `PLANE_LABELS`),
   `COLUMN_MONEY_AXIS` + `AXIS_EXEMPT_COLUMNS`, `DEFAULT_HIDDEN_COLUMNS`, `PRICE_COLUMNS`
   w `row-conditions.ts` (żeby problem ze stawką odsłaniał kolumny również w widoku Inwestora).

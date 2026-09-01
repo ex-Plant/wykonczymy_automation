@@ -359,6 +359,6 @@ Raz, po ostatniej fazie:
 
 #### Automated
 
-- [x] 3.1 Zamek podglądu i picker
-- [x] 3.2 Reveal problemów
-- [x] 3.3 Oś pieniądza po zmianie
+- [x] 3.1 Zamek podglądu i picker — 28471cba
+- [x] 3.2 Reveal problemów — 28471cba
+- [x] 3.3 Oś pieniądza po zmianie — 28471cba

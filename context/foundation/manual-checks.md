@@ -3731,3 +3731,17 @@ Faza 4 — wsad lokalny (755 pozycji dołożonych; katalog ~940 po przeglądzie 
 - [ ] Picker „Dodaj z katalogu" wstawia dołożoną pracę do kosztorysu z poprawną ceną i stawkami
 - [ ] 56 pozycji weszło ze stawką 0 zł z cennika arkusza (nie z konfliktu) — do sprawdzenia przy
       przeglądzie, czy to realna wycena podwykonawcy
+
+## Kolumny stawek wykonawcy obu planów w widoku Inwestora (2026-09-01, `kosztorys-contractor-price-columns-in-client-view`)
+
+- [ ] Świeża przeglądarka (wyczyszczony localStorage): w żadnym widoku nie widać kolumn stawek,
+      dopóki nie odznaczy się ich w pikerze
+- [ ] Widok Inwestora → picker → sześć nowych pozycji z nazwą planu w etykiecie; wpisana stawka
+      w planie „bez narzędzi" pokazuje się identycznie po przełączeniu na widok „Bez narzędzi"
+- [ ] Kliknięcie nagłówka „Mnożnik — z narzędziami" przestawia kolejność wierszy, drugie kliknięcie
+      ją odwraca, a sortowanie po kolumnie drugiego planu daje inną kolejność na tych samych danych
+- [ ] Tryb „Brutto" w widoku Inwestora: „Cena j.m. netto — z narzędziami" zostaje na ekranie
+- [ ] Filtr „Problemy" ze stawką zawyżoną w planie „bez narzędzi" odsłania kolumny tego planu,
+      a nie planu „z narzędziami"
+- [ ] Podgląd inwestora (owner odznaczył wszystkie sześć): żadna się nie pokazuje, slim header nie ma
+      pickera
