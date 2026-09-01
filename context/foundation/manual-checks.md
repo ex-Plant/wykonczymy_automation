@@ -3724,6 +3724,19 @@ została usunięta.
 
 - [ ] Select sekcji stoi w stopce, bez licznika pozycji przy nazwach
 - [ ] „Dodaj" z toolbara otwiera picker bez ustawionej sekcji
-- [ ] „…" na wierszu → „Praca z katalogu…" otwiera picker z sekcją tego wiersza; dodanie ląduje właśnie w niej
+- [ ] „…" na wierszu → „Wybierz pozycję z katalogu prac" otwiera picker z sekcją tego wiersza; dodanie ląduje właśnie w niej
 - [ ] Zamknięcie i ponowne otwarcie czyści zaznaczenie i szukajkę, a sekcję wraca do tej, z którą otwarto
 - [ ] Otwarcie i zamknięcie dialogu nie rusza pozycji przewijania siatki ani aktywnej celi
+
+### Phase 3: Ukrywanie prac już dodanych
+
+- [ ] Picker otwarty na kosztorysie, który ma już część prac z cennika: „Ukryj już dodane" jest
+      zaznaczone od razu, a te prace nie są na liście
+- [ ] Licznik przy przełączniku pokazuje, ile pozycji jest ukrytych, i zmienia się razem z frazą
+      w szukajce
+- [ ] Odznaczenie przełącznika przywraca ukryte prace na listę (można je dodać drugi raz)
+- [ ] Praca zaznaczona przy odznaczonym przełączniku NIE znika po ponownym jego włączeniu —
+      licznik „Dodaj (N)" i to, co widać na liście, muszą się zgadzać
+- [ ] Praca dodana wcześniej do INNEJ sekcji też jest ukryta — liczymy cały kosztorys
+- [ ] Pozycja z ręcznie zmienioną nazwą wraca na listę jako „niedodana" (znane ograniczenie,
+      to samo co w „Porównaj z katalogiem")

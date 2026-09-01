@@ -1132,6 +1132,9 @@ export function useKosztorysEditor({
   }
 
   return {
+    // The whole rozpiska, unfiltered and unsorted — „Wybierz pozycję z katalogu prac" reads it to
+    // tell which cennik prace are already in. viewRows would answer for the active filter instead.
+    rows,
     // grid data + layout
     gridRef,
     gridNode,

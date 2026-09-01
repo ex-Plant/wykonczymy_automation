@@ -12,7 +12,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useCataloguePicker } from '@/components/kosztorys/editor/dialogs/use-catalogue-picker'
+import { useCataloguePicker } from '@/components/kosztorys/editor/actions/catalogue-picker-host'
 import { AddSectionsFromPresetDialog } from '@/components/kosztorys/editor/dialogs/add-sections-from-preset-dialog'
 import { planeIcon } from '@/components/kosztorys/editor/plane-icons'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
@@ -29,8 +29,8 @@ export function KosztorysAddMenu() {
   } = useKosztorysEditorContext()
   const openCataloguePicker = useCataloguePicker()
   // Owned here, OUTSIDE the dropdown content: the menu unmounts on close, so a dialog rendered inside
-  // it would unmount before it could open. The item only flips this flag.
-  const [pickerOpen, setPickerOpen] = useState(false)
+  // it would unmount before it could open.
+  const [presetDialogOpen, setPresetDialogOpen] = useState(false)
 
   return (
     <>
@@ -43,9 +43,8 @@ export function KosztorysAddMenu() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           {/* No section is preselected — any default lands the praca where the user isn't looking,
-              which is the whole reason this is a picker. With nothing to pick from the submenu is
-              dropped rather than offered empty; „Praca" then goes through handleAddSection, which
-              mints a section WITH its first pozycja inside. */}
+              which is the whole reason this is a picker. With no sekcja to offer, „Praca" goes
+              through handleAddSection, which mints a section WITH its first pozycja inside. */}
           {subtotals.length === 0 ? (
             <DropdownMenuItem onSelect={handleAddSection}>
               <Hammer />
@@ -91,7 +90,7 @@ export function KosztorysAddMenu() {
             <FolderPlus />
             Sekcja
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setPickerOpen(true)}>
+          <DropdownMenuItem onSelect={() => setPresetDialogOpen(true)}>
             <LibraryBig />
             Sekcja z szablonu…
           </DropdownMenuItem>
@@ -99,8 +98,8 @@ export function KosztorysAddMenu() {
       </DropdownMenu>
       <AddSectionsFromPresetDialog
         investmentId={investmentId}
-        open={pickerOpen}
-        onOpenChange={setPickerOpen}
+        open={presetDialogOpen}
+        onOpenChange={setPresetDialogOpen}
         onAppended={handleAppendedSections}
       />
     </>

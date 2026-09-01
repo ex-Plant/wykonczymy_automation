@@ -47,7 +47,7 @@ type PropsT = {
   sortActive: boolean
   // The POZYCJA's id, not a catalogue row's — an id rather than a callback because the dialog reads
   // every figure it shows from the server by it. Absent (read-only view) → no „Zapisz do katalogu…".
-  // `onAddFromCatalogue` shares `savableItemId`'s gate — both are absent in the read-only view.
+  // `onAddFromCatalogue` rides the SECTION's gate instead: the praca lands in this row's sekcja.
   item: OrderActionsT & {
     onRemove: () => void
     savableItemId?: number
@@ -84,9 +84,6 @@ export function KosztorysRowActionsMenu({ sortActive, item, section }: PropsT) {
   return (
     <>
       <DropdownMenu>
-        {/* size-full: whole cell is the click target, else dsg selects the dead space around the icon.
-            The button chrome therefore sits on an inner span — the trigger itself has to stay
-            cell-sized and unstyled. */}
         <CellMenuTrigger title="Akcje wiersza" />
         <DropdownMenuContent align="start" className="min-w-44">
           {/* Names the target: both groups carry the same four order commands, so the label is the

@@ -292,6 +292,48 @@ otwarciami.
 - Dlaczego wyzwalacz i dialog nie są rodziną: `editor/actions/kosztorys-actions-context.tsx:38`
 - Stawka „auto" (równoległa zmiana): `context/changes/2026-08-31-katalog-prac-auto-rates/change.md`
 
+## Phase 3: Ukrywanie prac już dodanych
+
+### Overview
+
+Picker otwiera się z zaznaczonym „Ukryj już dodane" i pokazuje przy tym licznik ukrytych pozycji.
+Przełącznik, nie twarde odsianie — praca, która znika bez śladu, czyta się jak dziura w cenniku.
+
+### Changes Required
+
+- `src/lib/kosztorys/work-catalogue/already-in-kosztorys.ts` (nowy) — `kosztorysCatalogueKeys` składa
+  klucze rozpiski, `partitionAlreadyInKosztorys` dzieli cennik na `fresh` / `alreadyAdded`. Rozdzielone,
+  bo klucze zależą wyłącznie od rozpiski, a podział przelicza się na każdy znak w szukajce.
+- `use-kosztorys-editor.ts` — wystawia `rows` (cała rozpiska, nie `viewRows`).
+- `actions/catalogue-picker-host.tsx` → dialog dostaje `kosztorysItems={rows}`.
+- Dialog — stan `hideAlreadyAdded`, pole wyboru z licznikiem obok szukajki.
+
+### Decyzje
+
+1. **Domyślnie włączone.** Owner otwiera picker po to, żeby dobrać nowe prace; już dodane są tłem.
+2. **Zakres to cały kosztorys, nie sekcja docelowa.** Ta sama praca legalnie stoi w kilku pokojach, ale
+   właściciel chce ją mieć z drogi — decyzja właściciela, wprost.
+3. **Dopasowanie po `matchKey` katalogu**, czyli tą samą regułą co „Porównaj z katalogiem" i indeks
+   UNIQUE. Znany skutek: pozycja z ręcznie zmienioną nazwą wraca na listę jako niedodana.
+4. **Zaznaczona praca nigdy nie znika.** Właściciel dotarł do niej, odznaczając przełącznik; ukrycie
+   zostawiłoby ją w ładunku „Dodaj (N)" bez wiersza, którym można ją odznaczyć.
+
+### Success Criteria
+
+#### Automated Verification:
+
+- [ ] `pnpm exec vitest run src/__tests__/lib/kosztorys/work-catalogue/already-in-kosztorys.test.ts`
+
+#### Manual Verification:
+
+- [ ] Pięć pozycji w `context/foundation/manual-checks.md`, sekcja „Phase 3"
+
+### Kontrakt
+
+`AddItemsFromCatalogueDialog` rośnie o `kosztorysItems: readonly KosztorysItemRefT[]`.
+`SectionActionsT` NIE rośnie o `onAddFromCatalogue` — po decyzji o przeniesieniu obu poleceń
+katalogowych do grupy „Praca" callback siedzi w pakiecie `item` jako opcjonalny.
+
 ## Whole-tree Gate
 
 Uruchomić **raz**, po ostatniej fazie:
@@ -316,3 +358,9 @@ Uruchomić **raz**, po ostatniej fazie:
 #### Automated
 
 - [x] 2.1 Brak testu zakresowego — przepięcie wyzwalaczy, ryzyko przeglądarkowe (świadomie puste) — 08393235
+
+### Phase 3: Ukrywanie prac już dodanych
+
+#### Automated
+
+- [x] 3.1 `partitionAlreadyInKosztorys` — dopasowanie po kluczu katalogu, ta sama j.m. rozstrzyga

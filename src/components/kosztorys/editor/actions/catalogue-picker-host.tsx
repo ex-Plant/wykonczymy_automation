@@ -4,23 +4,22 @@ import { createContext, use, useCallback, useState, type ReactNode } from 'react
 import { AddItemsFromCatalogueDialog } from '@/components/kosztorys/editor/dialogs/add-items-from-catalogue-dialog'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
 
-// Stable for the life of the host, so nothing under it re-renders when the picker opens.
 type OpenCataloguePickerT = (sectionId?: number) => void
 
 const CataloguePickerContext = createContext<OpenCataloguePickerT | null>(null)
 
-// Two triggers, one dialog: „Dodaj → Praca z katalogu…" in the toolbar and „Praca z katalogu…" on a
-// row's menu. Neither can render it — DropdownMenuContent unmounts its children on select — so the
-// dialog lives here and the triggers only call the opener.
+// Same reason the „Opcje" actions have a provider — see KosztorysActionsProvider. What differs is
+// that this picker has two triggers in DIFFERENT subtrees (the toolbar's „Dodaj" menu and a row's
+// „…"), so it cannot sit above one menu; it wraps the whole body instead.
 //
 // `children` is a prop, not JSX built inside: opening the picker changes only this component's
 // state, and React skips a subtree whose element identity is unchanged. That is what keeps the grid
-// out of the re-render — the same value-identity discipline that made KosztorysActionsProvider a
-// separate provider (EX-496).
+// out of the re-render (EX-496).
 export function CataloguePickerHost({ children }: { children: ReactNode }) {
-  const { subtotals, handleAppendedCatalogueItems } = useKosztorysEditorContext()
+  const { rows, subtotals, handleAppendedCatalogueItems } = useKosztorysEditorContext()
   // `null` = closed; a member `sectionId` of `null` = open with no section chosen yet.
   const [target, setTarget] = useState<{ sectionId: number | null } | null>(null)
+  // Stable for the life of the host, so nothing under it re-renders when the picker opens.
   const open = useCallback<OpenCataloguePickerT>(
     (sectionId) => setTarget({ sectionId: sectionId ?? null }),
     [],
@@ -34,6 +33,7 @@ export function CataloguePickerHost({ children }: { children: ReactNode }) {
       {target && (
         <AddItemsFromCatalogueDialog
           sections={subtotals}
+          kosztorysItems={rows}
           initialSectionId={target.sectionId}
           open
           onOpenChange={() => setTarget(null)}
