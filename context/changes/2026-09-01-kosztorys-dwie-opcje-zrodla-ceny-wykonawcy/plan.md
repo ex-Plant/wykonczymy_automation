@@ -359,17 +359,17 @@ Kolumny `*_override_type` zostają w bazie jako `varchar` i nie wymagają zmiany
 
 #### Automated
 
-- [x] 1.1 plane-price-columns.test.ts — cztery kolumny w widokach wykonawcy, dwie w widoku inwestora
-- [x] 1.2 kosztorys-sort-value.test.ts — ranking źródeł na dwóch stopniach
-- [x] 1.3 row-conditions.test.ts — ujawnianie dwóch kolumn planu
-- [x] 1.4 preview-columns.test.ts
+- [x] 1.1 plane-price-columns.test.ts — cztery kolumny w widokach wykonawcy, dwie w widoku inwestora — 87e8b592
+- [x] 1.2 kosztorys-sort-value.test.ts — ranking źródeł na dwóch stopniach — 87e8b592
+- [x] 1.3 row-conditions.test.ts — ujawnianie dwóch kolumn planu — 87e8b592
+- [x] 1.4 preview-columns.test.ts — 87e8b592
 
 ### Phase 2: Import z arkusza — auto albo kwota stała
 
 #### Automated
 
-- [ ] 2.1 build-import-plan.test.ts — inny iloraz daje kwotę stałą równą stawce z arkusza
-- [ ] 2.2 build-sheet-comparison.test.ts
+- [x] 2.1 build-import-plan.test.ts — inny iloraz daje kwotę stałą równą stawce z arkusza
+- [x] 2.2 build-sheet-comparison.test.ts
 
 ### Phase 3: Typ, wycena i SQL — zawężenie unii
 

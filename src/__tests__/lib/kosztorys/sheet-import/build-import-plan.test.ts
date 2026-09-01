@@ -88,7 +88,7 @@ describe('buildImportPlan', () => {
     expect(item).toMatchObject({ ownToolsOverrideType: null, ownToolsOverrideValue: 0 })
   })
 
-  it('keeps a praca marked up differently as an explicit multiplier', () => {
+  it('freezes a praca marked up differently at the sheet’s own rate', () => {
     const { tree } = plan(
       source({
         rateTabs: [
@@ -101,9 +101,9 @@ describe('buildImportPlan', () => {
     )
     const item = tree.items.find((row) => row.description === 'montaż jednostki wewnętrznej')!
 
-    // 84 / 120 = 0,7 against a cennik that otherwise runs at 0,65 — an exception, and the only kind
-    // of row the „Mnożnik" column should ever show.
-    expect(item).toMatchObject({ wToolsOverrideType: 'coeff', wToolsOverrideValue: 0.7 })
+    // 84 / 120 = 0,7 against a cennik that otherwise runs at 0,65 — an exception, so it cannot go to
+    // auto. The stored value is the RATE from the sheet, not the ratio: 84, never 0,7.
+    expect(item).toMatchObject({ wToolsOverrideType: 'amount', wToolsOverrideValue: 84 })
     expect(item).toMatchObject({ ownToolsOverrideType: null })
   })
 
