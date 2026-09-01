@@ -150,7 +150,6 @@ export const FOOTER_ROWS: ReadonlyArray<{
 export const isFooterLabel = (folded: string): boolean =>
   FOOTER_ROWS.some(({ matches }) => matches(folded))
 
-// Superscript digits as the owner types them into a j.m. cell — `m²`, occasionally `m³`.
 const SUPERSCRIPT_DIGITS: Record<string, string> = { '¹': '1', '²': '2', '³': '3' }
 
 // The j.m. member of a praca's identity, folded harder than `fold()` because a unit is an

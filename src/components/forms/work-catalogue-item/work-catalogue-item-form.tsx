@@ -147,7 +147,17 @@ function RateField({
 
   return (
     <>
-      <form.AppField name={`${plane}Auto`}>
+      <form.AppField
+        name={`${plane}Auto`}
+        // The kwota field below UNMOUNTS on „auto", and TanStack keeps the errors an unmounted field
+        // was left with — so a „jest wymagana" raised by a failed submit would then survive forever
+        // and block every later one. Resetting drops the stale error together with the kwota.
+        listeners={{
+          onChange: ({ value }: { value: boolean }) => {
+            if (value) form.resetField(`${plane}Rate`)
+          },
+        }}
+      >
         {(field) => <field.Checkbox label={`${label}: auto — ze współczynnika inwestycji`} />}
       </form.AppField>
 

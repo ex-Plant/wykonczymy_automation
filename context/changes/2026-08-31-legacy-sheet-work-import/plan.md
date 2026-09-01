@@ -414,6 +414,40 @@ Kolejność wobec produkcji: merge katalogu na `main` → migracja `20260901_0` 
 tabelę, więc **przed** pushem, zgodnie z regułą kierunku migracji w AGENTS.md) → wsad pliku eksportu.
 Wsad robi człowiek, nie agent.
 
+## Odstępstwa od planu
+
+Trzy rzeczy poszły inaczej, niż zapisano wyżej. Bloki faz zostają nietknięte jako zapis tego, co
+planowano; ta sekcja mówi, co faktycznie stoi w kodzie.
+
+**1. Dopisek jest sufiksem, nie prefiksem** (decyzja właściciela, 2026-09-01 — odwraca fazę 3,
+punkt 2). Plan chciał prefiksu, żeby dołożone pozycje skleiły się w jedną grupę na listingu.
+Właściciel chce odwrotnie: listing sortuje po `description`, więc sufiks stawia dołożoną pracę
+**obok jej bliźniaka ze wzoru**, zamiast zsypywać cały import pod „[". Przegląd polega na
+porównywaniu pary, nie na czytaniu bloku importu, więc wygrywa sąsiedztwo. Stała i funkcja zdejmująca
+dopisek mieszkają w `src/lib/kosztorys/work-catalogue/legacy-marker.ts` — nie w skrypcie, bo pisze
+`match_key` także formularz katalogu (`src/lib/actions/work-catalogue.ts`), a dopisek w kluczu
+zerwałby dopasowanie w „Porównaj z cennikiem". Reguła: dopisek jest tekstem do wyświetlenia, nigdy
+tożsamością.
+
+**2. Kod jednorazowy skasowany od razu po akcji, nie „po akcji kiedyś"** (decyzja właściciela,
+2026-09-01). Dane są w bazie i w pliku eksportu, przebiegów A i B nikt więcej nie uruchomi, a git
+trzyma historię — więc dziewięć skryptów zniknęło w tej samej zmianie: `fetch-grids`, `dump-store`,
+`parse-dumped-sheet`, `collect-candidates`, `similar-names`, `report`, `run-analysis`, `analyze`,
+`apply`, plus `rekey-catalogue.ts` (faza 1, punkt 3) — ten ostatni dlatego, że przeliczył klucze
+wzoru raz i nigdy więcej nie będzie miał czego liczyć: produkcja dostaje katalog plikiem
+eksportu, a `export-catalogue.ts` liczy `match_key` przy zapisie, zamiast kopiować go z bazy.
+Zostają trzy pliki, bo mają pracę do wykonania jeszcze **po** tej zmianie: `export-catalogue.ts`
+(przegląd katalogu trwa, eksport trzeba będzie odświeżyć), `import-catalogue.ts` (wsad na
+produkcję) i `katalog-prac.json`.
+Surowe zrzuty 57 arkuszy leżą w `dumps/legacy-sheets/` — w repo, ale poza gitem (`.gitignore`).
+
+**3. Literówki poprawione mimo „What We're NOT Doing"** — ale nie w j.m., tylko w opisach.
+Zakaz z planu dotyczył jednostek (`klp`, `n2` zostają osobno) i to nadal obowiązuje. Opisy przeszły
+przez `cleanDescription`, ten sam, który stoi za „Opcje → popraw opisy" w kosztorysie — tryb
+`CATALOGUE=1` w `src/scripts/fix-kosztorys-descriptions.ts`. Poprawki są neutralne dla klucza,
+bo `foldDescription` stosuje ten sam słownik literówek (zweryfikowane empirycznie: 0 zmian klucza
+na 946 wierszach).
+
 ## Whole-tree Gate
 
 Uruchamiane **raz**, po ostatniej fazie.
@@ -467,8 +501,10 @@ Uruchamiane **raz**, po ostatniej fazie.
 - [x] 4.1 Dry-run nie zmienia liczby wierszy
 - [x] 4.2 Po `--apply` przyrost zgadza się z raportem (755)
 - [x] 4.3 Pozycje wzoru mają niezmienione ceny i stawki (191, nie 194 — faza 1 zdjęła duplikat)
-- [x] 4.4 Każda nowa pozycja niesie prefiks `[stary arkusz] `
-- [x] 4.5 Eksport round-trip daje tę samą liczbę wierszy (946)
+- [x] 4.4 Każda nowa pozycja niesie dopisek ` [stary arkusz]` — sufiks, nie prefiks (patrz
+      „Odstępstwa od planu", punkt 1)
+- [x] 4.5 Eksport round-trip daje tę samą liczbę wierszy (946; po ręcznych kasacjach właściciela
+      w trakcie przeglądu plik ma dziś 945 — round-trip nadal zgodny)
 - [x] 4.6 Powtórne uruchomienie wsadu tworzy 0 pozycji
 
 #### Whole-tree Gate

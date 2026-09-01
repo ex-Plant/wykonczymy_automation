@@ -40,6 +40,7 @@ export type FormWithFieldT<TName extends string> = {
     listeners?: any
     children: (field: AppFieldComponentsT) => ReactNode
   }) => ReactNode | Promise<ReactNode>
+  resetField: (name: TName) => void
   // Only `useFieldValue` reaches for it, and it re-types the store itself.
   store: unknown
 }

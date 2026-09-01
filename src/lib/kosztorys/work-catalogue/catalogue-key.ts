@@ -11,8 +11,7 @@ const NO_UNIT = '~'
 //
 // Unlike `itemKey` this drops the section: the katalog is global, so the same praca appearing in
 // „Łazienka 1" and „Kuchnia" is ONE cennik entry. The j.m. joins the key instead, because the same
-// opis priced per m² and per szt. is genuinely two prices — folded through `foldUnit`, so the same
-// praca written `m2` on one sheet and `m²` on another stays ONE entry.
+// opis priced per m² and per szt. is genuinely two prices.
 export function catalogueKey(description: string, unit: string | null): string {
   return `${foldDescription(description)}|${foldUnit(unit) || NO_UNIT}`
 }
