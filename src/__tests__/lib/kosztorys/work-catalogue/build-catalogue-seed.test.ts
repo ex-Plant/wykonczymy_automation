@@ -49,7 +49,7 @@ const payloadOf = (sections: KosztorysSectionT[], items: KosztorysItemT[]): Snap
 })
 
 const seedOf = (sections: KosztorysSectionT[], items: KosztorysItemT[]) =>
-  buildCatalogueSeed(payloadOf(sections, items), SETTINGS)
+  buildCatalogueSeed(payloadOf(sections, items))
 
 describe('buildCatalogueSeed', () => {
   it('zwija powtórzenia tego samego opisu i j.m. do jednej pozycji', () => {
@@ -112,7 +112,7 @@ describe('buildCatalogueSeed', () => {
 
     expect(items).toHaveLength(1)
     expect(conflicts).toHaveLength(1)
-    expect(conflicts[0].fields).toEqual(['clientPrice', 'wToolsRate', 'ownToolsRate'])
+    expect(conflicts[0].fields).toEqual(['clientPrice'])
     expect(conflicts[0].occurrences.map((o) => o.clientPrice)).toEqual([250, 300])
   })
 
@@ -163,11 +163,46 @@ describe('buildCatalogueSeed', () => {
     expect(items[0].category).toBe('Kuchnia')
   })
 
-  it('praca bez nadpisania dostaje stawkę z globalnych współczynników, nie 0 zł', () => {
+  it('praca bez nadpisania trafia do cennika jako „auto", nie jako kwota', () => {
     const { items } = seedOf([section(1, 'WC')], [item(1, 'Ułożenie płytek', 200)])
 
-    expect(items[0].wToolsRate).toBe(120)
-    expect(items[0].ownToolsRate).toBe(100)
+    expect(items[0].wToolsRate).toBeNull()
+    expect(items[0].ownToolsRate).toBeNull()
+  })
+
+  it('„auto" przeciw kwocie to rozbieżność, a wygrywa strona liczniejsza', () => {
+    const { items, conflicts } = seedOf(
+      [section(1, 'WC'), section(2, 'Łazienka 1'), section(3, 'Łazienka 2')],
+      [
+        item(1, 'Ułożenie płytek', 200),
+        item(2, 'Ułożenie płytek', 200, {
+          wToolsOverrideType: 'amount',
+          wToolsOverrideValue: 90,
+        }),
+        item(3, 'Ułożenie płytek', 200, {
+          wToolsOverrideType: 'amount',
+          wToolsOverrideValue: 90,
+        }),
+      ],
+    )
+
+    expect(conflicts[0].fields).toEqual(['wToolsRate'])
+    expect(items[0].wToolsRate).toBe(90)
+  })
+
+  it('przy remisie „auto" z kwotą wygrywa kwota', () => {
+    const { items } = seedOf(
+      [section(1, 'WC'), section(2, 'Łazienka 1')],
+      [
+        item(1, 'Ułożenie płytek', 200),
+        item(2, 'Ułożenie płytek', 200, {
+          wToolsOverrideType: 'amount',
+          wToolsOverrideValue: 90,
+        }),
+      ],
+    )
+
+    expect(items[0].wToolsRate).toBe(90)
   })
 
   it('praca z nadpisaniem kwotowym zamraża swoją stawkę', () => {
@@ -182,7 +217,7 @@ describe('buildCatalogueSeed', () => {
     )
 
     expect(items[0].wToolsRate).toBe(90)
-    expect(items[0].ownToolsRate).toBe(100)
+    expect(items[0].ownToolsRate).toBeNull()
   })
 
   it('pomija pracę bez opisu', () => {

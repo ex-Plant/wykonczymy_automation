@@ -24,6 +24,16 @@ const asPricing = (item: KosztorysItemT, settings: CatalogueComparisonSettingsT)
   globalOwnToolsCoeff: settings.ownToolsCoeff,
 })
 
+// The rozpiska row's own nadpisania say nothing about what the CENNIK holds, so pricing the
+// cennik's „auto" side has to strip them — otherwise an auto entry would be priced by the very
+// override it is being compared against, and every such row would match itself.
+const NO_OVERRIDES = {
+  wToolsOverrideType: null,
+  wToolsOverrideValue: 0,
+  ownToolsOverrideType: null,
+  ownToolsOverrideValue: 0,
+} as const
+
 type HintCandidateT = { description: string; pairs: string[] }
 
 // Folded and bigrammed ONCE for the whole cennik: `foldDescription` is ~45 split/join passes, and a
@@ -93,10 +103,28 @@ export function buildCatalogueComparison(
     }
 
     const pricing = asPricing(item, settings)
+    // An „auto" cennik stawka is compared as the kwota it implies FOR THIS INWESTYCJA, so a
+    // rozpiska row carrying its own kwota against a cennik that says auto still surfaces. The base
+    // is the CENNIK's cena j.m., not the rozpiska's — where the two also differ, the report says so
+    // on its own „Cena j.m." line and this one inherits the same gap.
+    const autoPricing = asPricing(
+      { ...item, clientPrice: entry.clientPrice, ...NO_OVERRIDES },
+      settings,
+    )
+    const catalogueRate = (plane: 'w_tools' | 'own_tools', rate: number | null) =>
+      rate ?? subcontractorPrice(autoPricing, plane)
     const figures = [
       figure('Cena j.m.', item.clientPrice, entry.clientPrice),
-      figure('Stawka z narzędziami', subcontractorPrice(pricing, 'w_tools'), entry.wToolsRate),
-      figure('Stawka bez narzędzi', subcontractorPrice(pricing, 'own_tools'), entry.ownToolsRate),
+      figure(
+        'Stawka z narzędziami',
+        subcontractorPrice(pricing, 'w_tools'),
+        catalogueRate('w_tools', entry.wToolsRate),
+      ),
+      figure(
+        'Stawka bez narzędzi',
+        subcontractorPrice(pricing, 'own_tools'),
+        catalogueRate('own_tools', entry.ownToolsRate),
+      ),
     ].filter((diff) => diff !== null)
 
     if (figures.length === 0) {

@@ -391,17 +391,17 @@ Locally: `pnpm exec payload migrate` against the dev DB, and `pnpm db:import:tes
 
 #### Automated
 
-- [x] 1.1 Migration applies against the test DB and both columns report `is_nullable = YES`
-- [x] 1.2 The three work-catalogue action specs pass
-- [x] 1.3 The work-catalogue-item schema spec passes
+- [x] 1.1 Migration applies against the test DB and both columns report `is_nullable = YES` — 6900a3f5
+- [x] 1.2 The three work-catalogue action specs pass — 6900a3f5
+- [x] 1.3 The work-catalogue-item schema spec passes — 6900a3f5
 
 ### Phase 2: Reguła auto w logice
 
 #### Automated
 
-- [ ] 2.1 New `item-to-catalogue` spec covers the per-plane rule
-- [ ] 2.2 `build-catalogue-seed` and `build-catalogue-comparison` specs pass
-- [ ] 2.3 `work-catalogue-insert` and `work-catalogue-save` specs pass
+- [x] 2.1 New `item-to-catalogue` spec covers the per-plane rule
+- [x] 2.2 `build-catalogue-seed` and `build-catalogue-comparison` specs pass
+- [x] 2.3 `work-catalogue-insert` and `work-catalogue-save` specs pass
 
 ### Phase 3: UI — auto jako świadomy wybór
 

@@ -24,17 +24,22 @@ const asPricing = (source: CatalogueSourceItemT): ViewPricingT => ({
   ownToolsOverrideValue: source.ownToolsOverrideValue,
   note: null,
   globalDiscountActive: false,
-  globalWToolsCoeff: source.wToolsCoeff,
-  globalOwnToolsCoeff: source.ownToolsCoeff,
+  // Unreachable: only a plane with its own nadpisanie is priced here, and neither a kwota nor a
+  // mnożnik consults a global współczynnik.
+  globalWToolsCoeff: 0,
+  globalOwnToolsCoeff: 0,
 })
 
 /**
  * The cennik row a praca from the rozpiska implies.
  *
- * Both stawki are the EFFECTIVE ones — a pozycja that overrides nothing freezes what the
- * inwestycja's globals make of its cena, because that is the number the owner is looking at when he
- * decides the praca is worth saving. Cena is the pre-rabat `clientPrice`: a rabat is a concession on
- * one offer, never part of the cennik.
+ * Each stawka is decided SEPARATELY, and the question is whether this pozycja said anything of its
+ * own about that plane. Its own nadpisanie — kwota or mnożnik — is a decision, so the effective
+ * kwota is frozen into the cennik. No nadpisanie means the pozycja was only riding the
+ * inwestycja's global współczynnik, and freezing that would weld one investment's współczynnik into
+ * a cennik every future investment reads — so the plane goes in as `null` = „auto" and prices off
+ * whichever inwestycja the praca lands in next. Cena is the pre-rabat `clientPrice`: a rabat is a
+ * concession on one offer, never part of the cennik.
  */
 export function toCatalogueCandidate(source: CatalogueSourceItemT): CatalogueSeedItemT {
   const pricing = asPricing(source)
@@ -46,8 +51,9 @@ export function toCatalogueCandidate(source: CatalogueSourceItemT): CatalogueSee
     category: category || null,
     unit,
     clientPrice: source.clientPrice,
-    wToolsRate: subcontractorPrice(pricing, 'w_tools'),
-    ownToolsRate: subcontractorPrice(pricing, 'own_tools'),
+    wToolsRate: source.wToolsOverrideType === null ? null : subcontractorPrice(pricing, 'w_tools'),
+    ownToolsRate:
+      source.ownToolsOverrideType === null ? null : subcontractorPrice(pricing, 'own_tools'),
     matchKey: catalogueKey(description, unit),
   }
 }

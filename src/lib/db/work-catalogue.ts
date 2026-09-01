@@ -1,7 +1,6 @@
 // No `server-only` here: the katalog seed script runs these helpers under tsx, where it throws
 // (same reason as kosztorys-descriptions.ts).
 import { sql } from '@payloadcms/db-vercel-postgres'
-import { DEFAULT_COEFFS } from '@/lib/kosztorys/constants'
 import type { SubcontractorOverrideTypeT } from '@/lib/kosztorys/types'
 import type {
   CatalogueSeedItemT,
@@ -99,9 +98,9 @@ export async function insertCatalogueItems(
 }
 
 /**
- * Everything „Zapisz do katalogu…" needs about one praca, read by its id: the pozycja's own numbers,
- * the sekcja it sits in (the proposed kategoria) and the inwestycja's global coefficients — a praca
- * with no override prices off THOSE, so the katalog would otherwise freeze a rate nobody offered.
+ * Everything „Zapisz do katalogu…" needs about one praca, read by its id: the pozycja's own numbers
+ * and the sekcja it sits in (the proposed kategoria). Not the inwestycja's global współczynniki — a
+ * plane with no nadpisanie goes to the cennik as „auto" rather than freezing a rate nobody offered.
  */
 export async function getCatalogueSourceItem(
   db: DbExecutorT,
@@ -111,11 +110,9 @@ export async function getCatalogueSourceItem(
     SELECT ki.description, ki.unit, ki.client_price,
            ki.w_tools_override_type, ki.w_tools_override_value,
            ki.own_tools_override_type, ki.own_tools_override_value,
-           ks.name AS section_name,
-           inv.w_tools_coeff, inv.own_tools_coeff
+           ks.name AS section_name
     FROM kosztorys_items ki
     JOIN kosztorys_sections ks ON ks.id = ki.section_id
-    JOIN investments inv ON inv.id = ki.investment_id
     WHERE ki.id = ${itemId}
   `)
   const row = result.rows[0]
@@ -133,9 +130,6 @@ export async function getCatalogueSourceItem(
     wToolsOverrideValue: Number(row.w_tools_override_value),
     ownToolsOverrideType: overrideType(row.own_tools_override_type),
     ownToolsOverrideValue: Number(row.own_tools_override_value),
-    wToolsCoeff: row.w_tools_coeff == null ? DEFAULT_COEFFS.wTools : Number(row.w_tools_coeff),
-    ownToolsCoeff:
-      row.own_tools_coeff == null ? DEFAULT_COEFFS.ownTools : Number(row.own_tools_coeff),
   }
 }
 

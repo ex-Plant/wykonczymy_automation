@@ -19,6 +19,7 @@ const PRESET = Number(process.env.PRESET)
 const APPLY = process.argv.includes('--apply')
 
 const money = (value: number) => value.toFixed(2)
+const rate = (value: number | null) => (value === null ? 'auto' : `${money(value)} zł`)
 
 async function main() {
   if (!Number.isFinite(PRESET)) {
@@ -35,7 +36,7 @@ async function main() {
     process.exit(1)
   }
 
-  const { items, conflicts } = buildCatalogueSeed(preset.payload, preset.payload.settings)
+  const { items, conflicts } = buildCatalogueSeed(preset.payload)
   const existing = await listCatalogueMatchKeys(db)
   const fresh = items.filter((item) => !existing.has(item.matchKey))
 
@@ -56,7 +57,7 @@ async function main() {
       for (const occurrence of conflict.occurrences)
         console.log(
           `    ${occurrence.sectionName || '(bez sekcji)'}: ${money(occurrence.clientPrice)} zł` +
-            ` / z narz. ${money(occurrence.wToolsRate)} zł / bez narz. ${money(occurrence.ownToolsRate)} zł`,
+            ` / z narz. ${rate(occurrence.wToolsRate)} / bez narz. ${rate(occurrence.ownToolsRate)}`,
         )
     }
   }

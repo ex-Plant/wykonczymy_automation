@@ -2,7 +2,6 @@ import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from 'vitest
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
-import { DEFAULT_COEFFS } from '@/lib/kosztorys/constants'
 import { catalogueKey } from '@/lib/kosztorys/work-catalogue/catalogue-key'
 
 // „Zapisz do katalogu…", against the REAL DB and asserting the PERSISTED cennik row. What the return
@@ -31,7 +30,6 @@ describe.skipIf(!ENV_READY)('saveItemToCatalogueAction (DB)', () => {
   let db: Awaited<ReturnType<typeof getDb>>
   let investmentId: number
   let sectionId: number
-  let coeffs: { wTools: number; ownTools: number } = DEFAULT_COEFFS
   let suffix = ''
   const createdSections: number[] = []
   const ctx = { context: { skipRevalidation: true } }
@@ -52,18 +50,6 @@ describe.skipIf(!ENV_READY)('saveItemToCatalogueAction (DB)', () => {
     const investment = investments.docs[0]
     if (!investment) throw new Error('no investment in the DB to attach test fixtures to')
     investmentId = Number(investment.id)
-
-    // Read rather than set: the inwestycja is shared fixture data, and the assertion only needs to
-    // know WHICH number the stawka should be derived from.
-    const settings = await db.execute(sql`
-      SELECT w_tools_coeff, own_tools_coeff FROM investments WHERE id = ${investmentId}
-    `)
-    const row = settings.rows[0]
-    coeffs = {
-      wTools: row?.w_tools_coeff == null ? DEFAULT_COEFFS.wTools : Number(row.w_tools_coeff),
-      ownTools:
-        row?.own_tools_coeff == null ? DEFAULT_COEFFS.ownTools : Number(row.own_tools_coeff),
-    }
 
     const users = await payload.find({ collection: 'users', limit: 1, depth: 0 })
     const firstUser = users.docs[0]
@@ -131,7 +117,7 @@ describe.skipIf(!ENV_READY)('saveItemToCatalogueAction (DB)', () => {
     return result.rows
   }
 
-  it('zamraża stawki wyliczone z globalnych współczynników inwestycji', async () => {
+  it('pozycja bez własnego nadpisania trafia do cennika jako „auto"', async () => {
     const description = `Malowanie bez nadpisania ${suffix}`
     const itemId = await createItem(description)
 
@@ -140,10 +126,9 @@ describe.skipIf(!ENV_READY)('saveItemToCatalogueAction (DB)', () => {
 
     const [row] = await catalogueRow(description)
     expect(Number(row.client_price)).toBe(100)
-    expect(Number(row.w_tools_rate)).toBeCloseTo(100 * coeffs.wTools, 6)
-    expect(Number(row.own_tools_rate)).toBeCloseTo(100 * coeffs.ownTools, 6)
-    // The two failures the derivation could hide: no stawka at all, or the coefficient stored raw.
-    expect(Number(row.w_tools_rate)).toBeGreaterThan(1)
+    // NULL, not 0: a 0 zł stawka is a decision the cennik would freeze, „auto" is the absence of one.
+    expect(row.w_tools_rate).toBeNull()
+    expect(row.own_tools_rate).toBeNull()
     // Kategoria = the sekcja without its instance number.
     expect(row.category).toBe(`Łazienka ${suffix}`)
   })

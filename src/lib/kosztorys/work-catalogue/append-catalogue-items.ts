@@ -10,9 +10,11 @@ import type {
   WorkCatalogueItemT,
 } from '@/lib/kosztorys/work-catalogue/types'
 
-// Both stawki land as FROZEN amounts, never as coefficients: the katalog's numbers are the ones the
-// owner approved, and a coefficient would re-derive them from the target investment's globals the
-// moment the row arrived.
+// A katalog kwota lands as a FROZEN amount, never as a coefficient: it is the number the owner
+// approved, and a coefficient would re-derive it from the target investment's globals the moment
+// the row arrived. A katalog „auto" (`null`) is the opposite instruction — the cennik named no
+// stawka — so it lands as NO nadpisanie and `subcontractorPrice` derives it from this
+// investment's global współczynnik, exactly as a hand-typed pozycja would.
 const asItem = (
   catalogueItem: WorkCatalogueItemT,
   sectionId: number,
@@ -28,15 +30,16 @@ const asItem = (
   discountType: null,
   discountValue: 0,
   clientPrice: catalogueItem.clientPrice,
-  wToolsOverrideType: 'amount',
-  wToolsOverrideValue: catalogueItem.wToolsRate,
-  ownToolsOverrideType: 'amount',
-  ownToolsOverrideValue: catalogueItem.ownToolsRate,
+  wToolsOverrideType: catalogueItem.wToolsRate === null ? null : 'amount',
+  wToolsOverrideValue: catalogueItem.wToolsRate ?? 0,
+  ownToolsOverrideType: catalogueItem.ownToolsRate === null ? null : 'amount',
+  ownToolsOverrideValue: catalogueItem.ownToolsRate ?? 0,
   note: null,
 })
 
-// With both planes frozen to amounts the global coefficients are unreachable, so the guard needs no
-// investment context to reach its verdict.
+// Only planes frozen to an amount are ever passed to the guard (see `warnings` below), and on those
+// the global coefficients are unreachable — so the guard needs no investment context to reach its
+// verdict.
 const asPricing = (item: KosztorysItemT): ViewPricingT => ({
   ...item,
   globalDiscountActive: false,
@@ -72,10 +75,15 @@ export async function appendCatalogueItems(
     asItem(catalogueItem, sectionId, owner.nextDisplayOrder + i),
   )
 
+  // An „auto" plane is skipped rather than checked: there is no stawka yet to take 80% of, and the
+  // one the współczynnik will imply is checked in the rozpiska like every other derived row. Same
+  // silence the guard already keeps when cena j.m. is 0.
   const warnings = items.flatMap((item) => {
-    const problems = (['w_tools', 'own_tools'] as const).flatMap(
-      (plane) => checkSubcontractorPrice(asPricing(item), plane) ?? [],
-    )
+    const problems = (['w_tools', 'own_tools'] as const)
+      .filter((plane) =>
+        plane === 'w_tools' ? item.wToolsOverrideType !== null : item.ownToolsOverrideType !== null,
+      )
+      .flatMap((plane) => checkSubcontractorPrice(asPricing(item), plane) ?? [])
     return problems.map((problem) => `„${item.description}": ${problem}`)
   })
 

@@ -1,5 +1,5 @@
 import { MONEY_TOLERANCE, subcontractorPrice } from '@/lib/kosztorys/calc'
-import type { SnapshotPayloadT, SnapshotSettingsT } from '@/lib/kosztorys/snapshot-format'
+import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
 import type { KosztorysItemT, ViewPricingT } from '@/lib/kosztorys/types'
 import { catalogueKey } from '@/lib/kosztorys/work-catalogue/catalogue-key'
 import { stripSectionOrdinal } from '@/lib/kosztorys/work-catalogue/section-category'
@@ -39,10 +39,32 @@ function winningValue(values: readonly number[]): number {
   return winner / GROSZ
 }
 
+/**
+ * Same rule for a stawka, where „auto" (`null`) is a fourth possible answer and counts as its own
+ * bucket. On a tie a kwota beats auto: a typed kwota is a decision somebody made, auto is what a
+ * pozycja looks like when nobody made one.
+ */
+function winningRate(values: readonly (number | null)[]): number | null {
+  const amounts = values.filter((value) => value !== null)
+  const autoCount = values.length - amounts.length
+  if (amounts.length === 0) return null
+  const winner = winningValue(amounts)
+  const winnerCount = amounts.filter((value) => Math.abs(value - winner) <= MONEY_TOLERANCE).length
+  return autoCount > winnerCount ? null : winner
+}
+
 const CONFLICT_FIELDS: readonly SeedConflictFieldT[] = ['clientPrice', 'wToolsRate', 'ownToolsRate']
 
-const disagrees = (occurrences: readonly SeedOccurrenceT[], field: SeedConflictFieldT) =>
-  occurrences.some((o) => Math.abs(o[field] - occurrences[0][field]) > MONEY_TOLERANCE)
+// „auto" against a kwota is a genuine rozbieżność — the szablon says two different things about how
+// that plane is priced — so a missing value is not folded into the numeric comparison.
+const disagrees = (occurrences: readonly SeedOccurrenceT[], field: SeedConflictFieldT) => {
+  const first = occurrences[0][field]
+  return occurrences.some((o) =>
+    o[field] === null || first === null
+      ? o[field] !== first
+      : Math.abs(o[field] - first) > MONEY_TOLERANCE,
+  )
+}
 
 type GroupT = { description: string; unit: string; occurrences: SeedOccurrenceT[] }
 
@@ -52,21 +74,21 @@ type GroupT = { description: string; unit: string; occurrences: SeedOccurrenceT[
  * Pure on purpose: the interesting behaviour is the winner rule over hundreds of real occurrences,
  * and that has to be assertable without a database. The script that writes the rows does the I/O.
  *
- * `settings` carries the investment's global współczynniki, and dropping them would be silent, not
- * loud: `subcontractorPrice` reads a missing coefficient as 0, so every praca without its own
- * nadpisanie (137 of 373 on the current szablon) would seed a 0 zł stawka.
+ * The szablon investment's global współczynniki take no part: only a plane carrying its OWN
+ * nadpisanie is priced at all, and neither a kwota nor a mnożnik reads a global. A plane without
+ * one (137 of 373 prac on the current szablon) seeds as „auto" instead.
  */
-export function buildCatalogueSeed(
-  payload: SnapshotPayloadT,
-  settings: SnapshotSettingsT,
-): { items: CatalogueSeedItemT[]; conflicts: SeedConflictT[] } {
+export function buildCatalogueSeed(payload: SnapshotPayloadT): {
+  items: CatalogueSeedItemT[]
+  conflicts: SeedConflictT[]
+} {
   const sectionName = new Map(payload.sections.map((section) => [section.id, section.name]))
 
   const asPlanePricing = (item: KosztorysItemT): ViewPricingT => ({
     ...item,
     globalDiscountActive: false,
-    globalWToolsCoeff: settings.wToolsCoeff,
-    globalOwnToolsCoeff: settings.ownToolsCoeff,
+    globalWToolsCoeff: 0,
+    globalOwnToolsCoeff: 0,
   })
 
   const groups = new Map<string, GroupT>()
@@ -79,8 +101,17 @@ export function buildCatalogueSeed(
     group.occurrences.push({
       sectionName: stripSectionOrdinal(sectionName.get(item.sectionId) ?? ''),
       clientPrice: item.clientPrice,
-      wToolsRate: subcontractorPrice(asPlanePricing(item), 'w_tools'),
-      ownToolsRate: subcontractorPrice(asPlanePricing(item), 'own_tools'),
+      // Same rule as „Zapisz do katalogu…": a pozycja that overrode nothing was only riding the
+      // szablon investment's współczynnik, so it seeds as „auto" rather than welding that
+      // współczynnik into the global cennik.
+      wToolsRate:
+        item.wToolsOverrideType === null
+          ? null
+          : subcontractorPrice(asPlanePricing(item), 'w_tools'),
+      ownToolsRate:
+        item.ownToolsOverrideType === null
+          ? null
+          : subcontractorPrice(asPlanePricing(item), 'own_tools'),
     })
     groups.set(key, group)
   }
@@ -102,8 +133,8 @@ export function buildCatalogueSeed(
       category: winner.sectionName || null,
       unit: group.unit,
       clientPrice,
-      wToolsRate: winningValue(occurrences.map((o) => o.wToolsRate)),
-      ownToolsRate: winningValue(occurrences.map((o) => o.ownToolsRate)),
+      wToolsRate: winningRate(occurrences.map((o) => o.wToolsRate)),
+      ownToolsRate: winningRate(occurrences.map((o) => o.ownToolsRate)),
       matchKey,
     })
 

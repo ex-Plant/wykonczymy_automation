@@ -45,8 +45,9 @@ export type SeedConflictT = {
   occurrences: SeedOccurrenceT[]
 }
 
-// One praca from a rozpiska as „Zapisz do katalogu…" reads it: its own numbers plus the inwestycja's
-// global coefficients, without which a pozycja that overrides nothing has no stawka to freeze.
+// One praca from a rozpiska as „Zapisz do katalogu…" reads it. The inwestycja's global
+// współczynniki are deliberately absent: a plane with no nadpisanie of its own goes to the cennik as
+// „auto", so there is nothing left for a global to price.
 export type CatalogueSourceItemT = {
   description: string
   unit: string
@@ -56,8 +57,6 @@ export type CatalogueSourceItemT = {
   wToolsOverrideValue: number
   ownToolsOverrideType: SubcontractorOverrideTypeT | null
   ownToolsOverrideValue: number
-  wToolsCoeff: number
-  ownToolsCoeff: number
 }
 
 // What the „Zapisz do katalogu…" dialog renders: the row that WOULD be written, and the cennik row
