@@ -439,17 +439,17 @@ Uruchamiane **raz**, po ostatniej fazie.
 
 #### Automated
 
-- [x] 1.1 Spec klucza przechodzi
-- [x] 1.2 Spec wsadu wzoru nadal przechodzi
-- [x] 1.3 Katalog ma 194 wiersze i zero duplikatów klucza po przeliczeniu
+- [x] 1.1 Spec klucza przechodzi — f8476290
+- [x] 1.2 Spec wsadu wzoru nadal przechodzi — f8476290
+- [x] 1.3 Katalog ma 194 wiersze i zero duplikatów klucza po przeliczeniu — f8476290
 
 ### Phase 2: Przebieg A — zassanie arkuszy na dysk
 
 #### Automated
 
-- [ ] 2.1 Katalog roboczy zawiera plik dla każdego z 57 arkuszy
-- [ ] 2.2 Powtórne uruchomienie nie odpytuje Google
-- [ ] 2.3 Przebieg kończy się kodem 0 mimo arkuszy nieprzeczytanych
+- [x] 2.1 Katalog roboczy zawiera plik dla każdego z 57 arkuszy
+- [x] 2.2 Powtórne uruchomienie nie odpytuje Google
+- [x] 2.3 Przebieg kończy się kodem 0 mimo arkuszy nieprzeczytanych
 
 ### Phase 3: Przebieg B — analiza offline i raport
 
