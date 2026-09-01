@@ -49,64 +49,85 @@ const twoLines = (first: string, second: string) => () => (
 
 const SHARE_TOOLTIP = `Udział stawki w cenie j.m. Powyżej ${MAX_CLIENT_SHARE * 100}% na czerwono.`
 
+const descriptionColumn = col.accessor('description', {
+  id: 'description',
+  header: 'Opis pracy',
+  meta: { minWidth: 'min-w-96' },
+  cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+})
+
+const categoryColumn = col.accessor((row) => row.category ?? '', {
+  id: 'category',
+  header: 'Kategoria',
+  cell: (info) => <span className="text-muted-foreground text-sm">{info.getValue()}</span>,
+})
+
+const unitColumn = col.accessor('unit', {
+  id: 'unit',
+  header: 'j.m.',
+  cell: (info) => <span className="text-muted-foreground text-sm">{info.getValue()}</span>,
+})
+
+const clientPriceColumn = col.accessor('clientPrice', {
+  id: 'clientPrice',
+  header: 'Cena j.m.',
+  cell: (info) => money(info.getValue()),
+})
+
+const wToolsRateColumn = col.accessor('wToolsRate', {
+  id: 'wToolsRate',
+  header: twoLines('Stawka z', 'narzędziami'),
+  meta: { label: 'Stawka z narzędziami' },
+  cell: (info) => money(info.getValue()),
+})
+
+const wToolsShareColumn = col.accessor((row) => shareOf(row.wToolsRate, row.clientPrice), {
+  id: 'wToolsShare',
+  header: twoLines('% ceny klienta', 'z narzędziami'),
+  meta: { tooltip: SHARE_TOOLTIP, label: '% ceny klienta z narzędziami' },
+  cell: (info) => share(info.getValue()),
+})
+
+const ownToolsRateColumn = col.accessor('ownToolsRate', {
+  id: 'ownToolsRate',
+  header: twoLines('Stawka bez', 'narzędzi'),
+  meta: { label: 'Stawka bez narzędzi' },
+  cell: (info) => money(info.getValue()),
+})
+
+const ownToolsShareColumn = col.accessor((row) => shareOf(row.ownToolsRate, row.clientPrice), {
+  id: 'ownToolsShare',
+  header: twoLines('% ceny klienta', 'bez narzędzi'),
+  meta: { tooltip: SHARE_TOOLTIP, label: '% ceny klienta bez narzędzi' },
+  cell: (info) => share(info.getValue()),
+})
+
+// „Dodaj pracę z katalogu" reads the cennik to pick from it, never to tune it — so the udział
+// columns (the instrument for setting a stawka) and „Akcje" stay behind on /katalog-prac. They sit
+// in the middle of the order, which is why the two lists are assembled rather than sliced.
+export const WORK_CATALOGUE_PICKER_COLUMNS = [
+  descriptionColumn,
+  categoryColumn,
+  unitColumn,
+  clientPriceColumn,
+  wToolsRateColumn,
+  ownToolsRateColumn,
+]
+
 export function getWorkCatalogueColumns({
   categorySuggestions,
 }: {
   categorySuggestions: readonly string[]
 }) {
   return [
-    col.accessor('description', {
-      id: 'description',
-      header: 'Opis pracy',
-      meta: { minWidth: 'min-w-96' },
-      cell: (info) => <span className="font-medium">{info.getValue()}</span>,
-    }),
-
-    col.accessor((row) => row.category ?? '', {
-      id: 'category',
-      header: 'Kategoria',
-      cell: (info) => <span className="text-muted-foreground text-sm">{info.getValue()}</span>,
-    }),
-
-    col.accessor('unit', {
-      id: 'unit',
-      header: 'j.m.',
-      cell: (info) => <span className="text-muted-foreground text-sm">{info.getValue()}</span>,
-    }),
-
-    col.accessor('clientPrice', {
-      id: 'clientPrice',
-      header: 'Cena j.m.',
-      cell: (info) => money(info.getValue()),
-    }),
-
-    col.accessor('wToolsRate', {
-      id: 'wToolsRate',
-      header: twoLines('Stawka z', 'narzędziami'),
-      meta: { label: 'Stawka z narzędziami' },
-      cell: (info) => money(info.getValue()),
-    }),
-
-    col.accessor((row) => shareOf(row.wToolsRate, row.clientPrice), {
-      id: 'wToolsShare',
-      header: twoLines('% ceny klienta', 'z narzędziami'),
-      meta: { tooltip: SHARE_TOOLTIP, label: '% ceny klienta z narzędziami' },
-      cell: (info) => share(info.getValue()),
-    }),
-
-    col.accessor('ownToolsRate', {
-      id: 'ownToolsRate',
-      header: twoLines('Stawka bez', 'narzędzi'),
-      meta: { label: 'Stawka bez narzędzi' },
-      cell: (info) => money(info.getValue()),
-    }),
-
-    col.accessor((row) => shareOf(row.ownToolsRate, row.clientPrice), {
-      id: 'ownToolsShare',
-      header: twoLines('% ceny klienta', 'bez narzędzi'),
-      meta: { tooltip: SHARE_TOOLTIP, label: '% ceny klienta bez narzędzi' },
-      cell: (info) => share(info.getValue()),
-    }),
+    descriptionColumn,
+    categoryColumn,
+    unitColumn,
+    clientPriceColumn,
+    wToolsRateColumn,
+    wToolsShareColumn,
+    ownToolsRateColumn,
+    ownToolsShareColumn,
 
     col.display({
       id: 'actions',
