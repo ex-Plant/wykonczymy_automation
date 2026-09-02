@@ -777,6 +777,33 @@
   that is NOT NULL **without** a DEFAULT breaks every stored payload however additive it looks,
   because `insertKosztorysTree` only defaults the NOT NULL DEFAULT columns and `display_order`.
 
+## A tolerance the code relies on must be a TYPE, or the dead-code rule licenses deleting it
+
+- **Context**: extending kosztorys snapshot retention from 7 days to a year (2026-09-02) made "an old
+  stored payload restores correctly" load-bearing for the first time. Every numeric column on the tree
+  tables is NOT NULL DEFAULT 0, and a payload captured before a column existed simply has no key —
+  which binds an explicit NULL, and Postgres does **not** substitute a DEFAULT for an explicit NULL
+  (23502). The insert path therefore carries a `?? 0` on each of them.
+- **Problem**: those fallbacks were typed against the strict `SnapshotPayloadT`, where the fields are
+  required — so to `tsc` every `??` was a dead branch. This repo gates dead-code removal on a green
+  typecheck (deliberately, see the dead-code lesson), which means the next cleanup pass would have
+  been told it may delete the exact guards a year of retention depends on, and the typecheck would
+  have agreed. A comment saying "these are load-bearing" is not evidence a tool reads.
+- **Rule**: when stored data may legitimately be shaped differently from what today's serializer
+  writes, declare that in a second type (`StoredSnapshotPayloadT` = the strict type with exactly the
+  NOT NULL DEFAULT columns marked optional) and give the discharging function the **strict** type as
+  its return. Then the compiler, not a comment, guarantees each optional field got filled, and the
+  fallbacks stop looking dead. Thread the tolerant type through _every_ reader of the stored payload —
+  restore, presets, catalogue seed — because they share the exposure; the discharge point is the
+  payload boundary, not the SQL bind, since the same primitives are also called with rows built in
+  code where a missing value is a caller bug to surface.
+- **Applies to**: `src/lib/kosztorys/snapshot-format.ts`, and any other jsonb payload read back after
+  the schema it was written against has moved on.
+- **Aside on the premise**: the old 7-day / 50-row limits were never derived — the S-06 brief filed
+  them as "starting points". Measuring killed the only argument for keeping them: a snapshot is
+  **~23 KB** stored, so the entire old ceiling was ~1,2 MB per investment. Measure before defending a
+  placeholder.
+
 ## Migration filenames sort lexically — the unpadded counter breaks at 10
 
 - **Context**: migrations are `YYYYMMDD_<seq>_<snake_case>.ts` with a single-digit unpadded counter
