@@ -33,6 +33,7 @@ export function useSearchFilter<TItem>(data: TItem[], getSearchableText: (item: 
   const deferredTerm = useDeferredValue(searchTerm)
 
   const haystacks = useMemo(() => foldHaystacks(data, getSearchableText), [data, getSearchableText])
+
   const filteredData = useMemo(
     () => filterBySearch(data, haystacks, deferredTerm),
     [data, haystacks, deferredTerm],

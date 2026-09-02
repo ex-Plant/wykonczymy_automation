@@ -1,4 +1,4 @@
-# Review-gate ledger — katalog-prac-auto-rates · 2026-09-01
+753 # Review-gate ledger — katalog-prac-auto-rates · 2026-09-01
 
 Zakres: `6900a3f5~1..bbbc8989` (24 pliki). Fan-out: 10x-impl-review, code-review,
 tailwind-v4-audit, feature-first-structure, module-cohesion-audit, structure-scatter-audit,
@@ -6,6 +6,8 @@ comment-noise-audit. Step 0.5 (verification pass) pominięty — repo nie ma ski
 
 ## Findings
 
+- [x] 🔴 CRITICAL · fixed · `verify` · `src/components/forms/work-catalogue-item/work-catalogue-item-form.tsx:139` · zaznaczenie „auto" PO nieudanym submicie odmontowuje pole kwoty razem z jego błędem, którego walidator formularza już nie kasuje — `isValid` zostaje `false`, `handleSubmit` nie odpala schematu i żaden kolejny submit nie przechodzi; formularz zablokowany na amen — listener na `${plane}Auto` woła `form.resetField(`${plane}Rate`)`, kwota znika razem ze swoim błędem
+      test: test-driven-debugging · e2e — zachowanie żyje w meta pól TanStacka, a repo nie ma harnessu `renderHook`; odłożone do EX-756 (szóste ryzyko, komentarz z 2026-09-01)
 - [x] 🟡 WARNING · fixed · `code-review` · `src/components/forms/work-catalogue-item/work-catalogue-item-form.tsx:129` · oba plany renderują identyczną etykietę „Auto — licz ze współczynnika inwestycji", a jedyne co nazywa plan (input) znika po zaznaczeniu — przy obu zaznaczonych nie da się odróżnić, który jest który — etykieta przełącznika niesie teraz nazwę planu („Stawka z narzędziami: auto — ze współczynnika inwestycji"), `label` wyprowadzana z `plane`
       test: no automated test · — czysto wizualne; nazwa planu w etykiecie jest widoczna gołym okiem, a asercja na string etykiety testowałaby copy, nie zachowanie
 - [x] 🟡 WARNING · fixed · `impl-review` · `src/__tests__/lib/actions/work-catalogue-insert.test.ts` · brak testu: plan auto wpisuje `overrideType: null`, a pułap 80% dla niego milczy — dopisane „praca «auto» ląduje bez nadpisania i nie budzi pułapu 80%"
@@ -59,3 +61,25 @@ bramka trzyma jeden rejestr.
 - specy DB @ 5435 (`work-catalogue.test.ts`, `work-catalogue-insert.test.ts`) — 13 testów, zielone
 - `tsc --noEmit` — czysto; `eslint` na 13 zmienionych plikach — czysto; `prettier` — bez zmian
 - pełny pakiet (lint / build / e2e) — nie uruchamiany, do decyzji właściciela
+- `tsc --noEmit` po naprawie przełącznika „auto" — czysto
+
+## Manualne checki (Playwright, 2026-09-01)
+
+Przejechane skryptem Playwright na lokalnej bazie (`wykonczymy-db:5433`), inwestycja 9
+„Al. Rzeczypospolitej 21/25" (współczynniki 0,65 / 0,5525). Wszystkie pięć checków wychodzi
+zgodnie z opisem — właściciel odklikuje je sam, tu zapis obserwacji:
+
+1. Nowa praca „bez narzędzi" na auto zapisuje się, a `/katalog-prac` pokazuje „auto" w kolumnie
+   stawki i „—" w kolumnie `%`. W bazie `own_tools_rate IS NULL`.
+2. Odznaczone auto przy pustym polu daje „Stawka bez narzędzi jest wymagana" pod polem.
+3. Edycja pracy z auto otwiera formularz z zaznaczonym przełącznikiem tego planu, a jego pole
+   kwoty jest schowane; drugi plan zostaje kwotowy.
+4. „Zapisz do katalogu…" pokazuje „auto" w „W katalogu" i „Po zapisie", a potwierdzenie
+   nadpisania mówi „stawka z narzędziami auto → auto, bez narzędzi auto → auto".
+5. Wstawiona z katalogu praca auto ma w rozpisce „Źródło ceny wykonawcy = auto", pustą komórkę
+   mnożnika (podpowiedź 0,5525) i cenę 55,25 zł z ceny 100 zł — czyli ze współczynnika
+   inwestycji; drugi plan zostaje „kwota stała" 60 zł. Wybieranie z katalogu pokazuje „auto"
+   również na liście w dialogu.
+
+Po drodze wypadł jeden realny bug (pierwsza pozycja w `## Findings`) — naprawiony i przejechany
+ponownie na zielono.

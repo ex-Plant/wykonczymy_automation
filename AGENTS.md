@@ -218,6 +218,10 @@ Prefer hand-editing `@package.json` over `pnpm remove` / `pnpm install`. On this
   is a point-in-time copy, so an invoice newer than the last restore 404s locally; top it up with
   `pnpm blob:refresh:preview` (needs `lftp`; caches the FTP mirror in `dumps/blob-mirror`, uploads at
   most `BLOB_REFRESH_MAX` files per run). Detail: `context/reference/blob-recovery-runbook.md` §3.
+- **Dumpy starych arkuszy klientów leżą poza gitem** — `~/.local/share/wykonczymy-legacy-sheets/`
+  (kopia w `dumps/legacy-sheets/`, wycięta przez `.gitignore`): 57 arkuszy + `raport.md`. Skrypty,
+  które je pobrały, są skasowane i żyją tylko w historii. Mapa:
+  `context/reference/legacy-sheet-dumps.md`.
 - Never `git push`; a human pushes to remotes.
 
 ## Architecture
