@@ -2823,17 +2823,8 @@ Setup: baza testowa 5435, zalogowany jako OWNER. Dodaj dwa pojazdy — jeden `W 
 ### Faza 2: Zawężenie reguły odczytu
 
 - [ ] „Porównaj z arkuszem…" na inwestycji 65 raportuje prace, których Pomiar był wcześniej odrzucany, a menu „Problemy" pokazuje niezerowe „z pomiarem do rozpisania na etapy"
-- [x] Na inwestycji, której arkusz jest pustą ofertą (pomiar = suma etapów w każdym wierszu), licznik dalej wynosi 0
-      _Verified: inw. 135 (pomiar = Σetapów w każdym wierszu, EX-489) — menu „Problemy" nie zawiera pozycji „z pomiarem do rozpisania na etapy" wcale (licznik 0, ukryte). Potwierdzone w kodzie: `problemsMenuModel` (`src/components/kosztorys/editor/toolbar/menus/problems-menu-model.ts`) filtruje `.filter((problem) => problem.count > 0 || engagedIds.has(problem.id))` — warunek o id `measure-diverged`/label „z pomiarem do rozpisania na etapy" (`src/lib/kosztorys/row-conditions.ts:265-274`) przy count=0 jest nieobecny, nie pokazany jako „(0)"._
-- [x] Ponowne otwarcie tego samego okna raportuje „już zgodne" — nic nie zostaje przepisane
-      _Verified: inw. 135, trzykrotne uruchomienie „Porównaj z arkuszem Google" (przy trzech różnych stanach rabatu globalnego) — za każdym razem sekcja „Jak odczytaliśmy arkusz Google" raportowała „Zapisany Pomiar z natury był już zgodny z arkuszem Google.", bez zmiany po żadnym przebiegu._
-- [x] Podgląd inwestora nie ma kolumny „Rozjazd" ani menu „Problemy"
-      _Verified: link współdzielony inw. 135 (`/k/B9qCeV1pu1oR_6lR4ojVaFCfWO5nFXvG`) — pełne przeszukanie strony (`browser_find` regex `Rozjazd|Problemy`) nie znalazło ani jednego dopasowania._
 
 ### Faza 3: Komentarze i zapis
-
-- [x] Żaden z dwóch dokumentów referencyjnych nie twierdzi już, że kolumna „Rozjazd" jest ślepa na `=N#`
-      _Verified: `context/reference/kosztorys-sheet/formula-anomalies.md` (wniosek 2, linie 84-92) i `context/reference/kosztorys-editor-domain-notes.md` (linie 791-795) opisują dawną ślepotę wyłącznie jako historię z jawną datą rozstrzygnięcia („Zamknięte"/„Odwrócone (właściciel, 2026-08-20)"/„Zawężone 2026-08-20") — żaden z nich nie twierdzi dziś, że kolumna „Rozjazd" jest ślepa na `=N#`._
 
 ### Findings — 2026-08-26
 
@@ -2872,10 +2863,6 @@ Setup: baza testowa 5435 — pełny reset to trzy kroki (`pnpm db:import:test`, 
 z wypłatami dla podwykonawców (w tym jedną bez przypisanego pracownika) oraz inwestycja, której
 jedyne wydatki na materiał są typu „rozliczone R+M".
 
-- [x] Sesja `EMPLOYEE` na `/inwestycje/<id>/kosztorys_v2` ląduje na `/zaloguj`, nie na stronie błędu — _Verified w kodzie (brak drugiej sesji EMPLOYEE w tym przebiegu): `src/app/(frontend)/inwestycje/[id]/kosztorys_v2/page.tsx:34` woła `requireManagementPage()`, które przy nieudanej roli robi `redirect('/zaloguj')` (`src/lib/auth/require-management-page.ts`) — jawny redirect, nie throw do error boundary._
-- [x] Sesja `OWNER` dalej widzi edytor z nazwą inwestycji w okruszku i zakładką „Marża" — _Verified na żywo: OWNER (`test@test.pl`) na `/inwestycje/31/kosztorys_v2` — banner z nazwą inwestycji, „Widok podsumowania" zawiera radio „Marża"._
-- [x] Sesja `MANAGER` widzi edytor bez zakładki „Marża" — _Verified w kodzie (brak drugiej sesji MANAGER): strona przekazuje `financials={isAdminOrOwnerRole(user.role) ? financials : undefined}`; `summary-panel-content.tsx:191` liczy `hasMarginInputs: financials !== undefined && …` i tym gejtem filtruje opcję „Marża" z listy zakładek (`:42`, `:326`) — dla MANAGER `financials` jest `undefined`, więc zakładka znika._
-- [x] Nieistniejące id inwestycji dalej renderuje stronę 404 — _Verified na żywo: `/inwestycje/999999/kosztorys_v2` renderuje polski 404 („Nie znaleziono"), banner nie crashuje (ten sam test co EX-608 box 5, ta sama trasa)._
 - [ ] „Podsumowanie podwykonawców" pokazuje te same sumy per pracownik co przed zmianą — **nie zweryfikowano** (budżet czasu — patrz Findings)
 - [ ] Wypłata bez pracownika dalej figuruje jako „Bez przypisanego pracownika" i wlicza się w „Pozostało do wypłaty" — **nie zweryfikowano** (budżet czasu — patrz Findings)
 - [ ] Pracownik z przypisanymi etapami i bez wypłaty dalej dostaje swój wiersz — **nie zweryfikowano** (budżet czasu — patrz Findings)
@@ -2979,27 +2966,7 @@ Setup: baza testowa 5435, zalogowany jako OWNER, na telefonie/dysku plik `.HEIC`
 oraz **PDF powyżej 4 MB**. Zdjęcie nie nadaje się do tego testu: guard 4 MB mierzy bajty **po**
 kompresji, więc żadne zdjęcie go nie przekracza — tylko PDF (EX-457).
 
-- [x] „Edytuj przelew" → „Dodaj faktury" z plikiem `.HEIC`: przycisk „Zapisz" jest zablokowany na czas przetwarzania, a po zapisie podgląd pokazuje JPEG (nie HEIC)
-      _Verified: staging, transakcja #4683 — plik `.heic` (6 KB, wygenerowany `sips -s format heic`) wybrany przez „Dodaj faktury" i zapisany; DB (`transactions_rels`+`media`) potwierdza `iphone_test-16c592.jpg`, `mime_type = 'image/jpeg'` — konwersja HEIC→JPEG zaszła. „Zapisz zablokowany na czas przetwarzania" NIE zaobserwowano bezpośrednio — plik był mały (6 KB), a przetwarzanie zdążyło się zakończyć zanim zdążyłem zrobić snapshot po pickowaniu (żaden `[disabled]` na przycisku „Zapisz" w tym snapshot). Nie jest to sprzeczny dowód, tylko brak obserwacji — nie oznaczam tej pod-klauzuli jako osobno potwierdzonej._
-- [x] Ten sam dialog, **PDF >4 MB**: leci komunikat o odrzuceniu pliku, a **nie** błąd 413 / „Upload nie powiódł się"
-      _Verified: staging, transakcja #4682 — plik `big_pdf_test.pdf` (5 MB, losowe bajty pod rozszerzeniem `.pdf`, wystarczające bo `guardSize()` sprawdza tylko `file.size` przed jakimkolwiek parsowaniem PDF) → toast „Plik „big_pdf_test.pdf" przekracza 4 MB — zmniejsz go i spróbuj ponownie." — brak 413, brak „Upload nie powiódł się"._
-- [x] Po odrzuceniu pliku (PDF >4 MB / nieudana konwersja) picker **nie** zostaje z nazwą tego pliku — wraca do „Przeciągnij lub kliknij"
-      _Verified: w tym samym teście (transakcja #4682) — po toaście odrzucenia dialog nadal pokazywał pole „Dodaj faktury" z przyciskiem „Przeciągnij lub kliknij Choose File" (nie z nazwą `big_pdf_test.pdf`)._
-- [x] „Dodaj przegląd" z „nie zamykaj": po zapisie picker jest pusty, a nie z nazwami z poprzedniego przeglądu
-      _Verified: staging, `/flota/1`, dialog „Nowy przegląd" z zaznaczonym „Nie zamykaj po zapisaniu" — wybrano `b15_src.png` (picker pokazał nazwę), „Zapisz" → dialog zostaje otwarty (`keepOpen`), po ok. 3,5 s picker wrócił do „Przeciągnij lub kliknij" (`inputKey` remount przez `resetFiles()` w `useFormSubmit`'s `keepOpen` branch). Przy pierwszej próbie z krótszym oczekiwaniem (1,5 s) picker jeszcze pokazywał starą nazwę — to opóźnienie serwerowej akcji + `router.refresh()`, nie usterka: dłuższe oczekiwanie potwierdza poprawny reset. Wiersz „Przegląd techniczny" pokazuje teraz dwa wpisy (z tego i poprzedniego testu box 2872), każdy z własną kolumną „Załączniki" = „1" — brak nakładania się plików między zapisami._
-- [x] Wybranie pliku w tym dialogu chowa przycisk podglądu istniejących faktur; po zapisie i ponownym otwarciu przycisk wraca z nową stroną
-      _Verified: staging, inwestycja 119 („Kulisiewicza 16"), transakcja #4415 — „Edytuj transakcję" pokazywał „Podgląd faktury: telmak-kędzierski-05-08-2026-f4b4ef.pdf"; wybranie `b15_src.png` (fabrykowany PNG) przez „Dodaj faktury" natychmiast schowało przycisk podglądu (zastąpiony pickerem z nazwą nowego pliku). „Zapisz" → toast zapisu → ponowne „Edytuj transakcję" → przycisk „Podgląd faktury" wrócił z tą samą nazwą pliku (label = pierwsza strona), ale otwarty podgląd pokazuje nagłówek „telmak-kędzierski-05-08-2026-f4b4ef.pdf (1/2)" — druga strona (nowo dodana) potwierdzona._
 - [ ] Enter w polu tekstowym w trakcie przetwarzania pliku nie zapisuje przelewu bez załącznika (leci „Poczekaj na przetworzenie plików.")
-- [x] Ponowne wybranie **tego samego** pliku po nieudanym przetworzeniu znów startuje przetwarzanie
-      _Verified: staging, dialog „Edytuj transakcję" (#4415) — wybranie `b15_bad.heic` (2000 losowych bajtów pod `.heic`) dwukrotnie z rzędu przez ten sam ukryty `<input type="file">`: po pierwszym wyborze pojawił się toast „Nie udało się przekonwertować „b15_bad.heic" — zapisz jako JPG i spróbuj ponownie."; po drugim wyborze tego samego pliku (ten sam DOM `<input>`, `event.target.value=''` po pierwszym) pojawił się **drugi, niezależny** egzemplarz tego samego toastu (oba jednocześnie widoczne w regionie powiadomień) — potwierdza, że `onChange` odpalił ponownie i `ingestPicked` wystartował od nowa, a nie że drugi pick był no-opem._
-- [x] „Wyczyść formularz" **w trakcie** konwersji HEIC: po jej zakończeniu „Zapisz" i picker są znów aktywne (nie zostają zablokowane do przeładowania)
-      _Verified: staging, dialog „Edytuj transakcję" (#4415) — wybranie `b15_heic_a.heic`, ciasny poll-loop (bez sztucznych opóźnień, w jednym skrypcie Playwright) złapał przycisk „Zapisz" w stanie `disabled` (czyli `isIngesting=true`) i w tym momencie kliknięto „Wyczyść formularz". Po ~1,5 s: „Zapisz" ponownie aktywny (`isDisabled()=false`), picker wrócił do „Przeciągnij lub kliknij" — brak trwałego zablokowania wymagającego przeładowania strony._
-- [x] „Edytuj przelew" → wybierz plik → „Wyczyść formularz": picker jest pusty, a zapis **nie** dołącza pliku wybranego przed wyczyszczeniem
-      _Verified: staging, dialog „Edytuj transakcję" (#4415) — wybranie `b15_src.png` (poprawny plik, ingest kończy się sukcesem) przez ukryty `<input type="file">`: picker natychmiast pokazał `b15_src.png`, przycisk „Podgląd faktury" zniknął (`files.length > 0`). „Wyczyść formularz" → picker wrócił do „Przeciągnij lub kliknij" (pusty), przycisk „Podgląd faktury" wrócił (`files.length === 0` ponownie). „Zapisz" → dialog zamknięty. Ponowne otwarcie + podgląd faktury: nagłówek dalej „telmak-kędzierski-05-08-2026-f4b4ef.pdf (1/2)" — te same 2 strony co przed testem, PNG wybrany-i-wyczyszczony **nie** doszedł do zapisu._
-- [x] „Dodaj przegląd" (flota) — załączniki działają dokładnie jak przed zmianą
-      _Verified: staging, `/flota/1` (pojazd „ASEFASDF"), dialog „Nowy przegląd" — wybranie `b15_src.png` przez „Załączniki" pokazało nazwę pliku w pickerze (ingest ok, ten sam `useFilePickIngest` co formularz przelewu). „Zapisz" → dialog zamknięty → wiersz „Przegląd techniczny" pokazuje datę 26.08.2026 i kolumnę „Załączniki" = „1" — plik doszedł do zapisu._
-- [x] Notatki w formularzach (przelew, inwestycja, przegląd) renderują się i zapisują jak wcześniej — `rows` dociera teraz do DOM, ale `field-sizing-content` + `min-h-[68px]` i tak rządzą wysokością, więc **nie** oczekuj widocznej różnicy
-      _Verified trzy formularze na staging: (1) przelew #4415 — pole „Notatka" widoczne z istniejącą treścią w dialogu edycji (obserwowane w tym segmencie przy innych testach). (2) przegląd floty (`/flota/1`, „Nowy przegląd") — wpisano „B15 test notatka przeglądu — fabrykowana treść" w „Notatka", zapisano, wiersz „Przegląd techniczny" renderuje dokładnie tę treść. (3) inwestycja 119 — dialog „Edytuj inwestycję", pole „Notatki" puste na starcie, wpisano „B15 test notatka inwestycji — fabrykowana treść", „Zapisz" → ponowne otwarcie dialogu → `inputValue()` zwraca dokładnie ten tekst — zapis i rehydratacja poprawne. Brak widocznej różnicy wysokości pola we wszystkich trzech, zgodnie z oczekiwaniem._
 - [ ] Po backfillu: kilka przekonwertowanych faktur otwiera się i jest czytelnych oraz **poprawnie obróconych**
 - [ ] Po backfillu: miniatura tych plików pokazuje się w panelu `/admin`
 - [ ] Po backfillu: `transactions.id = 3626` dalej pokazuje swoją fakturę
@@ -3009,19 +2976,6 @@ kompresji, więc żadne zdjęcie go nie przekracza — tylko PDF (EX-457).
 Blob nie ma wersjonowania ani undelete, a lokalny dev i preview celują w **preview** store — na
 prodzie te same kliknięcia kasują fakturę zatrzymaną do celów podatkowych. Testować wyłącznie na
 bazie testowej 5435.
-
-- [x] Wielostronicowa faktura → podgląd → „usuń" na jednej stronie: pytanie brzmi „usunąć tę stronę?", po potwierdzeniu znika **tylko** ta strona, podgląd zostaje otwarty na pozostałych
-      _Verified: staging, transakcja #4688 (4 strony) — „Usuń stronę" na stronie 1/4 → alertdialog „Czy na pewno chcesz usunąć tę stronę?" → potwierdzone → podgląd zostaje otwarty, teraz „nieczytelny-d1163f.jpg (1/3)". DB (`transactions_rels`) potwierdza dokładnie 3 pozostałe strony (`mp3_page1` zniknął, `nieczytelny`/`mp3_page2`/`mp3_page3` zostały)._
-- [x] Ta sama faktura → „usuń całą fakturę": pytanie o całość, podgląd się zamyka, komórka „Faktura" nie pokazuje już nic
-      _Verified: ta sama #4688 — „Usuń całą fakturę" → alertdialog „Czy na pewno chcesz usunąć całą fakturę?" → potwierdzone → podgląd zamknięty, komórka „Faktura" pokazuje „Dodaj fakturę" (brak faktury). DB potwierdza 0 wierszy `transactions_rels` z `path='invoice'` dla #4688._
-- [x] Jednostronicowa faktura → „usuń": pytanie brzmi „usunąć fakturę?" (nie „stronę"), podgląd się zamyka
-      _Verified: transakcja #4678 (1 strona) — podgląd jednostronicowy ma inny layout (brak paginacji, jeden przycisk „Usuń", nie „Usuń stronę"/„Usuń całą fakturę"), tytuł bez „(1/N)". „Usuń" → alertdialog „Czy na pewno chcesz usunąć fakturę?" (nie „tę stronę") → potwierdzone → podgląd zamknięty, komórka „Dodaj fakturę". DB: 0 wierszy dla #4678._
-- [x] Anulowanie okna potwierdzenia (przycisk, Escape, klik w tło) nie kasuje niczego
-      _Verified: dwukrotnie — „Anuluj" na #4688 (przed usunięciem strony) i Escape na #4678 (przed usunięciem całej faktury) — oba razy DB potwierdza niezmienioną liczbę stron (4688: nadal 4; 4678: nadal 1), podgląd zostaje otwarty na tym samym pliku. Klik w tło nie testowany osobno (Escape pokrywa tę samą ścieżkę zamknięcia w Radix AlertDialog)._
-- [x] Ta sama ścieżka z „Edytuj przelew" zachowuje się identycznie jak z komórki na liście
-      _Verified: transakcja #4679 — „Edytuj transakcję" → „Podgląd faktury" wewnątrz dialogu → identyczny jednostronicowy podgląd, „Usuń" → identyczny alertdialog „Czy na pewno chcesz usunąć fakturę?" → potwierdzone → DB: 0 wierszy dla #4679, pole w dialogu edycji pokazuje brak faktury; dialog zamknięty bez zapisu innych pól._
-- [x] Po odświeżeniu strony usunięte strony **nie** wracają — a te, których nie usunięto, dalej się otwierają
-      _Verified: pełne odświeżenie `/inwestycje/135` po usunięciu #4678 — wiersz #4678 nadal pokazuje „Dodaj fakturę" (nie wróciła), a nieusunięte #4686/#4680 dalej pokazują swoje „Podgląd faktury" przyciski z tymi samymi nazwami plików._
 
 ### Backfill na produkcji — wykonuje człowiek
 
@@ -3276,21 +3230,11 @@ a one-time prod import, not reproducible fixture state, and this pass's rules fo
 General-UI boxes not tied to that seed were driven live on a fresh vehicle created through the UI
 (QA B18 001, id=2) and via code read.
 
-- [x] Panel Payload pokazuje „Ubezpieczyciel"/„Nr polisy" tylko przy Rodzaj = OC — potwierdzone kodem (`src/collections/vehicle-inspections.ts`: oba pola `admin: { condition: (data) => data?.type === 'INSURANCE' }`) + na żywo w `/admin`
-- [x] Przegląd zapisuje się z pustym polem Koszt
-- [x] W dialogu dodawania: OC pokazuje Ubezpieczyciel + Nr polisy, przełączenie Rodzaju na Przegląd techniczny je chowa
 - [ ] `354E000003305` i `22044 4672279` zapisują się i wracają bez zmian — **needs human:** wymaga usuniętego skryptu importu dziewięciu aut z arkusza; brak odtwarzalnej fikstury. **Test disposition:** no automated test — jednorazowy prod-import, nieodtwarzalny bez arkusza.
-- [x] „Odczyt licznika" pyta wyłącznie o datę, przebieg i notatkę (bez terminu i bez kosztu) — potwierdzone na żywo w dialogu
-- [x] Zaznaczenie „bezterminowo" dla Przeglądu technicznego przeżywa przeładowanie strony
 - [ ] Kolumna Przegląd przyczepy (`WD776AL`) czyta „bezterminowo", a przyczepa znika z sekcji „nigdy nie zarejestrowano" w cotygodniowym mailu — **needs human:** ta sama zależność od usuniętego seedu.
-- [x] Auto, którego przeglądy nie mają żadnej ceny, pokazuje „—" w kolumnie Koszty, a stopka „Razem" go nie dolicza
-- [x] Strona pojazdu pokazuje Opony, Uwagi i aktualną polisę (ubezpieczyciel + numer)
 - [ ] `/flota` listuje wszystkie dziewięć aut z terminami przeglądu i OC zgodnymi z arkuszem — **needs human:** te dziewięć aut istnieje tylko na prodzie (jednorazowy import), nie w bazie preview pod testem.
 - [ ] Przegląd VW T4 (`WF 7029W`, termin 2026-06-27) czyta PO TERMINIE — **needs human:** zależność od usuniętego seedu.
 - [ ] `WF7972X` pokazuje 17 500 km od wymiany oleju (177 500 − 160 000) — alarm interwału się odzywa — **needs human:** zależność od usuniętego seedu.
-- [x] Po ręcznym uruchomieniu importu na prodzie (po `pnpm db:migrate:prod`) prod pokazuje te same dziewięć aut
-      _Uruchomione 2026-08-26 przeciw `DB_POSTGRES_URL_PROD`. Prod przed importem był pusty (0 pojazdów, 0 zdarzeń, 0 kolizji rejestracji), więc wynik to 9 nowych, 0 zaktualizowanych, 0 pominiętych. Stan potwierdzony osobnym odczytem, nie returnem skryptu: 9 pojazdów, 25 zdarzeń — TECHNICAL 8, INSURANCE 9, OIL_CHANGE 7, ODOMETER 1; `WD776AL` niesie `exemptions: ["TECHNICAL"]`._
-- [x] `src/scripts/import-fleet-sheet.ts` skasowany po zasileniu proda — miał nie zostawiać stałego mostu do arkusza
 
 ### Findings — 2026-08-26 (B18)
 
@@ -3626,73 +3570,13 @@ zasianym `perf-seed-kosztorys.ts`, 10 sekcji × 1000 pozycji). Rola OWNER, Chrom
 
 ### Faza 1 — unieważnianie pamięci podręcznej wysokości
 
-- [x] Wstawienie sekcji w środek listy: belka rysuje się na wysokości belki, nie zwykłego wiersza
-      _Verified: „Wstaw poniżej" z grupy „Sekcja" na poz. 6 „Prace dodatkowe" → nowa belka
-      „Nowa sekcja (1 poz.)" 52 px, jej pozycja 32 px, „Razem" 32 px. Sąsiednie wiersze bez zmian
-      (poz. 1 nadal 52 px, dwulinijkowa). Wiersze kafelkują się co do piksela: top(n) = top(n−1) +
-      h(n−1) na całym oknie wirtualizacji — potwierdzona wcześniej wada (belka 32 px / pozycja 52 px)
-      nie występuje._
-- [x] Skasowanie wiersza w środku listy nie rozjeżdża wysokości wierszy poniżej
-      _Verified: „Usuń pozycję" na wierszu rozciągniętym do 76 px w „Klimatyzacji" → wiersze poniżej
-      dalej kafelkują się bez dziur i nakładek._
-- [x] Pozycja przewijania i aktywna cela zostają na miejscu po wstawieniu wiersza
-      _Verified: przy scrollTop 400 i aktywnej celi w „Opis prac" — po przeciągnięciu innego wiersza
-      aktywna cela stoi w tym samym punkcie (top 185 / left 102), scrollTop nadal 400._
-
 ### Faza 3 — zawijanie w komórkach
-
-- [x] Długi „Opis prac" w wierszu na dzisiejszej wysokości nie wylewa się na sąsiednie wiersze
-      _Verified: 32 px, tekst na dwie linie → widoczna cała pierwsza linia, druga ucięta na krawędzi
-      wiersza, bez nachodzenia na wiersz niżej (zrzut siatki). Bez sygnału „…" — decyzja właściciela._
-- [x] Belka sekcji nadal pokazuje pełną nazwę rozlaną na sąsiednie kolumny
-      _Verified: „Prace dodatkowe (11 poz.)" rozlewa się poza wąską komórkę, jak dotąd._
-- [x] Dymek z pełną treścią otwiera się na wierszu niższym niż jego treść i nie otwiera się, gdy treść się mieści
-      _Verified w podglądzie klienta (komórki tylko do odczytu): przy wysokości liczonej z treści nic
-      nie jest ucięte i klik nie otwiera dymka (0 dymków na dwóch wierszach); po wymuszeniu wiersza
-      32 px pod dwulinijkowym opisem klik otwiera dymek z pełnym „zakup, transport i wniesienie towaru
-      budowlanego (cały okres remontu)…". Wykrywanie po wysokości działa._
 
 ### Faza 4 — ręczna wysokość wiersza w edytorze
 
-- [x] Przeciągnięcie krawędzi wiersza zmienia jego wysokość, opis zawija się na tyle linii, ile wchodzi
-      _Verified: poz. 1 z 32 na 92 px, opis rozwinął się na dwie linie, zapis `{"3673":92}`._
-- [x] Wysokość przeżywa odświeżenie strony
-      _Verified: po `reload` wiersz nadal 92 px, wpis w localStorage bez zmian._
-- [x] Dwuklik na krawędzi rozwija wiersz dokładnie do pełnej treści, bez ucięcia i bez pustego pasa
-      _Verified: 92 → 52 px (dokładnie dwie linie) na dwulinijkowym opisie, 32 px na jednolinijkowym.
-      Przy przewinięciu w bok (scrollLeft 329) ten sam wiersz dopasowuje się nadal do 52 px — regresja
-      „dopasowanie mierzy puste komórki poza widokiem" nie wraca._
-- [x] Przewijanie i aktywna cela zostają na miejscu w trakcie i po przeciągnięciu
-      _Verified: patrz faza 1._
-- [x] Skasowanie wiersza nie zostawia po sobie wpisu, który przykleiłby wysokość do nowego wiersza
-      _Verified: przed usunięciem `{"3673":52,"3677":32,"3687":76}`, po usunięciu wiersza 3687 →
-      `{"3673":52,"3677":32}`._
-- [x] Pozostałe wiersze nie zmieniają wysokości
-      _Verified: przy każdym przeciągnięciu zmieniał się wyłącznie ciągnięty wiersz._
-- [x] Belka sekcji i wiersz nagłówka też dają się przeciągać (uzupełnienie z 2026-08-31)
-      _Verified: belka 52 → 82 px (wpis `-1148`), nagłówek 56 → 96 px (wpis `header`). Nagłówek ma
-      własny opis uchwytu i nie reaguje na dwuklik — nie ma treści, do której miałby się dopasować._
-
 ### Faza 5 — wysokość z treści w podglądzie klienta
 
-- [x] Podgląd klienta pokazuje każdą nazwę pracy w całości, bez klikania
-      _Verified: `/podglad-inwestora/42` — 96 komórek tekstowych, **zero** obciętych
-      (`scrollHeight > clientHeight` nigdzie)._
-- [x] Zwężenie kolumny „Opis prac" podwyższa wiersze, poszerzenie obniża — bez przeładowania strony
-      _Verified: 434 → 234 px na żywo → wiersze 52→92, 52→112, 32→72, nadal zero obciętych._
-- [x] Kosztorys z ~1000 pozycji (`INV=7`) przewija się płynnie i otwiera bez wyczuwalnej zwłoki
-      _Verified: podgląd klienta inw. 7 (1000 pozycji, wysokość przewijania 33 008 px) otwiera się
-      w 0,41 s; 25 skoków przewijania — mediana 33 ms (czyli koszt samej klatki), najgorszy 125 ms.
-      Edytor tego samego kosztorysu: otwarcie 0,65 s, mediana 51 ms, najgorszy 219 ms. Build
-      deweloperski, więc to górna granica._
-- [x] Bardzo długi opis daje bardzo wysoki wiersz — tak ma być, bez limitu
-      _Verified: kolumna zwężona do 120 px → wiersze do 192 px, zero obciętych._
-
 ### Wyśrodkowanie tekstu w pionie (2026-08-31, prośba właściciela)
-
-- [x] Tekst stoi na środku wiersza, a gdy się nie mieści — zaczyna od góry, z całą pierwszą linią
-      _Verified: wiersz 92 px z jednolinijkowym opisem → 38 px odstępu u góry i u dołu; wiersz 32 px
-      z dwulinijkowym → tekst od góry, pierwsza linia cała (`justify-content: safe center`)._
 
 ### Ślady po sprawdzeniach
 
