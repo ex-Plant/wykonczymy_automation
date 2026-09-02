@@ -3655,3 +3655,16 @@ otwartych znalezisk.
       **Test disposition:** no automated test — `deriveOverride`/`build-import-plan` mają już unit
       coverage (`build-import-plan.test.ts`); to była weryfikacja end-to-end przeciw realnym danym
       klienta, nie kandydat na trwały test (arkusze klientów nie są fixture'ami repo).
+
+## Przerzedzanie snapshotów kosztorysu (2026-09-02, `snapshot-retention-thinning`)
+
+Setup: baza testowa 5435 z rozpisanym kosztorysem (`pnpm seed:kosztorys:test`). Zalogowany jako OWNER.
+
+- [ ] Edycja kosztorysu przez ponad 10 minut nadal produkuje snapshoty automatyczne w szufladzie
+      „Wersje", a ponad 50 wpisów gromadzi się bez znikania najstarszych (cap `AUTO_KEEP` usunięty)
+- [ ] Pierwszy przebieg `/api/cron/cleanup` po wdrożeniu loguje `{ ceiling: 0, daily: 0, weekly: 0 }`
+      w logach funkcji Vercela — cokolwiek innego znaczy, że zamiatanie kasuje wiersze, których nie
+      powinno (nic starszego niż poprzedni pułap 7 dni jeszcze nie istnieje)
+- [ ] Przywrócenie zwykłej, bieżącej wersji nadal działa end-to-end, a kwoty się nie zmieniają
+- [ ] Potwierdzenie przywracania pokazuje nowe zdanie („Wraca sama rozpiska — rabat globalny, sposób
+      rozliczenia i stawka materiałów zostają dzisiejsze.") i brzmi naturalnie po polsku

@@ -6,8 +6,10 @@ import { getDb } from '@/lib/db/get-db'
 import { gcSnapshots } from '@/lib/db/snapshots'
 
 // Daily cleanup cron, scheduled from vercel.json.
-// Today it only age-GCs kosztorys snapshots (including on dormant kosztorysy the inline count cap
-// never revisits); the handler is shaped so further stale-data sweeps append as more steps.
+// Today it only thins kosztorys snapshots — the sole retention authority, so dormant kosztorysy are
+// swept too; the handler is shaped so further stale-data sweeps append as more steps. The per-band
+// breakdown is forwarded verbatim into the response because the function log is where the first
+// night after a retention change is read.
 export async function GET(request: NextRequest) {
   if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

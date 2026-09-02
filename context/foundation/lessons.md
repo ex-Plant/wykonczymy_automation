@@ -765,6 +765,17 @@
   throwaway, and whether the listing path asserts the version at all.
 - **Applies to**: `src/lib/kosztorys/snapshot-format.ts`, `snapshots.ts`, `presets.ts`; any column drop
   that appears in a serialized payload.
+- **Corollary (2026-09-02, snapshot retention thinning)**: a bump is **not done until the existing
+  rows are dealt with**. Three exits, and exactly one must be picked: **don't bump** (additive, or a
+  key the mapper never reads — five column drops have taken this exit with no failure), **migrate the
+  stored payloads** (presets — a hand-curated library, deleting it destroys real work), **delete the
+  stored rows** (snapshots — ambient history, cheap to re-accumulate). Forbidden: bump and leave.
+  What that buys is the invariant _every row in `kosztorys_snapshots` is readable by the current
+  code_, which is why `listSnapshots` deliberately carries **no** `schema_version` filter — a filter
+  would guard a state that must not exist, and an unreadable snapshot is not history, it is a row that
+  lies on a list. The same corollary kills the phrase "additive fields need no bump": a new column
+  that is NOT NULL **without** a DEFAULT breaks every stored payload however additive it looks,
+  because `insertKosztorysTree` only defaults the NOT NULL DEFAULT columns and `display_order`.
 
 ## Migration filenames sort lexically — the unpadded counter breaks at 10
 

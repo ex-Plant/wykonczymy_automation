@@ -125,9 +125,9 @@ describe.skipIf(!ENV_READY)('kosztorys stage actions — persisted state (DB)', 
     return res.rows.length > 0
   }
 
-  // Newest auto-snapshot id, or 0 if none. A capture is proven by this rising — total count is
-  // useless here because pruneAutoCount holds auto snapshots at AUTO_KEEP, so an insert on a
-  // saturated investment nets zero rows even though a fresh snapshot was written.
+  // Newest auto-snapshot id, or 0 if none. A capture is proven by this rising — a total count is
+  // the fragile assertion, because the daily retention sweep is global and can thin this
+  // investment's rows between two counts even though a fresh snapshot was written.
   async function latestAutoSnapshotId(): Promise<number> {
     const res = await db.execute(sql`
       SELECT coalesce(max(id), 0)::int AS id FROM kosztorys_snapshots
