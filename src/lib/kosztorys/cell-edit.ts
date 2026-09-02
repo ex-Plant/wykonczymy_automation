@@ -17,7 +17,8 @@ export type CellEditPolicyT<RowT, EntryT> = {
   sameEntry: (a: EntryT, b: EntryT) => boolean
   restore: (row: RowT, entry: EntryT) => RowT
   applyValue: (row: RowT, value: number) => RowT
-  /** What an emptied field commits — never `null`, these fields are all `number`. */
+  /** What an emptied field commits — 0 for a plain `number` field, `null` where „empty" is a state
+   * of its own (a subcontractor stawka back to „auto"). */
   clear: (row: RowT) => RowT
   /** A refusal that stands regardless of what was typed (the subcontractor ceiling). */
   guard?: (row: RowT) => string | null

@@ -1,7 +1,6 @@
 // No `server-only` here: the katalog seed script runs these helpers under tsx, where it throws
 // (same reason as kosztorys-descriptions.ts).
 import { sql } from '@payloadcms/db-vercel-postgres'
-import { subcontractorOverrideType } from '@/lib/kosztorys/calc'
 import type {
   CatalogueSeedItemT,
   CatalogueSourceItemT,
@@ -108,8 +107,7 @@ export async function getCatalogueSourceItem(
 ): Promise<CatalogueSourceItemT | undefined> {
   const result = await db.execute(sql`
     SELECT ki.description, ki.unit, ki.client_price,
-           ki.w_tools_override_type, ki.w_tools_override_value,
-           ki.own_tools_override_type, ki.own_tools_override_value,
+           ki.w_tools_override_value, ki.own_tools_override_value,
            ks.name AS section_name
     FROM kosztorys_items ki
     JOIN kosztorys_sections ks ON ks.id = ki.section_id
@@ -123,10 +121,10 @@ export async function getCatalogueSourceItem(
     unit: (row.unit as string | null) ?? '',
     sectionName: (row.section_name as string | null) ?? '',
     clientPrice: Number(row.client_price),
-    wToolsOverrideType: subcontractorOverrideType(row.w_tools_override_type),
-    wToolsOverrideValue: Number(row.w_tools_override_value),
-    ownToolsOverrideType: subcontractorOverrideType(row.own_tools_override_type),
-    ownToolsOverrideValue: Number(row.own_tools_override_value),
+    wToolsOverrideValue:
+      row.w_tools_override_value === null ? null : Number(row.w_tools_override_value),
+    ownToolsOverrideValue:
+      row.own_tools_override_value === null ? null : Number(row.own_tools_override_value),
   }
 }
 

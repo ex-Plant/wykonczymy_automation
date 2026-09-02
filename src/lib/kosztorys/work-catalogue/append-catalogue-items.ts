@@ -1,7 +1,7 @@
 import 'server-only'
 import type { Payload, PayloadRequest } from 'payload'
 import { getDb } from '@/lib/db/get-db'
-import { asViewPricing, overrideTypeFor } from '@/lib/kosztorys/calc'
+import { asViewPricing, overrideValueFor } from '@/lib/kosztorys/calc'
 import { sectionOwnerAndNextItemOrder } from '@/lib/kosztorys/create-item'
 import { insertItems } from '@/lib/kosztorys/insert-rows'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
@@ -11,11 +11,10 @@ import type {
   WorkCatalogueItemT,
 } from '@/lib/kosztorys/work-catalogue/types'
 
-// A katalog kwota lands as a FROZEN amount, never as a coefficient: it is the number the owner
-// approved, and a coefficient would re-derive it from the target investment's globals the moment
-// the row arrived. A katalog „auto" (`null`) is the opposite instruction — the cennik named no
-// stawka — so it lands as NO nadpisanie and `subcontractorPrice` derives it from this
-// investment's global współczynnik, exactly as a hand-typed pozycja would.
+// A katalog „auto" (`null`) passes straight through as „auto": the cennik named no stawka, so
+// `subcontractorPrice` derives it from this investment's global współczynnik, exactly as a
+// hand-typed pozycja would. Both sides already model the stawka the same way, so this is a copy,
+// not a conversion.
 const asItem = (
   catalogueItem: WorkCatalogueItemT,
   sectionId: number,
@@ -31,10 +30,8 @@ const asItem = (
   discountType: null,
   discountValue: 0,
   clientPrice: catalogueItem.clientPrice,
-  wToolsOverrideType: catalogueItem.wToolsRate === null ? null : 'amount',
-  wToolsOverrideValue: catalogueItem.wToolsRate ?? 0,
-  ownToolsOverrideType: catalogueItem.ownToolsRate === null ? null : 'amount',
-  ownToolsOverrideValue: catalogueItem.ownToolsRate ?? 0,
+  wToolsOverrideValue: catalogueItem.wToolsRate,
+  ownToolsOverrideValue: catalogueItem.ownToolsRate,
   note: null,
 })
 
@@ -71,7 +68,7 @@ export async function appendCatalogueItems(
   // silence the guard already keeps when cena j.m. is 0.
   const warnings = items.flatMap((item) => {
     const problems = (['w_tools', 'own_tools'] as const)
-      .filter((plane) => overrideTypeFor(item, plane) !== null)
+      .filter((plane) => overrideValueFor(item, plane) !== null)
       // Zero globals: this filter leaves only planes frozen to a kwota, and a kwota never reads a
       // współczynnik — so the guard needs no investment context to reach its verdict.
       .flatMap((plane) => checkSubcontractorPrice(asViewPricing(item), plane) ?? [])

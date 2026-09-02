@@ -32,18 +32,19 @@ export async function selectKosztorysSubcontractorDue(
         ks.investment_id,
         ks.plane,
         sp.qty_done,
-        -- subcontractorPrice (calc.ts): 'amount' → the stored value, unset („auto") → client × the
+        -- subcontractorPrice (calc.ts): a stored stawka wins, NULL („auto") → client × the
         -- investment's coefficient for that plane. Written per plane rather than once over a picked
-        -- column pair, because the two pairs are disjoint columns.
+        -- column, because the two are disjoint columns. NO coalesce on the stawka: NULL is the
+        -- signal, and folding it to 0 would price every auto praca at zero złotych (EX-766).
         CASE ks.plane
           WHEN 'w_tools' THEN
-            CASE ki.w_tools_override_type
-              WHEN 'amount' THEN coalesce(ki.w_tools_override_value, 0)
+            CASE
+              WHEN ki.w_tools_override_value IS NOT NULL THEN ki.w_tools_override_value
               ELSE ki.client_price * coalesce(inv.w_tools_coeff, ${DEFAULT_COEFFS.wTools})
             END
           WHEN 'own_tools' THEN
-            CASE ki.own_tools_override_type
-              WHEN 'amount' THEN coalesce(ki.own_tools_override_value, 0)
+            CASE
+              WHEN ki.own_tools_override_value IS NOT NULL THEN ki.own_tools_override_value
               ELSE ki.client_price * coalesce(inv.own_tools_coeff, ${DEFAULT_COEFFS.ownTools})
             END
         END AS price

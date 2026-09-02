@@ -1,8 +1,4 @@
-import type {
-  KosztorysItemT,
-  KosztorysSectionT,
-  SubcontractorOverrideTypeT,
-} from '@/lib/kosztorys/types'
+import type { KosztorysItemT, KosztorysSectionT } from '@/lib/kosztorys/types'
 
 // The catalogue row as every reader sees it. A stawka is one of two things, decided per plane:
 // a frozen ZŁOTÓWKA that travels into every rozpiska verbatim, or `null` = „auto", meaning the
@@ -53,10 +49,8 @@ export type CatalogueSourceItemT = {
   unit: string
   sectionName: string
   clientPrice: number
-  wToolsOverrideType: SubcontractorOverrideTypeT | null
-  wToolsOverrideValue: number
-  ownToolsOverrideType: SubcontractorOverrideTypeT | null
-  ownToolsOverrideValue: number
+  wToolsOverrideValue: number | null
+  ownToolsOverrideValue: number | null
 }
 
 // What the „Zapisz do katalogu…" dialog renders: the row that WOULD be written, and the cennik row

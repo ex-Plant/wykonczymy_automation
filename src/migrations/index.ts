@@ -80,6 +80,8 @@ import * as migration_20260826_0_notification_recipients from './20260826_0_noti
 import * as migration_20260826_1_drop_inspection_next_due_odometer from './20260826_1_drop_inspection_next_due_odometer'
 import * as migration_20260827_0_payment_method_nullable from './20260827_0_payment_method_nullable'
 import * as migration_20260901_0_add_work_catalogue_items from './20260901_0_add_work_catalogue_items'
+import * as migration_20260901_1_work_catalogue_auto_rates from './20260901_1_work_catalogue_auto_rates'
+import * as migration_20260902_0_collapse_kosztorys_tool_overrides from './20260902_0_collapse_kosztorys_tool_overrides'
 
 export const migrations = [
   {
@@ -491,5 +493,15 @@ export const migrations = [
     up: migration_20260901_0_add_work_catalogue_items.up,
     down: migration_20260901_0_add_work_catalogue_items.down,
     name: '20260901_0_add_work_catalogue_items',
+  },
+  {
+    up: migration_20260901_1_work_catalogue_auto_rates.up,
+    down: migration_20260901_1_work_catalogue_auto_rates.down,
+    name: '20260901_1_work_catalogue_auto_rates',
+  },
+  {
+    up: migration_20260902_0_collapse_kosztorys_tool_overrides.up,
+    down: migration_20260902_0_collapse_kosztorys_tool_overrides.down,
+    name: '20260902_0_collapse_kosztorys_tool_overrides',
   },
 ]

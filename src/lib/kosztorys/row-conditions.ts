@@ -1,4 +1,4 @@
-import { overrideTypeFor, subcontractorPrice } from '@/lib/kosztorys/calc'
+import { overrideValueFor, subcontractorPrice } from '@/lib/kosztorys/calc'
 import { PLANE_LABELS } from '@/lib/kosztorys/constants'
 import { ALL_PLANE_PRICE_KEYS, planePriceKeysFor } from '@/lib/kosztorys/plane-price-keys'
 import { measureDiscrepancy, rowTotalQtyDone } from '@/lib/kosztorys/settlement-rows'
@@ -110,7 +110,7 @@ function settledAtPercentRate(
   plane: ToolPlaneT,
 ): boolean {
   if (!ctx.hasSettledMaterial) return false
-  if (overrideTypeFor(row, plane) === 'amount') return false
+  if (overrideValueFor(row, plane) !== null) return false
   return ctx.stages.some(
     (stage) =>
       (stage.plane === plane || stage.plane === null) && (row[stageKey(stage.id)] ?? 0) > 0,
@@ -197,7 +197,7 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     kind: 'filter',
     plane: 'w_tools',
     revealsColumns: priceColumnsFor('w_tools'),
-    matches: (row) => overrideTypeFor(row, 'w_tools') !== null,
+    matches: (row) => overrideValueFor(row, 'w_tools') !== null,
   },
   {
     id: 'formula-rate-w-tools',
@@ -206,7 +206,7 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     kind: 'filter',
     plane: 'w_tools',
     revealsColumns: priceColumnsFor('w_tools'),
-    matches: (row) => overrideTypeFor(row, 'w_tools') === null,
+    matches: (row) => overrideValueFor(row, 'w_tools') === null,
   },
   {
     id: 'manual-rate-own-tools',
@@ -215,7 +215,7 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     kind: 'filter',
     plane: 'own_tools',
     revealsColumns: priceColumnsFor('own_tools'),
-    matches: (row) => overrideTypeFor(row, 'own_tools') !== null,
+    matches: (row) => overrideValueFor(row, 'own_tools') !== null,
   },
   {
     id: 'formula-rate-own-tools',
@@ -224,7 +224,7 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     kind: 'filter',
     plane: 'own_tools',
     revealsColumns: priceColumnsFor('own_tools'),
-    matches: (row) => overrideTypeFor(row, 'own_tools') === null,
+    matches: (row) => overrideValueFor(row, 'own_tools') === null,
   },
   // Trimmed before testing: the grid writes '' into a cleared cell on some paths and null on others,
   // and a komentarz of three spaces is not one. `sectionLabel: null` — „every pozycja in this section

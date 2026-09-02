@@ -10,9 +10,7 @@ const ITEM_FIELDS = [
   'discountType',
   'discountValue',
   'clientPrice',
-  'wToolsOverrideType',
   'wToolsOverrideValue',
-  'ownToolsOverrideType',
   'ownToolsOverrideValue',
   'note',
 ] as const satisfies readonly (keyof ItemPatchT)[]

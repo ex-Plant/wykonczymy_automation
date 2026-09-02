@@ -1,4 +1,4 @@
-import { overrideTypeFor, subcontractorPrice } from '@/lib/kosztorys/calc'
+import { overrideValueFor, subcontractorPrice } from '@/lib/kosztorys/calc'
 import type { ToolPlaneT, ViewPricingT } from '@/lib/kosztorys/types'
 
 /**
@@ -10,5 +10,5 @@ import type { ToolPlaneT, ViewPricingT } from '@/lib/kosztorys/types'
  * future investment reads — so the plane goes in as `null` = „auto".
  */
 export function impliedCatalogueRate(row: ViewPricingT, plane: ToolPlaneT): number | null {
-  return overrideTypeFor(row, plane) === null ? null : subcontractorPrice(row, plane)
+  return overrideValueFor(row, plane) === null ? null : subcontractorPrice(row, plane)
 }

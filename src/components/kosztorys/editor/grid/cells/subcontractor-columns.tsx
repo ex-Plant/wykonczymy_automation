@@ -5,23 +5,30 @@ import { EditableCellInput } from '@/components/ui/datasheet-grid/editable-cell-
 import { SimpleTooltip } from '@/components/ui/tooltip'
 import { decimalText } from '@/lib/utils/decimal-text'
 import { roundToCents } from '@/lib/utils/round-to-cents'
-import { overrideTypeFor, viewPrice } from '@/lib/kosztorys/calc'
+import { overrideValueFor, viewPrice } from '@/lib/kosztorys/calc'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
-import { OVERRIDE_FIELDS } from '@/lib/kosztorys/constants'
 import { planePriceKey } from '@/lib/kosztorys/plane-price-keys'
 import { modeChange, subcontractorPolicy } from '@/lib/kosztorys/subcontractor-price-edit'
 import { cellPaste } from '@/lib/kosztorys/cell-edit'
 import { useCellDraft } from '@/components/kosztorys/editor/grid/cells/use-cell-draft'
-import type { KosztorysV2RowT, SubcontractorOverrideTypeT, ToolPlaneT } from '@/lib/kosztorys/types'
+import type { KosztorysV2RowT, ToolPlaneT } from '@/lib/kosztorys/types'
 import type { ReactNode } from 'react'
+
+const FIXED_MODE = 'amount'
 
 // Where the subcontractor price comes from (a column in the subcontractor views). Labels name the
 // SOURCE, not the arithmetic: auto derives the rate from the investment's mnożnik, „kwota stała" is
 // the number typed into „Cena j.m.".
 const SUB_MODE_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'auto' },
-  { value: 'amount', label: 'kwota stała' },
+  { value: FIXED_MODE, label: 'kwota stała' },
 ]
+
+// „Źródło" is a view over the single stawka field: a row carrying one is „kwota stała", a row
+// carrying nothing is „auto". The menu still needs a string per option, so it gets one here rather
+// than the column keeping a second stored field to name the source (EX-766).
+const modeOf = (rowData: KosztorysV2RowT, view: ToolPlaneT): string =>
+  overrideValueFor(rowData, view) === null ? '' : FIXED_MODE
 
 // Everything the cells need to know about which plane they are editing. Travels via
 // `columnData` so each component keeps ONE identity across renders — an inline `component:
@@ -104,7 +111,7 @@ function SubcontractorPriceCell({
     stopEditing,
   )
 
-  const inherited = overrideTypeFor(rowData, view) === null
+  const inherited = overrideValueFor(rowData, view) === null
   // A live rejection outranks the standing verdict: it describes the value on screen, which the row
   // has not accepted.
   const message = edit.blockReason ?? checkSubcontractorPrice(rowData, view)
@@ -145,7 +152,7 @@ function SubcontractorModeCell({
   const [openedByClick, setOpenedByClick] = useState(false)
   return (
     <CellSelectMenu
-      value={overrideTypeFor(rowData, view) ?? ''}
+      value={modeOf(rowData, view)}
       options={SUB_MODE_OPTIONS}
       open={focus || openedByClick}
       onOpenChange={(open) => {
@@ -154,9 +161,7 @@ function SubcontractorModeCell({
         // the cursor on the row whose source was just picked.
         if (!open) stopEditing({ nextRow: false })
       }}
-      onChange={(value) =>
-        setRowData(modeChange(rowData, (value || null) as SubcontractorOverrideTypeT | null, view))
-      }
+      onChange={(value) => setRowData(modeChange(rowData, value === FIXED_MODE, view))}
     />
   )
 }
@@ -195,7 +200,7 @@ export function subcontractorModeColumn(
     disableKeys: true,
     columnData: cellData(view),
     component: SubcontractorModeCell,
-    copyValue: ({ rowData }) => overrideTypeFor(rowData, view) ?? '',
+    copyValue: ({ rowData }) => modeOf(rowData, view),
     deleteValue: ({ rowData }) => clear(rowData),
   }
 }

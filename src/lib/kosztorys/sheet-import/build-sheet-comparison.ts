@@ -97,12 +97,10 @@ export type SheetComparisonResultT =
 
 // Neither plane's coefficient can reach a client-plane figure, and no snapshot carries a global
 // discount, so the client price is fully determined by the item itself. The parsed rows additionally
-// lack the four override fields — see `ParsedItemT` — which the client view never reads.
+// lack both stawka fields — see `ParsedItemT` — which the client view never reads.
 const asClientPricing = (item: ParsedItemT | KosztorysItemT): ViewPricingT => ({
-  wToolsOverrideType: null,
-  wToolsOverrideValue: 0,
-  ownToolsOverrideType: null,
-  ownToolsOverrideValue: 0,
+  wToolsOverrideValue: null,
+  ownToolsOverrideValue: null,
   ...item,
   globalDiscountActive: false,
   globalWToolsCoeff: 0,
@@ -184,7 +182,7 @@ export function buildSheetComparison(
   const appSectionName = new Map(currentTree.sections.map((section) => [section.id, section.name]))
 
   const sheetByKey = keyItems(
-    // `keyItems` wants full items; the parsed ones lack the four override fields, which it never
+    // `keyItems` wants full items; the parsed ones lack both stawka fields, which it never
     // reads. Only the section, description and their order matter for keying.
     parsed.items as unknown as KosztorysItemT[],
     (item) => sheetSectionName.get(item.sectionId) ?? '',

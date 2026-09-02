@@ -43,15 +43,13 @@ export type FooterComparisonT = {
 export const footerDisagreements = (footer: readonly FooterComparisonT[]): FooterComparisonT[] =>
   footer.filter((total) => total.sheetValue !== null && total.appValue !== null && !total.matches)
 
-// The parser drops the four subcontractor override fields and the import never sets a global
+// The parser drops both subcontractor stawka fields and the import never sets a global
 // discount, so the client-view price is fully determined here — the coefficients only ever feed the
 // two subcontractor views.
 const asPricing = (item: ParsedItemT): ViewPricingT => ({
   ...item,
-  wToolsOverrideType: null,
-  wToolsOverrideValue: 0,
-  ownToolsOverrideType: null,
-  ownToolsOverrideValue: 0,
+  wToolsOverrideValue: null,
+  ownToolsOverrideValue: null,
   globalDiscountActive: false,
   globalWToolsCoeff: 0,
   globalOwnToolsCoeff: 0,

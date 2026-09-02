@@ -2,7 +2,6 @@ import type {
   GlobalDiscountT,
   KosztorysGlobalCoeffsT,
   KosztorysItemT,
-  SubcontractorOverrideTypeT,
   ToolPlaneT,
   ViewPricingT,
 } from '@/lib/kosztorys/types'
@@ -72,27 +71,15 @@ function effectiveCoeff(row: ViewPricingT, view: ToolPlaneT): number {
 }
 
 /**
- * Whether this plane carries its own nadpisanie, and of which kind. `null` is the load-bearing
- * answer — it is what „the row said nothing, derive it from the global współczynnik" looks like,
- * which is also what a cennik „auto" means one layer up.
+ * This plane's own nadpisanie, or `null` for „auto". `null` is the load-bearing answer — it is what
+ * „the row said nothing, derive it from the global współczynnik" looks like, and what a cennik
+ * „auto" means one layer up. `0` is not that: it is a kwota someone set to zero.
  */
-export function overrideTypeFor(
-  row: Pick<ViewPricingT, 'wToolsOverrideType' | 'ownToolsOverrideType'>,
+export function overrideValueFor(
+  row: Pick<ViewPricingT, 'wToolsOverrideValue' | 'ownToolsOverrideValue'>,
   view: ToolPlaneT,
-): SubcontractorOverrideTypeT | null {
-  return subcontractorOverrideType(
-    view === 'w_tools' ? row.wToolsOverrideType : row.ownToolsOverrideType,
-  )
-}
-
-/**
- * The one fold from „whatever the column holds" to the two źródła that exist. A snapshot or szablon
- * written before the cut can still carry a coefficient type, and the value slot beside it then holds
- * a RATIO, not a price — read as anything but „auto" it would be priced as a kwota (0 zł on the
- * cennik path) or drag the row onto the investment's global współczynnik with a ratio it never meant.
- */
-export function subcontractorOverrideType(value: unknown): SubcontractorOverrideTypeT | null {
-  return value === 'amount' ? 'amount' : null
+): number | null {
+  return view === 'w_tools' ? row.wToolsOverrideValue : row.ownToolsOverrideValue
 }
 
 /**
@@ -112,11 +99,10 @@ export function asViewPricing(
   }
 }
 
-/** Subcontractor price by view: 'amount'→flat, null („auto")→derived (client × coeff). */
+/** Subcontractor price by view: a kwota stała when the plane carries one, else client × coeff. */
 export function subcontractorPrice(row: ViewPricingT, view: ToolPlaneT): number {
-  if (overrideTypeFor(row, view) === 'amount') {
-    return view === 'w_tools' ? row.wToolsOverrideValue : row.ownToolsOverrideValue
-  }
+  const override = overrideValueFor(row, view)
+  if (override !== null) return override
   return row.clientPrice * effectiveCoeff(row, view)
 }
 

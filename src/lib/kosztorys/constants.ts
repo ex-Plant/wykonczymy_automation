@@ -1,13 +1,10 @@
 import type { ToolPlaneT, ViewPricingT } from '@/lib/kosztorys/types'
 
-// Which pair of row fields a subcontractor plane's override writes to — „Cena j.m." and „Źródło" are
-// two columns over one field pair, and both have to agree on which.
-export const OVERRIDE_FIELDS: Record<
-  ToolPlaneT,
-  { type: keyof ViewPricingT; value: keyof ViewPricingT }
-> = {
-  w_tools: { type: 'wToolsOverrideType', value: 'wToolsOverrideValue' },
-  own_tools: { type: 'ownToolsOverrideType', value: 'ownToolsOverrideValue' },
+// Which row field a subcontractor plane's stawka writes to — „Cena j.m." and „Źródło" are two columns
+// over one field, and both have to agree on which.
+export const OVERRIDE_FIELDS: Record<ToolPlaneT, keyof ViewPricingT> = {
+  w_tools: 'wToolsOverrideValue',
+  own_tools: 'ownToolsOverrideValue',
 }
 
 // Array order is the pickers' display order.

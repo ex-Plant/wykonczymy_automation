@@ -1,5 +1,5 @@
 import {
-  overrideTypeFor,
+  overrideValueFor,
   rowDiscountForView,
   rowDoneFraction,
   rowPlannedNetForView,
@@ -77,7 +77,7 @@ export function columnSortValue(
     if (base === 'price') return viewPrice(row, plane)
     // „Źródło ceny wykonawcy" ascending runs inherited → hand-overridden, which is the only question
     // asked of that column. Alphabetical would put „auto" after „kwota stała".
-    return overrideTypeFor(row, plane) === null ? 0 : 1
+    return overrideValueFor(row, plane) === null ? 0 : 1
   }
 
   switch (field) {

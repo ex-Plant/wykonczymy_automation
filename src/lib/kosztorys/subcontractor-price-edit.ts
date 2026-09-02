@@ -1,31 +1,17 @@
-import { overrideTypeFor, subcontractorPrice } from '@/lib/kosztorys/calc'
+import { overrideValueFor, subcontractorPrice } from '@/lib/kosztorys/calc'
 import { type CellEditPolicyT } from '@/lib/kosztorys/cell-edit'
 import { OVERRIDE_FIELDS } from '@/lib/kosztorys/constants'
 import { formatPLN } from '@/lib/utils/format-currency'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
-import type { SubcontractorOverrideTypeT, ToolPlaneT, ViewPricingT } from '@/lib/kosztorys/types'
+import type { ToolPlaneT, ViewPricingT } from '@/lib/kosztorys/types'
 
-/** What the override looked like when the user entered the cell — what a rejected edit rolls back to. */
-export type OverrideSnapshotT = {
-  type: SubcontractorOverrideTypeT | null
-  value: number
-}
-
-export function overrideSnapshot(rowData: ViewPricingT, view: ToolPlaneT): OverrideSnapshotT {
-  const { value } = OVERRIDE_FIELDS[view]
-  // Folded, not cast: a wiersz written before the two-źródła cut can still hold a coefficient type,
-  // and a rejected edit must roll back to a źródło the picker actually offers.
-  return { type: overrideTypeFor(rowData, view), value: rowData[value] as number }
-}
-
-/** The row with one plane's override replaced — the write every transition below resolves to. */
+/** The row with one plane's stawka replaced. `null` IS the write that means „auto" (EX-766). */
 function withOverride<RowT extends ViewPricingT>(
   rowData: RowT,
   view: ToolPlaneT,
-  snapshot: OverrideSnapshotT,
+  value: number | null,
 ): RowT {
-  const { type, value } = OVERRIDE_FIELDS[view]
-  return { ...rowData, [type]: snapshot.type, [value]: snapshot.value }
+  return { ...rowData, [OVERRIDE_FIELDS[view]]: value } as RowT
 }
 
 /**
@@ -33,18 +19,21 @@ function withOverride<RowT extends ViewPricingT>(
  * źródło with it, so nobody has to visit „Źródło" first — and clearing the cell is the way back to
  * „auto".
  *
+ * The only cell family whose `clear` writes `null` rather than 0: everywhere else an emptied field
+ * means „nothing", here it means „ask the investment". A `0` would be a stawka of zero złotych.
+ *
  * The only cell family that carries a `guard`: the ceiling is a rule about what the company may pay
  * a crew, and it has no business on the client's own price.
  */
 export function subcontractorPolicy<RowT extends ViewPricingT>(
   view: ToolPlaneT,
-): CellEditPolicyT<RowT, OverrideSnapshotT> {
+): CellEditPolicyT<RowT, number | null> {
   return {
-    snapshot: (row) => overrideSnapshot(row, view),
-    sameEntry: (a, b) => a.type === b.type && a.value === b.value,
+    snapshot: (row) => overrideValueFor(row, view),
+    sameEntry: (a, b) => a === b,
     restore: (row, entry) => withOverride(row, view, entry),
-    applyValue: (row, value) => withOverride(row, view, { type: 'amount', value }),
-    clear: (row) => withOverride(row, view, { type: null, value: 0 }),
+    applyValue: (row, value) => withOverride(row, view, value),
+    clear: (row) => withOverride(row, view, null),
     guard: (row) => checkSubcontractorPrice(row, view),
     restoredLabel: (row) => formatPLN(subcontractorPrice(row, view)),
   }
@@ -60,9 +49,8 @@ export function subcontractorPolicy<RowT extends ViewPricingT>(
  */
 export function modeChange<RowT extends ViewPricingT>(
   rowData: RowT,
-  next: SubcontractorOverrideTypeT | null,
+  fixed: boolean,
   view: ToolPlaneT,
 ): RowT {
-  if (next === null) return withOverride(rowData, view, { type: null, value: 0 })
-  return withOverride(rowData, view, { type: 'amount', value: subcontractorPrice(rowData, view) })
+  return withOverride(rowData, view, fixed ? subcontractorPrice(rowData, view) : null)
 }

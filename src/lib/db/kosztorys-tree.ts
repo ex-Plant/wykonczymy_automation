@@ -1,6 +1,5 @@
 import 'server-only'
 import { sql } from '@payloadcms/db-vercel-postgres'
-import { subcontractorOverrideType } from '@/lib/kosztorys/calc'
 import { isSectionColorKey } from '@/lib/kosztorys/section-colors'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import type {
@@ -71,8 +70,7 @@ export async function selectKosztorysTreeData(
           SELECT id, section_id, display_order, description, unit, planned_qty,
                  sheet_measured_qty,
                  discount_type, discount_value, client_price,
-                 w_tools_override_type, w_tools_override_value,
-                 own_tools_override_type, own_tools_override_value,
+                 w_tools_override_value, own_tools_override_value,
                  note
           FROM kosztorys_items WHERE investment_id = ${investmentId}
         ) i
@@ -145,12 +143,10 @@ const mapItem = (row: RowT): KosztorysItemT & { sectionId: number } => ({
   discountType: str(row.discount_type) as DiscountTypeT | null,
   discountValue: num(row.discount_value),
   clientPrice: num(row.client_price),
-  // Folded, not cast: a row written before the two-źródła cut can still hold a coefficient type,
-  // whose value slot is a ratio rather than a price.
-  wToolsOverrideType: subcontractorOverrideType(row.w_tools_override_type),
-  wToolsOverrideValue: num(row.w_tools_override_value),
-  ownToolsOverrideType: subcontractorOverrideType(row.own_tools_override_type),
-  ownToolsOverrideValue: num(row.own_tools_override_value),
+  // `numOrNull`, not `num`: NULL is „auto", and folding it to 0 would price the praca at zero
+  // złotych instead of at the investment's współczynnik (EX-766).
+  wToolsOverrideValue: numOrNull(row.w_tools_override_value),
+  ownToolsOverrideValue: numOrNull(row.own_tools_override_value),
   note: str(row.note),
 })
 
