@@ -6,10 +6,10 @@ skrypty, które je pobrały, zostały skasowane na bramce review.
 
 ## Gdzie leżą
 
-| Ścieżka | Rola |
-| --- | --- |
+| Ścieżka                                    | Rola                                                           |
+| ------------------------------------------ | -------------------------------------------------------------- |
 | `~/.local/share/wykonczymy-legacy-sheets/` | katalog kanoniczny — domyślny `DUMP_DIR` skryptu pobierającego |
-| `dumps/legacy-sheets/` | kopia w repo, bajt w bajt ta sama (nie symlink) |
+| `dumps/legacy-sheets/`                     | kopia w repo, bajt w bajt ta sama (nie symlink)                |
 
 Obie po 48 MB: **57 plików `<googleSheetId>.json` + `raport.md`**. Nadpisanie lokalizacji:
 zmienna `LEGACY_SHEET_DUMP_DIR` (nie jest ustawiona w `.env`, więc liczy się ścieżka z `~/.local/share`).
@@ -50,7 +50,17 @@ git show 1fb50e6c^:src/scripts/legacy-sheet-import/fetch-grids.ts
 Skasowane: `fetch-grids.ts` (pobieranie, wznawialne, `PAUSE_MS = 1_500`, scope Sheets readonly),
 `dump-store.ts` (zapis/odczyt dumpów), `parse-dumped-sheet.ts`, `collect-candidates.ts`,
 `similar-names.ts`, `analyze.ts`, `run-analysis.ts`, `report.ts`, `rekey-catalogue.ts`.
-W repo zostały tylko `export-catalogue.ts`, `import-catalogue.ts` i `katalog-prac.json`.
+W repo zostały tylko `export-catalogue.ts` i `import-catalogue.ts` — czyli sam wsad na produkcję,
+spięty potokiem (eksport pisze na stdout, wsad czyta stdin), bez pliku pośredniego:
+
+```bash
+node --env-file=.env --import tsx src/scripts/legacy-sheet-import/export-catalogue.ts \
+  | DB_POSTGRES_URL="$DB_POSTGRES_URL_PROD" node --env-file=.env --import tsx \
+    src/scripts/legacy-sheet-import/import-catalogue.ts --apply
+```
+
+Dwa procesy, bo Payload wiąże bazę przy starcie — jeden uniesie źródło albo cel, nigdy oba.
+Bez `--apply` to dry-run. Robi to człowiek, nie agent.
 
 Ponowne pobranie: `node --env-file=.env --import tsx src/scripts/legacy-sheet-import/fetch-grids.ts`
 (po przywróceniu skryptu). Czyta kontem read-only z `GOOGLE_SERVICE_ACCOUNT_JSON`, więc z laptopa
