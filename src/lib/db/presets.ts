@@ -5,6 +5,7 @@ import {
   SNAPSHOT_SCHEMA_VERSION,
   assertReadableSchemaVersion,
   type SnapshotPayloadT,
+  type StoredSnapshotPayloadT,
 } from '@/lib/kosztorys/snapshot-format'
 import type { DbExecutorT } from './get-db'
 
@@ -80,14 +81,14 @@ export async function upsertPresetByName(
 export async function getPreset(
   db: DbExecutorT,
   presetId: number,
-): Promise<{ name: string; payload: SnapshotPayloadT } | null> {
+): Promise<{ name: string; payload: StoredSnapshotPayloadT } | null> {
   const res = await db.execute(sql`
     SELECT name, schema_version, payload FROM kosztorys_presets WHERE id = ${presetId}
   `)
   const row = res.rows[0]
   if (!row) return null
   assertReadableSchemaVersion(Number(row.schema_version), 'preset')
-  return { name: String(row.name), payload: row.payload as SnapshotPayloadT }
+  return { name: String(row.name), payload: row.payload as StoredSnapshotPayloadT }
 }
 
 // Flatten every preset's sections into pickable metas. Counted in SQL on purpose (EX-622): the

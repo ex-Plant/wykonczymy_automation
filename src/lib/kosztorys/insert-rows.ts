@@ -88,7 +88,9 @@ export function remapNewIds<K>(
 export async function insertSections(
   db: DbExecutorT,
   investmentId: number,
-  rows: { displayOrder: number; section: KosztorysSectionT }[],
+  // `Omit<…, 'displayOrder'>`: the caller passes display_order separately (an append offsets it), and
+  // a section read out of a stored payload may not carry the key at all.
+  rows: { displayOrder: number; section: Omit<KosztorysSectionT, 'displayOrder'> }[],
 ): Promise<number[]> {
   if (rows.length === 0) return []
   const values = rows.map(

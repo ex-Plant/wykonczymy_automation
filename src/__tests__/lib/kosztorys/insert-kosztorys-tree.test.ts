@@ -3,7 +3,7 @@ import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
 import { insertKosztorysTree } from '@/lib/kosztorys/insert-kosztorys-tree'
-import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
+import type { StoredSnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
 import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
@@ -33,11 +33,11 @@ describe.skipIf(!ENV_READY)('insertKosztorysTree tolerates an older payload (DB)
   })
 
   // The shape a payload written before these columns existed actually has: the keys are MISSING, not
-  // null. Typed through a cast because SnapshotPayloadT describes what today's serializer writes.
+  // null. Still cast, because the loose Record args carry no `id`/`sectionId` for tsc to check.
   function payloadWithout(
     sections: Record<string, unknown>[],
     items: Record<string, unknown>[],
-  ): SnapshotPayloadT {
+  ): StoredSnapshotPayloadT {
     return {
       schemaVersion: 1,
       sections,
@@ -45,7 +45,7 @@ describe.skipIf(!ENV_READY)('insertKosztorysTree tolerates an older payload (DB)
       stages: [],
       progress: [],
       settings: { wToolsCoeff: 1, ownToolsCoeff: 1, vatRate: 23 },
-    } as unknown as SnapshotPayloadT
+    } as unknown as StoredSnapshotPayloadT
   }
 
   it('inserts the column default for a numeric field the payload never carried', async () => {

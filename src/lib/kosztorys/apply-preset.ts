@@ -2,7 +2,7 @@ import 'server-only'
 import type { Payload, PayloadRequest } from 'payload'
 import { getDb } from '@/lib/db/get-db'
 import { insertKosztorysTree } from './insert-kosztorys-tree'
-import type { SnapshotPayloadT } from './snapshot-format'
+import type { StoredSnapshotPayloadT } from './snapshot-format'
 
 // Populate an EMPTY investment's kosztorys from a preset payload. A trimmed `restoreKosztorys` with
 // two deliberate omissions: (1) NO wipe — the caller guarantees the target tree is empty, so we only
@@ -15,7 +15,7 @@ export async function applyPreset(
   payload: Payload,
   req: PayloadRequest,
   investmentId: number,
-  preset: SnapshotPayloadT,
+  preset: StoredSnapshotPayloadT,
 ): Promise<void> {
   const db = await getDb(payload, req)
   // `droppedWorkerAssignments` is discarded, not forgotten: a preset carries no stages

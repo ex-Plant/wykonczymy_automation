@@ -117,9 +117,6 @@ export function KosztorysVersionsDrawer({
         )}
       </DialogContent>
 
-      {/* The description's second sentence is unconditional rather than shown only for old versions:
-          it is true for every snapshot, and a "how old is old" threshold would be a fourth number to
-          keep in step with the retention bands (30/120/365). */}
       <ConfirmDialog
         open={pendingRestore != null}
         title={

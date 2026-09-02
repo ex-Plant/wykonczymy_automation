@@ -1,5 +1,8 @@
 import { MONEY_TOLERANCE, asViewPricing } from '@/lib/kosztorys/calc'
-import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
+import {
+  itemWithColumnDefaults,
+  type StoredSnapshotPayloadT,
+} from '@/lib/kosztorys/snapshot-format'
 import { catalogueKey } from '@/lib/kosztorys/work-catalogue/catalogue-key'
 import { impliedCatalogueRate } from '@/lib/kosztorys/work-catalogue/catalogue-rate'
 import { stripSectionOrdinal } from '@/lib/kosztorys/work-catalogue/section-category'
@@ -81,14 +84,15 @@ type GroupT = { description: string; unit: string; occurrences: SeedOccurrenceT[
  * nadpisanie is priced at all, and a kwota stała reads no global. A plane without one (137 of 373
  * prac on the current szablon) seeds as „auto" instead.
  */
-export function buildCatalogueSeed(payload: SnapshotPayloadT): {
+export function buildCatalogueSeed(payload: StoredSnapshotPayloadT): {
   items: CatalogueSeedItemT[]
   conflicts: SeedConflictT[]
 } {
   const sectionName = new Map(payload.sections.map((section) => [section.id, section.name]))
 
   const groups = new Map<string, GroupT>()
-  for (const item of payload.items) {
+  for (const [index, stored] of payload.items.entries()) {
+    const item = itemWithColumnDefaults(stored, index)
     const description = item.description?.trim()
     if (!description) continue
     const unit = item.unit?.trim() ?? ''

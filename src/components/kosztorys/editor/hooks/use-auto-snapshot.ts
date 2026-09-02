@@ -4,8 +4,8 @@ import { useEffect, useRef, type RefObject } from 'react'
 import { snapshotAction } from '@/lib/actions/kosztorys-snapshots'
 
 // S-06 durable net: while the editor is open, take an auto snapshot on a plain interval, gated on the
-// undo-stack revision (S-07) so an idle editor stops writing identical snapshots. The count cap + daily
-// GC still bound the table.
+// undo-stack revision (S-07) so an idle editor stops writing identical snapshots. The daily GC thins
+// what accumulates (src/lib/db/snapshots.ts).
 const AUTO_SNAPSHOT_INTERVAL_MS = 10 * 60 * 1000
 
 type AutoSnapshotT = {

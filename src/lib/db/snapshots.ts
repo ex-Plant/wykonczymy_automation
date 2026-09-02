@@ -4,6 +4,7 @@ import {
   SNAPSHOT_SCHEMA_VERSION,
   assertReadableSchemaVersion,
   type SnapshotPayloadT,
+  type StoredSnapshotPayloadT,
 } from '@/lib/kosztorys/snapshot-format'
 import type { DbExecutorT } from './get-db'
 
@@ -13,7 +14,7 @@ import type { DbExecutorT } from './get-db'
 
 export type SnapshotKindT = 'manual' | 'auto'
 
-// THE RETENTION POLICY, in full. Auto snapshots are thinned by age rather than capped by count:
+// THE RETENTION POLICY, in full:
 //
 //   0–30 days    every snapshot survives (~10 min apart while someone is editing)
 //   30–120 days  one per calendar day
@@ -21,12 +22,8 @@ export type SnapshotKindT = 'manual' | 'auto'
 //   past 365     gone, auto and manual alike
 //
 // The survivor of a bucket is its NEWEST row — the state the work was left in that day/week, not the
-// state it was started from. Buckets are calendar days and weeks in Europe/Warsaw, not UTC, so
-// editing at 00:30 belongs to the day it feels like. Manual snapshots are exempt from both bands and
-// bounded only by MAX_AGE_DAYS.
-//
-// Thinning is monotone and the survivors ARE the state, so the sweep needs no bookkeeping: a missed
-// cron night is harmless and re-running it changes nothing.
+// state it was started from. Manual snapshots are exempt from both bands and bounded only by
+// MAX_AGE_DAYS.
 const FULL_DENSITY_DAYS = 30
 const DAILY_BAND_DAYS = 120
 const MAX_AGE_DAYS = 365
@@ -69,14 +66,14 @@ export async function insertSnapshot(
 export async function getSnapshot(
   db: DbExecutorT,
   snapshotId: number,
-): Promise<{ investmentId: number; payload: SnapshotPayloadT } | null> {
+): Promise<{ investmentId: number; payload: StoredSnapshotPayloadT } | null> {
   const res = await db.execute(sql`
     SELECT investment_id, schema_version, payload FROM kosztorys_snapshots WHERE id = ${snapshotId}
   `)
   const row = res.rows[0]
   if (!row) return null
   assertReadableSchemaVersion(Number(row.schema_version), 'snapshot')
-  return { investmentId: Number(row.investment_id), payload: row.payload as SnapshotPayloadT }
+  return { investmentId: Number(row.investment_id), payload: row.payload as StoredSnapshotPayloadT }
 }
 
 export async function listSnapshots(
@@ -102,12 +99,8 @@ export async function listSnapshots(
 // Global retention sweep (daily cron). Three statements rather than one, because each band is a
 // separate sentence and each maps 1:1 onto a test case. The sweep is STATELESS and IDEMPOTENT: the
 // set of survivors in a bucket IS the state, so a missed cron night costs nothing and a second run
-// in the same minute deletes zero.
-//
-// The per-band breakdown is the instrument for the first night after deploy: nothing older than the
-// previous 7-day ceiling exists yet, so a correct first run reports all three as 0. A non-zero count
-// there means the sweep is deleting something it should not — and it says so before there is a year
-// of history worth losing.
+// in the same minute deletes zero. The per-band breakdown is returned so the cron log says WHICH
+// band deleted — a band firing when it should not is otherwise silent and irreversible.
 export async function gcSnapshots(
   db: DbExecutorT,
 ): Promise<{ deleted: number; ceiling: number; daily: number; weekly: number }> {
@@ -120,8 +113,8 @@ export async function gcSnapshots(
   // date_trunc(... AT TIME ZONE 'Europe/Warsaw') is the first date bucketing done in SQL in this repo
   // — every other one is JS (src/lib/fleet/days.ts). It belongs in SQL here because the sweep must
   // decide what to delete WITHOUT shipping every row to the app; don't "fix" it into the JS
-  // convention. `taken_at` is timestamptz, so AT TIME ZONE renders it as local wall time, which is
-  // what a "calendar day" means to the person who edited the kosztorys after midnight.
+  // convention. Warsaw and not UTC because `taken_at` is timestamptz: editing at 00:30 would
+  // otherwise land in the previous calendar day.
   const daily = await db.execute(sql`
     DELETE FROM kosztorys_snapshots WHERE id IN (
       SELECT id FROM (

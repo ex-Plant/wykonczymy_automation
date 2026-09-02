@@ -6,11 +6,11 @@ import type {
 } from '@/lib/kosztorys/types'
 
 // Bump only on a non-additive payload change (a renamed/dropped field). An ADDITIVE field usually
-// needs no bump, but not because "the mapper defaults anything missing" — it defaults exactly what
-// insertKosztorysTree lists: the numeric NOT NULL DEFAULT columns and display_order. A new column
-// that is NOT NULL *without* a default (`kosztorys_sections.name`, `kosztorys_stages.ordinal` are
-// the two today) has no meaningful fallback, so adding one IS a breaking change for every stored
-// payload, additive or not. See restore-kosztorys.ts for the tolerant deserialization contract.
+// needs no bump, because the restore path defaults what a stored payload omits — but it defaults
+// exactly what StoredSnapshotPayloadT below marks optional, and nothing more. A new column that is
+// NOT NULL *without* a default (`kosztorys_sections.name`, `kosztorys_stages.ordinal` are the two
+// today) has no meaningful fallback, so adding one IS a breaking change for every stored payload,
+// additive or not. See restore-kosztorys.ts for the tolerant deserialization contract.
 //
 // A field DROPPED without ever having been read is exempt: the restore mapper picks keys it knows,
 // so the stale key in an old payload is inert and the snapshot still restores whole (precedent:
@@ -60,4 +60,60 @@ export type SnapshotPayloadT = {
   stages: KosztorysStageT[]
   progress: StageProgressT[]
   settings: SnapshotSettingsT
+}
+
+// What a STORED payload may actually look like, as opposed to what today's serializer writes. A row
+// captured before a column existed simply has no key there, so every field the restore path defaults
+// is optional HERE — which is what makes each `??` on that path load-bearing to tsc. Under the strict
+// type those fallbacks compile as dead branches, and this repo gates dead-code removal on a green
+// typecheck: the next cleanup pass would be told it may delete the exact guards that stop a 23502.
+// The optional set is therefore not decoration — it is the list of columns that are NOT NULL with a
+// DEFAULT, and it must grow whenever one is added.
+type TolerantT<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
+
+export type StoredSnapshotPayloadT = {
+  schemaVersion: number
+  sections: TolerantT<KosztorysSectionT, 'displayOrder'>[]
+  items: TolerantT<
+    KosztorysItemT,
+    | 'displayOrder'
+    | 'plannedQty'
+    | 'discountValue'
+    | 'clientPrice'
+    | 'wToolsOverrideValue'
+    | 'ownToolsOverrideValue'
+  >[]
+  stages: KosztorysStageT[]
+  progress: TolerantT<StageProgressT, 'qtyDone'>[]
+  settings?: Partial<SnapshotSettingsT>
+}
+
+// Every numeric column below is NOT NULL DEFAULT 0, and a payload captured before the column existed
+// simply has no key — which binds an explicit NULL, and Postgres does NOT substitute a DEFAULT for an
+// explicit NULL (23502). With a year of retention that stops being theoretical. The tolerance is
+// declared in the TYPE (StoredSnapshotPayloadT above marks exactly these fields optional) so tsc rejects
+// a future edit that drops a fallback, and the return type is the strict KosztorysItemT — meaning the
+// compiler, not this comment, is what guarantees every optional field got filled.
+//
+// It lives at the payload readers (insertKosztorysTree, appendPresetSections, buildCatalogueSeed) and
+// not at the bind in insert-rows.ts, because those primitives are also called by appendCatalogueItems,
+// which builds its rows in code (`asItem`) where a missing value is a caller bug to surface, not absorb.
+//
+// `displayOrder` takes the row's INDEX rather than 0: it is the natural key remapNewIds joins
+// RETURNING on, so a constant would tie it batch-wide, drop the remap to positional, and restore the
+// tree flattened to one position. `kosztorys_sections.name` and `kosztorys_stages.ordinal` are NOT
+// NULL *without* a default and are deliberately left alone — see the bump rule above.
+export function itemWithColumnDefaults(
+  item: StoredSnapshotPayloadT['items'][number],
+  index: number,
+): KosztorysItemT {
+  return {
+    ...item,
+    displayOrder: item.displayOrder ?? index,
+    plannedQty: item.plannedQty ?? 0,
+    discountValue: item.discountValue ?? 0,
+    clientPrice: item.clientPrice ?? 0,
+    wToolsOverrideValue: item.wToolsOverrideValue ?? 0,
+    ownToolsOverrideValue: item.ownToolsOverrideValue ?? 0,
+  }
 }

@@ -1,7 +1,7 @@
 import 'server-only'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import type { DbExecutorT } from '@/lib/db/get-db'
-import type { SnapshotPayloadT } from './snapshot-format'
+import { itemWithColumnDefaults, type StoredSnapshotPayloadT } from './snapshot-format'
 import { insertItems, insertSections, remapNewIds } from './insert-rows'
 
 export const STAGE_INSERT_COLUMNS = [
@@ -44,35 +44,6 @@ async function liveWorkerIds(db: DbExecutorT, ids: number[]): Promise<Set<number
   return new Set(res.rows.map((row) => Number(row.id)))
 }
 
-// Every numeric column below is NOT NULL DEFAULT 0, and a payload captured before the column existed
-// simply has no key — which binds an explicit NULL, and Postgres does NOT substitute a DEFAULT for an
-// explicit NULL (23502). With a year of retention that stops being theoretical, so the payload
-// boundary supplies the same value the column default would. It lives HERE and not at the bind in
-// insert-rows.ts: those primitives are also called by appendPresetSections and
-// appendCatalogueItems with rows built in code, where a missing value is a bug the caller should
-// surface, not absorb. This function is the one place a STORED payload is read, and it already
-// declares that tolerance in the comment above.
-//
-// `displayOrder` takes the row's INDEX rather than 0: it is the natural key remapNewIds joins
-// RETURNING on, so a constant would tie it batch-wide, drop the remap to positional, and restore the
-// tree flattened to one position. `kosztorys_sections.name` and `kosztorys_stages.ordinal` are NOT
-// NULL *without* a default and are deliberately left alone — a nameless section has no meaningful
-// fallback, and `ordinal` is constraint-backed, so inventing one would trade 23502 for 23505.
-function itemWithColumnDefaults(
-  item: SnapshotPayloadT['items'][number],
-  index: number,
-): SnapshotPayloadT['items'][number] {
-  return {
-    ...item,
-    displayOrder: item.displayOrder ?? index,
-    plannedQty: item.plannedQty ?? 0,
-    discountValue: item.discountValue ?? 0,
-    clientPrice: item.clientPrice ?? 0,
-    wToolsOverrideValue: item.wToolsOverrideValue ?? 0,
-    ownToolsOverrideValue: item.ownToolsOverrideValue ?? 0,
-  }
-}
-
 // Bulk-insert a serialized kosztorys tree onto an investment, on a caller-owned transaction handle.
 // Shared by restoreKosztorys (wipe → insert → settings) and applyPreset (insert-only) — each caller
 // owns the transaction and adds its own wipe/settings semantics around this.
@@ -87,12 +58,13 @@ function itemWithColumnDefaults(
 export async function insertKosztorysTree(
   db: DbExecutorT,
   investmentId: number,
-  tree: SnapshotPayloadT,
+  tree: StoredSnapshotPayloadT,
 ): Promise<InsertKosztorysTreeResultT> {
   const sections = tree.sections ?? []
   const sectionIds = await insertSections(
     db,
     investmentId,
+    // `?? index`, not `?? 0` — same natural-key reason as itemWithColumnDefaults above.
     sections.map((section, index) => ({ displayOrder: section.displayOrder ?? index, section })),
   )
   const sectionIdMap = new Map(sections.map((s, i) => [s.id, sectionIds[i]]))
@@ -143,6 +115,7 @@ export async function insertKosztorysTree(
   )
   if (progress.length > 0) {
     const rows = progress.map(
+      // `?? 0` for the same 23502 reason as itemWithColumnDefaults above.
       (p) => sql`(${itemIdMap.get(p.itemId)}, ${stageIdMap.get(p.stageId)}, ${p.qtyDone ?? 0})`,
     )
     await db.execute(sql`

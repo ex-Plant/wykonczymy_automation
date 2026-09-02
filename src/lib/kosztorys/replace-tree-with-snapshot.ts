@@ -7,17 +7,17 @@ import { isConcurrentWrite, withPayloadTransaction } from '@/lib/db/with-payload
 import { restoreKosztorys } from './restore-kosztorys'
 import { serializeKosztorys } from './serialize-kosztorys'
 import type { InsertKosztorysTreeResultT } from './insert-kosztorys-tree'
-import type { SnapshotPayloadT } from './snapshot-format'
+import type { StoredSnapshotPayloadT } from './snapshot-format'
 
 type OptionsT = {
   investmentId: number
   // `manual`, not `auto`, is what makes a wholesale replacement genuinely undoable: an auto snapshot
-  // is ambient history — indistinguishable from the periodic autosaves in „Wersje", capped at the
-  // newest 50 and swept after 7 days. A labelled manual row is exempt from both and shows up as a
+  // is ambient history — indistinguishable from the periodic autosaves in „Wersje", and thinned to
+  // one per day/week as it ages. A labelled manual row is exempt from the bands and shows up as a
   // named targetable entry, so „przywróć stan sprzed" stays a click rather than a guess.
   label: string
   takenBy: number
-  tree: SnapshotPayloadT
+  tree: StoredSnapshotPayloadT
   // The reload path alone passes this: a preset's przedmiar is all zeroes, so a surviving amount
   // discount would price the fresh rozpiska below nothing (`globalDiscountAmount` is deliberately
   // unclamped — see calc.ts). Every other replacement keeps the live discount.

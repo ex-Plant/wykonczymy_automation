@@ -74,6 +74,28 @@ describe.skipIf(!ENV_READY)('gcSnapshots retention bands (DB)', () => {
     return id
   }
 
+  // Same anchoring, but on the calendar WEEK the sweep buckets by. Two rows placed on different days
+  // of one week is the only fixture that can tell date_trunc('week') from date_trunc('day') — with
+  // day-aligned rows only, a weekly band that truncated by day would keep both and still pass.
+  async function insertInWeek(weeksAgo: number, dayInWeek: number, hour: number): Promise<number> {
+    const id = await insertSnapshot(db, {
+      investmentId,
+      kind: 'auto',
+      label: null,
+      takenBy: null,
+      payload: emptyPayload,
+    })
+    await db.execute(sql`
+      UPDATE kosztorys_snapshots SET taken_at = (
+        date_trunc('week', now() AT TIME ZONE 'Europe/Warsaw')
+          - make_interval(weeks => ${weeksAgo})
+          + make_interval(days => ${dayInWeek}, hours => ${hour})
+      ) AT TIME ZONE 'Europe/Warsaw'
+      WHERE id = ${id}
+    `)
+    return id
+  }
+
   async function survivorsOf(targetInvestmentId: number): Promise<number[]> {
     const res = await db.execute(
       sql`SELECT id FROM kosztorys_snapshots WHERE investment_id = ${targetInvestmentId} ORDER BY id`,
@@ -85,30 +107,32 @@ describe.skipIf(!ENV_READY)('gcSnapshots retention bands (DB)', () => {
     // Every age sits clear of a band edge (30 / 120 / 365): the backdating UPDATE and the sweep's
     // now() are separate transactions, so a row placed exactly on an edge races.
 
-    // (a) inside the full-density window — two rows on one day, both survive
+    // Inside the full-density window — two rows on one day, both survive.
     const freshEarly = await insertAt(investmentId, 'auto', 2, 8)
     const freshLate = await insertAt(investmentId, 'auto', 2, 19)
 
-    // (b) daily band — three rows on day 40 collapse to the newest; day 41 keeps its own
+    // Daily band — three rows on day 40 collapse to the newest; day 41 keeps its own.
     const day40Morning = await insertAt(investmentId, 'auto', 40, 2)
     const day40Noon = await insertAt(investmentId, 'auto', 40, 10)
     const day40Evening = await insertAt(investmentId, 'auto', 40, 20)
     const day41 = await insertAt(investmentId, 'auto', 41, 12)
 
-    // (c) weekly band — days 200 and 207 are exactly 7 days apart, so they land in different
-    // calendar weeks whatever weekday the suite runs on
-    const week1Early = await insertAt(investmentId, 'auto', 200, 5)
-    const week1Late = await insertAt(investmentId, 'auto', 200, 15)
-    const week2 = await insertAt(investmentId, 'auto', 207, 9)
+    // Weekly band — Tuesday and Thursday of the same week (29 weeks back, well past 120 days)
+    // collapse to the Thursday row, which is what proves the bucket is a week and not a day.
+    const sameWeekEarlier = await insertInWeek(29, 1, 5)
+    const sameWeekLater = await insertInWeek(29, 3, 15)
+    const previousWeek = await insertInWeek(30, 3, 9)
 
-    // (d) manual under the ceiling survives every band — the bands are kind = 'auto' only
-    const manualDeepInBands = await insertAt(investmentId, 'manual', 200, 11)
+    // Manual rows under the ceiling survive both bands — the bands are kind = 'auto' only. One in
+    // each band, because a `kind` filter dropped from just one DELETE would still leave the other green.
+    const manualInDailyBand = await insertAt(investmentId, 'manual', 40, 6)
+    const manualInWeeklyBand = await insertAt(investmentId, 'manual', 200, 11)
 
-    // (e) both kinds past the ceiling
+    // Both kinds past the ceiling.
     const ancientAuto = await insertAt(investmentId, 'auto', 400, 9)
     const ancientManual = await insertAt(investmentId, 'manual', 400, 9)
 
-    // (g) a second investment with rows in the SAME calendar day as (b)
+    // A second investment with rows in the SAME calendar day as the daily-band fixture above.
     const otherDay40Morning = await insertAt(otherInvestmentId, 'auto', 40, 3)
     const otherDay40Evening = await insertAt(otherInvestmentId, 'auto', 40, 21)
 
@@ -119,23 +143,30 @@ describe.skipIf(!ENV_READY)('gcSnapshots retention bands (DB)', () => {
 
     const survivors = await survivorsOf(investmentId)
     expect(survivors).toEqual(
-      [freshEarly, freshLate, day40Evening, day41, week1Late, week2, manualDeepInBands].sort(
-        (a, b) => a - b,
-      ),
+      [
+        freshEarly,
+        freshLate,
+        day40Evening,
+        day41,
+        sameWeekLater,
+        previousWeek,
+        manualInDailyBand,
+        manualInWeeklyBand,
+      ].sort((a, b) => a - b),
     )
     expect(survivors).not.toContain(day40Morning)
     expect(survivors).not.toContain(day40Noon)
-    expect(survivors).not.toContain(week1Early)
+    expect(survivors).not.toContain(sameWeekEarlier)
     expect(survivors).not.toContain(ancientAuto)
     expect(survivors).not.toContain(ancientManual)
 
-    // (g) the other investment keeps ITS OWN newest row for that day — not zero, and not the same
+    // The other investment keeps ITS OWN newest row for that day — not zero, and not the same
     // row as the first investment's
     const otherSurvivors = await survivorsOf(otherInvestmentId)
     expect(otherSurvivors).toEqual([otherDay40Evening])
     expect(otherSurvivors).not.toContain(otherDay40Morning)
 
-    // (f) stateless and idempotent: the survivors ARE the state, so a second sweep has nothing left
+    // Stateless and idempotent: the survivors ARE the state, so a second sweep has nothing left
     // to thin. Asserted as survivor stability rather than `deleted === 0` — gcSnapshots sweeps the
     // whole table, so rows an aborted neighbouring run left behind would show up in its counters.
     await gcSnapshots(db)
