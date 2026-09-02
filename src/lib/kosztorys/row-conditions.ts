@@ -306,6 +306,9 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     sectionLabel: null,
     kind: 'diagnostic',
     tone: 'worklist',
+    // A whole sentence rather than „Pozycje …": the subject is the praca, not the pozycja, and the
+    // pozycje are what you get to look at once you press it.
+    problemLabel: (count) => `Te same prace z różnymi stawkami (${count})`,
     // Every price column, not „Cena j.m." alone: that column is built only on the „Inwestor" view
     // (kosztorys-v2-columns), so naming it by itself would reveal nothing on the two subcontractor
     // views — where the derived stawka is the only visible trace of the disagreement.

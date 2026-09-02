@@ -3723,7 +3723,34 @@ w siatce („kwota stała", 0 zł); **zapis niepowiązanego pola** — przez Loc
 
 ### Phase 2: Wpięcie do „Problemy"
 
-- [ ] Na wzorze (inwestycja 90) „Problemy" pokazuje wiersz „Pozycje z inną ceną j.m. niż ta sama praca gdzie indziej" z licznikiem, a kliknięcie zawęża grid do pozycji „Dwukrotne gruntowanie…" ze wszystkich sekcji naraz
-- [ ] Kolumna „Cena j.m." pokazuje się po kliknięciu problemu nawet przy odklikanej w pickerze kolumn, i wraca do stanu użytkownika po odkliknięciu problemu
-- [ ] Na kosztorysie bez rozjazdów wiersz w ogóle się nie renderuje
-- [ ] Pod podglądem klienta wiersz nie występuje
+- [x] Na wzorze (inwestycja 90) „Problemy" pokazuje wiersz „Te same prace z różnymi stawkami" z licznikiem, a kliknięcie zawęża grid do pozycji „Dwukrotne gruntowanie…" ze wszystkich sekcji naraz
+- [x] Kolumna „Cena j.m." pokazuje się po kliknięciu problemu nawet przy odklikanej w pickerze kolumn, i wraca do stanu użytkownika po odkliknięciu problemu
+- [x] Na kosztorysie bez rozjazdów wiersz w ogóle się nie renderuje
+- [x] Pod podglądem klienta wiersz nie występuje
+
+### Findings — 2026-09-02
+
+Test DB: `wykonczymy-test:5435`, app on `:3010` (`NEXT_DIST_DIR=.next-e2e`). Investment 90 already
+carried a natural rozjazd on „Dwukrotne gruntowanie ścian, sufitów i podłóg" (5 pozycje across
+Łazienka 1/2/3, Kuchnia, WC — prices 7 vs 10, and the Kuchnia row is keyed `m²` vs `m2` elsewhere,
+so `foldUnit` normalization was exercised too) — no fixture edit was needed. Investment 7
+(perf-seed, 1000 synthetic rows) served as the „no rozjazd" fixture for check 3, confirmed against
+the DB directly (`GROUP BY description, unit HAVING count(distinct client_price) > 1` → 0 rows).
+
+- Check 1: engaging the row narrows the grid to all 38 divergent pozycje across every sekcja in one
+  view (verified `Łazienka 1` and `Łazienka 2` both showing „Dwukrotne gruntowanie…" together).
+  Confirmed the `problemLabel`/sentence-sort change (owner, mid-pass) — the row now reads „Te same
+  prace z różnymi stawkami (n)" and sorts after the etap problems.
+- Check 2: baseline picker state on investment 90 had „Sekcja", „Cena j.m. netto — z narzędziami"
+  and „Cena j.m. netto — bez narzędzi" unticked (`Kolumny (3)`). Engaging the problem dropped the
+  badge to `Kolumny (1)` and both subcontractor price columns appeared in the grid despite being
+  unticked; disengaging hid them again and the picker's own checkboxes reverted to unticked —
+  `Kolumny (3)` again. Confirms the widened reveal (both subcontractor planes, not just „Cena j.m.").
+- Check 3: on investment 7 the „Problemy" menu has no „Te same prace…" row at all (only the two
+  unrelated problems it actually has render) — matches `problemsMenuModel`'s `count > 0` filter.
+- Check 4: under `/k/<token>` (generated live via „Udostępnij" for investment 90) the whole
+  „Problemy" trigger is absent from the toolbar — every diagnostic count is forced to 0 under
+  `preview`, so the button itself never mounts (`problemToggles.length === 0` → `null`). Stronger
+  than „this one row is hidden": no diagnostic can ever reach the client view.
+
+No bugs found; no fixes applied. All four checks pass as implemented.
