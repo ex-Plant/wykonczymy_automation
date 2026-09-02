@@ -243,7 +243,7 @@ Pass ran clean — **no bugs found**, all five Phase-2 boxes ticked. No open fin
       stale wording** — there is no pie chart here (grepped `src/components/kosztorys/summary/` for
       `PieChart`: none in this table). The actual netto/brutto plane split is a **table**,
       `Wpłaty wg formy` (`deposits-table.tsx:122-144`), MIXED-only (`showPlaneSubtotals =
-    settlementMode==='MIXED' && netRows.length>0 && grossRows.length>0`) — confirmed rendering on
+settlementMode==='MIXED' && netRows.length>0 && grossRows.length>0`) — confirmed rendering on
       inw. 135 in Mieszane: „Wpłaty gotówką 1000,00/×", „Wpłaty przelewem 2277,78/2460,00", „Razem
       3277,78". The „INVESTOR_DEPOSIT rows only" filter wasn't independently re-derived this pass
       (no non-INVESTOR_DEPOSIT-carrying investment exists to test against, same gap as the box below)
@@ -252,7 +252,7 @@ Pass ran clean — **no bugs found**, all five Phase-2 boxes ticked. No open fin
 - [ ] ⚠ **`wplatyNet` base fix — verify on an investment carrying a legacy `COMPANY_FUNDING` (or `OTHER_DEPOSIT`) row.** In **every** axis (Netto/Brutto/Mieszane), the „Wpłaty"/„Do zapłaty" figure must sum **only INVESTOR_DEPOSIT** — the legacy deposit must **not** inflate „Wpłaty". Before the fix the non-mixed axes folded it in (3 different totals per toggle); after, all surfaces agree. **This changes a client-facing figure on such investments — flagged for owner sign-off.** (Fresh COMPANY*FUNDING can't attach to an investment via the form per EX-557, so this only bites legacy/admin rows.) Regression-guarded by `src/__tests__/lib/db/get-deposit-transactions.test.ts`.
       \_Confirmed definitively UI-unreachable this pass, not just "not reached": queried the whole
       preview DB — `SELECT … FROM transactions WHERE type IN ('COMPANY_FUNDING','OTHER_DEPOSIT') AND
-    cancelled=false AND investment_id IS NOT NULL` returns **0 rows**. No investment on this branch
+cancelled=false AND investment_id IS NOT NULL` returns **0 rows**. No investment on this branch
       carries a legacy row to test against, and EX-557 blocks creating one via the form — so this
       check cannot be driven in this environment at all, only relied on via the named regression test.*
       **Needs human:** either accept the named unit test as sufficient coverage for this box, or
@@ -1704,8 +1704,8 @@ dogfooding merges to `main`, so replacing one is safe.
 - [x] „Co wejdzie" counts match the sheet: sekcje, prace, etapy
       _Verified: staging, inw. 135 re-linked to the canonical sheet and re-imported 2026-08-26 (B19) —
       preview read „14 sekcji · 372 prac · 0 etapów"; SQL post-import confirmed `count(*) FROM
-    kosztorys_sections WHERE investment_id=135` = 14, `count(*) FROM kosztorys_items WHERE
-    investment_id=135` = 372, and `count(*) FROM kosztorys_stages WHERE investment_id=135` = 0 — all
+kosztorys_sections WHERE investment_id=135` = 14, `count(*) FROM kosztorys_items WHERE
+investment_id=135` = 372, and `count(*) FROM kosztorys_stages WHERE investment_id=135` = 0 — all
       three match the preview exactly. **Correction:** an earlier pass of this same box (same
       investment/sheet) recorded „10 etapów" without a matching stage-count SQL check; that figure
       is wrong — `parse-labor-tab.ts:216` (`usedColumns.has(column) || isNamedStage(caption(column))`)
@@ -1922,7 +1922,7 @@ Setup: dev DB (5433), zalogowany jako OWNER, inwestycja z zaimportowanym arkusze
       _Verified 2026-08-26 (B19): inw. 133 and inw. 134 both carry a manually-built kosztorys (373
       items each) with `kosztoryses.google_sheet_id IS NULL` — never imported. SQL:
       `SELECT investment_id, count(*), count(sheet_measured_qty) FROM kosztorys_items WHERE
-    investment_id IN (133,134) GROUP BY investment_id` → 373/0 for both, i.e. `sheet_measured_qty`
+investment_id IN (133,134) GROUP BY investment_id` → 373/0 for both, i.e. `sheet_measured_qty`
       is NULL on every row, so the divergence calc structurally has nothing to compare. Live on inw.
       134's „Problemy" menu: only „Pozycje bez ceny j.m. (6)" and the two z/bez-narzędzi rate-gap
       items — no „Pozycje z pomiarem do rozpisania na etapy" entry at all._
@@ -2132,7 +2132,7 @@ jej arkusz rozbija „Wartość netto" na dwie kolumny, więc dopasowanie po naz
 - [ ] Po poprawieniu nagłówka w arkuszu na „Wartość netto" odczyt idzie po nazwie, mimo zapisanego wskazania na inną kolumnę — not exercised, would require editing the canonical (real business) sheet's header row, out of scope for a read-only-preferred pass.
 - [ ] Wskazanie zapisane na jednej inwestycji nie zmienia niczego na drugiej — not exercised this pass.
       _B19 attempted this on inw. 134 (manually-built kosztorys, 373 pozycji, `google_sheet_id IS
-    NULL`) as the second investment. The link/import action (`kosztorys-actions-menu.tsx`, menu
+NULL`) as the second investment. The link/import action (`kosztorys-actions-menu.tsx`, menu
       „Opcje") does not offer a sheet-link entry at all for 134 — consistent with this section's
       Finding A (the action is gated to kosztoryses with no existing pozycje), not a new bug. No
       second sheet-link-reachable investment was available as a fixture this pass (135 is the only
@@ -2823,17 +2823,8 @@ Setup: baza testowa 5435, zalogowany jako OWNER. Dodaj dwa pojazdy — jeden `W 
 ### Faza 2: Zawężenie reguły odczytu
 
 - [ ] „Porównaj z arkuszem…" na inwestycji 65 raportuje prace, których Pomiar był wcześniej odrzucany, a menu „Problemy" pokazuje niezerowe „z pomiarem do rozpisania na etapy"
-- [x] Na inwestycji, której arkusz jest pustą ofertą (pomiar = suma etapów w każdym wierszu), licznik dalej wynosi 0
-      _Verified: inw. 135 (pomiar = Σetapów w każdym wierszu, EX-489) — menu „Problemy" nie zawiera pozycji „z pomiarem do rozpisania na etapy" wcale (licznik 0, ukryte). Potwierdzone w kodzie: `problemsMenuModel` (`src/components/kosztorys/editor/toolbar/menus/problems-menu-model.ts`) filtruje `.filter((problem) => problem.count > 0 || engagedIds.has(problem.id))` — warunek o id `measure-diverged`/label „z pomiarem do rozpisania na etapy" (`src/lib/kosztorys/row-conditions.ts:265-274`) przy count=0 jest nieobecny, nie pokazany jako „(0)"._
-- [x] Ponowne otwarcie tego samego okna raportuje „już zgodne" — nic nie zostaje przepisane
-      _Verified: inw. 135, trzykrotne uruchomienie „Porównaj z arkuszem Google" (przy trzech różnych stanach rabatu globalnego) — za każdym razem sekcja „Jak odczytaliśmy arkusz Google" raportowała „Zapisany Pomiar z natury był już zgodny z arkuszem Google.", bez zmiany po żadnym przebiegu._
-- [x] Podgląd inwestora nie ma kolumny „Rozjazd" ani menu „Problemy"
-      _Verified: link współdzielony inw. 135 (`/k/B9qCeV1pu1oR_6lR4ojVaFCfWO5nFXvG`) — pełne przeszukanie strony (`browser_find` regex `Rozjazd|Problemy`) nie znalazło ani jednego dopasowania._
 
 ### Faza 3: Komentarze i zapis
-
-- [x] Żaden z dwóch dokumentów referencyjnych nie twierdzi już, że kolumna „Rozjazd" jest ślepa na `=N#`
-      _Verified: `context/reference/kosztorys-sheet/formula-anomalies.md` (wniosek 2, linie 84-92) i `context/reference/kosztorys-editor-domain-notes.md` (linie 791-795) opisują dawną ślepotę wyłącznie jako historię z jawną datą rozstrzygnięcia („Zamknięte"/„Odwrócone (właściciel, 2026-08-20)"/„Zawężone 2026-08-20") — żaden z nich nie twierdzi dziś, że kolumna „Rozjazd" jest ślepa na `=N#`._
 
 ### Findings — 2026-08-26
 
@@ -2872,10 +2863,6 @@ Setup: baza testowa 5435 — pełny reset to trzy kroki (`pnpm db:import:test`, 
 z wypłatami dla podwykonawców (w tym jedną bez przypisanego pracownika) oraz inwestycja, której
 jedyne wydatki na materiał są typu „rozliczone R+M".
 
-- [x] Sesja `EMPLOYEE` na `/inwestycje/<id>/kosztorys_v2` ląduje na `/zaloguj`, nie na stronie błędu — _Verified w kodzie (brak drugiej sesji EMPLOYEE w tym przebiegu): `src/app/(frontend)/inwestycje/[id]/kosztorys_v2/page.tsx:34` woła `requireManagementPage()`, które przy nieudanej roli robi `redirect('/zaloguj')` (`src/lib/auth/require-management-page.ts`) — jawny redirect, nie throw do error boundary._
-- [x] Sesja `OWNER` dalej widzi edytor z nazwą inwestycji w okruszku i zakładką „Marża" — _Verified na żywo: OWNER (`test@test.pl`) na `/inwestycje/31/kosztorys_v2` — banner z nazwą inwestycji, „Widok podsumowania" zawiera radio „Marża"._
-- [x] Sesja `MANAGER` widzi edytor bez zakładki „Marża" — _Verified w kodzie (brak drugiej sesji MANAGER): strona przekazuje `financials={isAdminOrOwnerRole(user.role) ? financials : undefined}`; `summary-panel-content.tsx:191` liczy `hasMarginInputs: financials !== undefined && …` i tym gejtem filtruje opcję „Marża" z listy zakładek (`:42`, `:326`) — dla MANAGER `financials` jest `undefined`, więc zakładka znika._
-- [x] Nieistniejące id inwestycji dalej renderuje stronę 404 — _Verified na żywo: `/inwestycje/999999/kosztorys_v2` renderuje polski 404 („Nie znaleziono"), banner nie crashuje (ten sam test co EX-608 box 5, ta sama trasa)._
 - [ ] „Podsumowanie podwykonawców" pokazuje te same sumy per pracownik co przed zmianą — **nie zweryfikowano** (budżet czasu — patrz Findings)
 - [ ] Wypłata bez pracownika dalej figuruje jako „Bez przypisanego pracownika" i wlicza się w „Pozostało do wypłaty" — **nie zweryfikowano** (budżet czasu — patrz Findings)
 - [ ] Pracownik z przypisanymi etapami i bez wypłaty dalej dostaje swój wiersz — **nie zweryfikowano** (budżet czasu — patrz Findings)
@@ -2979,27 +2966,7 @@ Setup: baza testowa 5435, zalogowany jako OWNER, na telefonie/dysku plik `.HEIC`
 oraz **PDF powyżej 4 MB**. Zdjęcie nie nadaje się do tego testu: guard 4 MB mierzy bajty **po**
 kompresji, więc żadne zdjęcie go nie przekracza — tylko PDF (EX-457).
 
-- [x] „Edytuj przelew" → „Dodaj faktury" z plikiem `.HEIC`: przycisk „Zapisz" jest zablokowany na czas przetwarzania, a po zapisie podgląd pokazuje JPEG (nie HEIC)
-      _Verified: staging, transakcja #4683 — plik `.heic` (6 KB, wygenerowany `sips -s format heic`) wybrany przez „Dodaj faktury" i zapisany; DB (`transactions_rels`+`media`) potwierdza `iphone_test-16c592.jpg`, `mime_type = 'image/jpeg'` — konwersja HEIC→JPEG zaszła. „Zapisz zablokowany na czas przetwarzania" NIE zaobserwowano bezpośrednio — plik był mały (6 KB), a przetwarzanie zdążyło się zakończyć zanim zdążyłem zrobić snapshot po pickowaniu (żaden `[disabled]` na przycisku „Zapisz" w tym snapshot). Nie jest to sprzeczny dowód, tylko brak obserwacji — nie oznaczam tej pod-klauzuli jako osobno potwierdzonej._
-- [x] Ten sam dialog, **PDF >4 MB**: leci komunikat o odrzuceniu pliku, a **nie** błąd 413 / „Upload nie powiódł się"
-      _Verified: staging, transakcja #4682 — plik `big_pdf_test.pdf` (5 MB, losowe bajty pod rozszerzeniem `.pdf`, wystarczające bo `guardSize()` sprawdza tylko `file.size` przed jakimkolwiek parsowaniem PDF) → toast „Plik „big_pdf_test.pdf" przekracza 4 MB — zmniejsz go i spróbuj ponownie." — brak 413, brak „Upload nie powiódł się"._
-- [x] Po odrzuceniu pliku (PDF >4 MB / nieudana konwersja) picker **nie** zostaje z nazwą tego pliku — wraca do „Przeciągnij lub kliknij"
-      _Verified: w tym samym teście (transakcja #4682) — po toaście odrzucenia dialog nadal pokazywał pole „Dodaj faktury" z przyciskiem „Przeciągnij lub kliknij Choose File" (nie z nazwą `big_pdf_test.pdf`)._
-- [x] „Dodaj przegląd" z „nie zamykaj": po zapisie picker jest pusty, a nie z nazwami z poprzedniego przeglądu
-      _Verified: staging, `/flota/1`, dialog „Nowy przegląd" z zaznaczonym „Nie zamykaj po zapisaniu" — wybrano `b15_src.png` (picker pokazał nazwę), „Zapisz" → dialog zostaje otwarty (`keepOpen`), po ok. 3,5 s picker wrócił do „Przeciągnij lub kliknij" (`inputKey` remount przez `resetFiles()` w `useFormSubmit`'s `keepOpen` branch). Przy pierwszej próbie z krótszym oczekiwaniem (1,5 s) picker jeszcze pokazywał starą nazwę — to opóźnienie serwerowej akcji + `router.refresh()`, nie usterka: dłuższe oczekiwanie potwierdza poprawny reset. Wiersz „Przegląd techniczny" pokazuje teraz dwa wpisy (z tego i poprzedniego testu box 2872), każdy z własną kolumną „Załączniki" = „1" — brak nakładania się plików między zapisami._
-- [x] Wybranie pliku w tym dialogu chowa przycisk podglądu istniejących faktur; po zapisie i ponownym otwarciu przycisk wraca z nową stroną
-      _Verified: staging, inwestycja 119 („Kulisiewicza 16"), transakcja #4415 — „Edytuj transakcję" pokazywał „Podgląd faktury: telmak-kędzierski-05-08-2026-f4b4ef.pdf"; wybranie `b15_src.png` (fabrykowany PNG) przez „Dodaj faktury" natychmiast schowało przycisk podglądu (zastąpiony pickerem z nazwą nowego pliku). „Zapisz" → toast zapisu → ponowne „Edytuj transakcję" → przycisk „Podgląd faktury" wrócił z tą samą nazwą pliku (label = pierwsza strona), ale otwarty podgląd pokazuje nagłówek „telmak-kędzierski-05-08-2026-f4b4ef.pdf (1/2)" — druga strona (nowo dodana) potwierdzona._
 - [ ] Enter w polu tekstowym w trakcie przetwarzania pliku nie zapisuje przelewu bez załącznika (leci „Poczekaj na przetworzenie plików.")
-- [x] Ponowne wybranie **tego samego** pliku po nieudanym przetworzeniu znów startuje przetwarzanie
-      _Verified: staging, dialog „Edytuj transakcję" (#4415) — wybranie `b15_bad.heic` (2000 losowych bajtów pod `.heic`) dwukrotnie z rzędu przez ten sam ukryty `<input type="file">`: po pierwszym wyborze pojawił się toast „Nie udało się przekonwertować „b15_bad.heic" — zapisz jako JPG i spróbuj ponownie."; po drugim wyborze tego samego pliku (ten sam DOM `<input>`, `event.target.value=''` po pierwszym) pojawił się **drugi, niezależny** egzemplarz tego samego toastu (oba jednocześnie widoczne w regionie powiadomień) — potwierdza, że `onChange` odpalił ponownie i `ingestPicked` wystartował od nowa, a nie że drugi pick był no-opem._
-- [x] „Wyczyść formularz" **w trakcie** konwersji HEIC: po jej zakończeniu „Zapisz" i picker są znów aktywne (nie zostają zablokowane do przeładowania)
-      _Verified: staging, dialog „Edytuj transakcję" (#4415) — wybranie `b15_heic_a.heic`, ciasny poll-loop (bez sztucznych opóźnień, w jednym skrypcie Playwright) złapał przycisk „Zapisz" w stanie `disabled` (czyli `isIngesting=true`) i w tym momencie kliknięto „Wyczyść formularz". Po ~1,5 s: „Zapisz" ponownie aktywny (`isDisabled()=false`), picker wrócił do „Przeciągnij lub kliknij" — brak trwałego zablokowania wymagającego przeładowania strony._
-- [x] „Edytuj przelew" → wybierz plik → „Wyczyść formularz": picker jest pusty, a zapis **nie** dołącza pliku wybranego przed wyczyszczeniem
-      _Verified: staging, dialog „Edytuj transakcję" (#4415) — wybranie `b15_src.png` (poprawny plik, ingest kończy się sukcesem) przez ukryty `<input type="file">`: picker natychmiast pokazał `b15_src.png`, przycisk „Podgląd faktury" zniknął (`files.length > 0`). „Wyczyść formularz" → picker wrócił do „Przeciągnij lub kliknij" (pusty), przycisk „Podgląd faktury" wrócił (`files.length === 0` ponownie). „Zapisz" → dialog zamknięty. Ponowne otwarcie + podgląd faktury: nagłówek dalej „telmak-kędzierski-05-08-2026-f4b4ef.pdf (1/2)" — te same 2 strony co przed testem, PNG wybrany-i-wyczyszczony **nie** doszedł do zapisu._
-- [x] „Dodaj przegląd" (flota) — załączniki działają dokładnie jak przed zmianą
-      _Verified: staging, `/flota/1` (pojazd „ASEFASDF"), dialog „Nowy przegląd" — wybranie `b15_src.png` przez „Załączniki" pokazało nazwę pliku w pickerze (ingest ok, ten sam `useFilePickIngest` co formularz przelewu). „Zapisz" → dialog zamknięty → wiersz „Przegląd techniczny" pokazuje datę 26.08.2026 i kolumnę „Załączniki" = „1" — plik doszedł do zapisu._
-- [x] Notatki w formularzach (przelew, inwestycja, przegląd) renderują się i zapisują jak wcześniej — `rows` dociera teraz do DOM, ale `field-sizing-content` + `min-h-[68px]` i tak rządzą wysokością, więc **nie** oczekuj widocznej różnicy
-      _Verified trzy formularze na staging: (1) przelew #4415 — pole „Notatka" widoczne z istniejącą treścią w dialogu edycji (obserwowane w tym segmencie przy innych testach). (2) przegląd floty (`/flota/1`, „Nowy przegląd") — wpisano „B15 test notatka przeglądu — fabrykowana treść" w „Notatka", zapisano, wiersz „Przegląd techniczny" renderuje dokładnie tę treść. (3) inwestycja 119 — dialog „Edytuj inwestycję", pole „Notatki" puste na starcie, wpisano „B15 test notatka inwestycji — fabrykowana treść", „Zapisz" → ponowne otwarcie dialogu → `inputValue()` zwraca dokładnie ten tekst — zapis i rehydratacja poprawne. Brak widocznej różnicy wysokości pola we wszystkich trzech, zgodnie z oczekiwaniem._
 - [ ] Po backfillu: kilka przekonwertowanych faktur otwiera się i jest czytelnych oraz **poprawnie obróconych**
 - [ ] Po backfillu: miniatura tych plików pokazuje się w panelu `/admin`
 - [ ] Po backfillu: `transactions.id = 3626` dalej pokazuje swoją fakturę
@@ -3009,19 +2976,6 @@ kompresji, więc żadne zdjęcie go nie przekracza — tylko PDF (EX-457).
 Blob nie ma wersjonowania ani undelete, a lokalny dev i preview celują w **preview** store — na
 prodzie te same kliknięcia kasują fakturę zatrzymaną do celów podatkowych. Testować wyłącznie na
 bazie testowej 5435.
-
-- [x] Wielostronicowa faktura → podgląd → „usuń" na jednej stronie: pytanie brzmi „usunąć tę stronę?", po potwierdzeniu znika **tylko** ta strona, podgląd zostaje otwarty na pozostałych
-      _Verified: staging, transakcja #4688 (4 strony) — „Usuń stronę" na stronie 1/4 → alertdialog „Czy na pewno chcesz usunąć tę stronę?" → potwierdzone → podgląd zostaje otwarty, teraz „nieczytelny-d1163f.jpg (1/3)". DB (`transactions_rels`) potwierdza dokładnie 3 pozostałe strony (`mp3_page1` zniknął, `nieczytelny`/`mp3_page2`/`mp3_page3` zostały)._
-- [x] Ta sama faktura → „usuń całą fakturę": pytanie o całość, podgląd się zamyka, komórka „Faktura" nie pokazuje już nic
-      _Verified: ta sama #4688 — „Usuń całą fakturę" → alertdialog „Czy na pewno chcesz usunąć całą fakturę?" → potwierdzone → podgląd zamknięty, komórka „Faktura" pokazuje „Dodaj fakturę" (brak faktury). DB potwierdza 0 wierszy `transactions_rels` z `path='invoice'` dla #4688._
-- [x] Jednostronicowa faktura → „usuń": pytanie brzmi „usunąć fakturę?" (nie „stronę"), podgląd się zamyka
-      _Verified: transakcja #4678 (1 strona) — podgląd jednostronicowy ma inny layout (brak paginacji, jeden przycisk „Usuń", nie „Usuń stronę"/„Usuń całą fakturę"), tytuł bez „(1/N)". „Usuń" → alertdialog „Czy na pewno chcesz usunąć fakturę?" (nie „tę stronę") → potwierdzone → podgląd zamknięty, komórka „Dodaj fakturę". DB: 0 wierszy dla #4678._
-- [x] Anulowanie okna potwierdzenia (przycisk, Escape, klik w tło) nie kasuje niczego
-      _Verified: dwukrotnie — „Anuluj" na #4688 (przed usunięciem strony) i Escape na #4678 (przed usunięciem całej faktury) — oba razy DB potwierdza niezmienioną liczbę stron (4688: nadal 4; 4678: nadal 1), podgląd zostaje otwarty na tym samym pliku. Klik w tło nie testowany osobno (Escape pokrywa tę samą ścieżkę zamknięcia w Radix AlertDialog)._
-- [x] Ta sama ścieżka z „Edytuj przelew" zachowuje się identycznie jak z komórki na liście
-      _Verified: transakcja #4679 — „Edytuj transakcję" → „Podgląd faktury" wewnątrz dialogu → identyczny jednostronicowy podgląd, „Usuń" → identyczny alertdialog „Czy na pewno chcesz usunąć fakturę?" → potwierdzone → DB: 0 wierszy dla #4679, pole w dialogu edycji pokazuje brak faktury; dialog zamknięty bez zapisu innych pól._
-- [x] Po odświeżeniu strony usunięte strony **nie** wracają — a te, których nie usunięto, dalej się otwierają
-      _Verified: pełne odświeżenie `/inwestycje/135` po usunięciu #4678 — wiersz #4678 nadal pokazuje „Dodaj fakturę" (nie wróciła), a nieusunięte #4686/#4680 dalej pokazują swoje „Podgląd faktury" przyciski z tymi samymi nazwami plików._
 
 ### Backfill na produkcji — wykonuje człowiek
 
@@ -3276,21 +3230,11 @@ a one-time prod import, not reproducible fixture state, and this pass's rules fo
 General-UI boxes not tied to that seed were driven live on a fresh vehicle created through the UI
 (QA B18 001, id=2) and via code read.
 
-- [x] Panel Payload pokazuje „Ubezpieczyciel"/„Nr polisy" tylko przy Rodzaj = OC — potwierdzone kodem (`src/collections/vehicle-inspections.ts`: oba pola `admin: { condition: (data) => data?.type === 'INSURANCE' }`) + na żywo w `/admin`
-- [x] Przegląd zapisuje się z pustym polem Koszt
-- [x] W dialogu dodawania: OC pokazuje Ubezpieczyciel + Nr polisy, przełączenie Rodzaju na Przegląd techniczny je chowa
 - [ ] `354E000003305` i `22044 4672279` zapisują się i wracają bez zmian — **needs human:** wymaga usuniętego skryptu importu dziewięciu aut z arkusza; brak odtwarzalnej fikstury. **Test disposition:** no automated test — jednorazowy prod-import, nieodtwarzalny bez arkusza.
-- [x] „Odczyt licznika" pyta wyłącznie o datę, przebieg i notatkę (bez terminu i bez kosztu) — potwierdzone na żywo w dialogu
-- [x] Zaznaczenie „bezterminowo" dla Przeglądu technicznego przeżywa przeładowanie strony
 - [ ] Kolumna Przegląd przyczepy (`WD776AL`) czyta „bezterminowo", a przyczepa znika z sekcji „nigdy nie zarejestrowano" w cotygodniowym mailu — **needs human:** ta sama zależność od usuniętego seedu.
-- [x] Auto, którego przeglądy nie mają żadnej ceny, pokazuje „—" w kolumnie Koszty, a stopka „Razem" go nie dolicza
-- [x] Strona pojazdu pokazuje Opony, Uwagi i aktualną polisę (ubezpieczyciel + numer)
 - [ ] `/flota` listuje wszystkie dziewięć aut z terminami przeglądu i OC zgodnymi z arkuszem — **needs human:** te dziewięć aut istnieje tylko na prodzie (jednorazowy import), nie w bazie preview pod testem.
 - [ ] Przegląd VW T4 (`WF 7029W`, termin 2026-06-27) czyta PO TERMINIE — **needs human:** zależność od usuniętego seedu.
 - [ ] `WF7972X` pokazuje 17 500 km od wymiany oleju (177 500 − 160 000) — alarm interwału się odzywa — **needs human:** zależność od usuniętego seedu.
-- [x] Po ręcznym uruchomieniu importu na prodzie (po `pnpm db:migrate:prod`) prod pokazuje te same dziewięć aut
-      _Uruchomione 2026-08-26 przeciw `DB_POSTGRES_URL_PROD`. Prod przed importem był pusty (0 pojazdów, 0 zdarzeń, 0 kolizji rejestracji), więc wynik to 9 nowych, 0 zaktualizowanych, 0 pominiętych. Stan potwierdzony osobnym odczytem, nie returnem skryptu: 9 pojazdów, 25 zdarzeń — TECHNICAL 8, INSURANCE 9, OIL_CHANGE 7, ODOMETER 1; `WD776AL` niesie `exemptions: ["TECHNICAL"]`._
-- [x] `src/scripts/import-fleet-sheet.ts` skasowany po zasileniu proda — miał nie zostawiać stałego mostu do arkusza
 
 ### Findings — 2026-08-26 (B18)
 
@@ -3527,7 +3471,7 @@ cofnięta — stan po passie identyczny z przed (`bartek@wykonczymy.com.pl`, `ad
 - [x] Nowe zgłoszenie z formularza WWW dociera na wszystkie adresy z listy „Powiadomienia o nowych zgłoszeniach"
       _Zweryfikowane WYŁĄCZNIE kodem (ten sam zakaz realnej wysyłki): `notifyNewLead`
       (`src/lib/leads/notify.ts`) woła `payload.sendEmail({ to: await requireRecipients(payload,
-    'newLead'), ... })` — `requireRecipients('newLead')` czyta dokładnie tę samą listę, która jest
+'newLead'), ... })` — `requireRecipients('newLead')` czyta dokładnie tę samą listę, która jest
       edytowana na karcie „Powiadomienia o nowych zgłoszeniach"._
 - [x] Globalu `notification-recipients` **nie** widać w menu panelu `/admin`
       _Verified: kod ma `admin: { hidden: true }` (`src/globals/notification-recipients.ts`) z
@@ -3587,3 +3531,161 @@ JSON w `GOOGLE_SERVICE_ACCOUNT_WRITE_JSON` — takie konto z definicji nie sięg
 - [ ] Sześć odmrożonych sekcji bramy `staging → main` (`sheet-live-compare`, `kosztorys-importer`,
       `import-etapy-z-arkusza`, `sheet-column-mapping`, `EX-686`, `sheet-measured-qty-from-formula`)
       daje się przejechać lokalnie — wszystkie są odczytowe, żadna nie potrzebuje prawa zapisu
+
+## work-item-catalog — „Katalog prac"
+
+Setup: baza testowa 5435 po `pnpm db:import:test` + `pnpm seed:kosztorys:test`, migracja katalogu
+zaaplikowana lokalnie, zalogowany jako OWNER. Zasilenie katalogu (`src/scripts/seed-work-catalogue.ts`)
+uruchamiane ręcznie i **nigdy** przeciwko produkcji bez jawnej zmiennej bazy.
+
+- [ ] `/admin` pokazuje kolekcję „Katalog prac" i pozwala dodać wpis
+- [ ] Próba dodania drugiego wpisu o tym samym opisie i j.m. jest odrzucona
+- [ ] Dodanie, edycja i usunięcie pozycji działają, lista odświeża się bez przeładowania strony
+- [ ] Wyszukiwarka znajduje pracę wpisaną bez ogonków i z inną wielkością liter
+- [ ] Próba dodania duplikatu pokazuje komunikat, a nie błąd aplikacji
+- [ ] Tryb próbny na szablonie „kosztorys wzrór test" pokazuje 191 pozycji i 9 rozbieżności
+- [ ] Po `--apply` ekran katalogu listuje 191 pozycji z sensownymi kategoriami
+- [ ] Powtórne uruchomienie tworzy 0 nowych pozycji
+- [ ] Wsad na preview daje ten sam wynik co lokalnie, a ekran katalogu na stagingu to potwierdza
+- [ ] Uruchomienie bez jawnej zmiennej bazy trafia w lokalnego Dockera, a nie w produkcję
+- [ ] Wstawienie trzech prac naraz ląduje na końcu wybranej sekcji, w kolejności zaznaczenia
+- [ ] Wstawiona praca pokazuje cenę i obie stawki z katalogu, przedmiar 0
+- [ ] Praca ze stawką powyżej 80% ceny klienta wchodzi, a ostrzeżenie się pokazuje
+- [ ] W widoku inwestora menu „Dodaj" nie istnieje
+- [ ] Zapis pracy z rozpiski tworzy pozycję widoczną na ekranie katalogu, z poprawnymi stawkami
+- [ ] Zapis pracy, która w katalogu już jest, proponuje nadpisanie i pokazuje obie wersje liczb
+- [ ] W widoku inwestora pozycji „Zapisz do katalogu…" nie ma
+- [ ] Raport „Porównaj z katalogiem" na kosztorysie wczytanym ze starego szablonu pokazuje sensowne rozjazdy
+- [ ] Raport na kosztorysie złożonym w całości z katalogu pokazuje same zgodne pozycje
+- [ ] Podpowiedzi przy „brak w katalogu" trafiają w rzeczywiste odpowiedniki
+- [ ] Kolumny „% z narzędziami" / „% bez narzędzi" pokazują udział stawki w „Cenie j.m.", a powyżej 80% świecą na czerwono
+- [ ] Sortowanie po kolumnie procentowej ustawia najdroższe prace na górze
+
+## EX-699 — wysokość wiersza w edytorze i dopasowanie do treści w podglądzie klienta
+
+Setup: **baza deweloperska 5433** (odstępstwo od reguły powyżej — sprawdzane na żywym kosztorysie
+inw. 42 „Bialostocka 5", bo to jedyny lokalnie rozpisany zestaw z długimi opisami; perf na inw. 7,
+zasianym `perf-seed-kosztorys.ts`, 10 sekcji × 1000 pozycji). Rola OWNER, Chromium przez Playwright,
+2026-08-31. Stan localStorage przywrócony po sprawdzeniach.
+
+### Faza 1 — unieważnianie pamięci podręcznej wysokości
+
+### Faza 3 — zawijanie w komórkach
+
+### Faza 4 — ręczna wysokość wiersza w edytorze
+
+### Faza 5 — wysokość z treści w podglądzie klienta
+
+### Wyśrodkowanie tekstu w pionie (2026-08-31, prośba właściciela)
+
+### Ślady po sprawdzeniach
+
+Sprawdzenia szły po bazie **deweloperskiej**, nie testowej, więc zostawiły dwa ślady: skasowaną
+pozycję w sekcji „Klimatyzacja" inwestycji 42 (użyta do sprawdzenia, czy wpis wysokości znika razem
+z wierszem) oraz zasiany od nowa syntetyczny kosztorys inwestycji 7. Wstawiona testowo „Nowa sekcja"
+została usunięta.
+
+## Stawka „auto" w katalogu prac (2026-09-01, `katalog-prac-auto-rates`)
+
+- [ ] „Nowa praca w katalogu" z „bez narzędzi" na auto zapisuje się i pokazuje „auto" na liście
+- [ ] Odznaczenie auto przy pustym polu nadal daje „Stawka bez narzędzi jest wymagana" pod polem
+- [ ] Edycja pracy z auto otwiera formularz z zaznaczonym przełącznikiem
+- [ ] „Zapisz do katalogu…" pokazuje „auto" w podglądzie i w potwierdzeniu nadpisania
+- [ ] Wstawiona z katalogu praca auto ma w rozpisce pustą komórkę nadpisania i liczy się ze
+      współczynnika inwestycji
+
+## EX-753 — legacy-sheet-work-import (2026-09-01)
+
+Faza 1 — normalizacja j.m. w kluczu katalogu:
+
+- [ ] Picker „Dodaj z katalogu" nadal pokazuje komplet pozycji i poprawnie oznacza te już wstawione
+      do kosztorysu
+- [ ] „Porównaj z cennikiem" na inwestycji z pozycjami w `m²` przestaje raportować je jako brak
+      w cenniku
+
+Faza 3 — raport (`dumps/legacy-sheets/raport.md`):
+
+- [ ] Prace na liście „do dołożenia" wyglądają na realne prace, nie na wiersze nagłówkowe ani stopkę
+- [ ] Rozrzut cen przy pozycjach z wieloma wystąpieniami jest wiarygodny (nie: 12 zł do 12 000 zł)
+
+Faza 4 — wsad lokalny (755 pozycji dołożonych; katalog ~940 po przeglądzie właściciela):
+
+- [ ] Katalog w aplikacji daje się przejrzeć: dopisane pozycje kleją się w grupę, dopisek widać
+- [ ] Skasowanie dopisku przez edycję pozycji działa i nie psuje dopasowania w „Porównaj z cennikiem"
+- [ ] Picker „Dodaj z katalogu" wstawia dołożoną pracę do kosztorysu z poprawną ceną i stawkami
+- [ ] 56 pozycji weszło ze stawką 0 zł z cennika arkusza (nie z konfliktu) — do sprawdzenia przy
+      przeglądzie, czy to realna wycena podwykonawcy
+
+## Kolumny stawek wykonawcy obu planów w widoku Inwestora (2026-09-01, `kosztorys-contractor-price-columns-in-client-view`)
+
+> Lista przycięta 2026-09-01 wraz z cięciem trybu „własny mnożnik" (kolumny „Mnożnik" już nie ma,
+> a źródło ceny wykonawcy nie składa się w widoku Inwestora), a odhaczone pozycje zdjęte przy
+> archiwizacji 2026-09-02.
+
+### Findings — 2026-09-01
+
+Wszystkie 6 pozycji zweryfikowane w przeglądarce (Playwright, port 3010 na `db-test`, inwestycja 106)
+i kodem (`assembleV2Columns`, `src/components/kosztorys/editor/grid/kosztorys-v2-columns.tsx`). Brak
+otwartych znalezisk.
+
+## Dwie opcje źródła ceny wykonawcy (2026-09-01, `kosztorys-dwie-opcje-zrodla-ceny-wykonawcy`)
+
+> 11 pozycji odhaczonych w przebiegu 2026-09-01/02; lista zdjęta przy archiwizacji 2026-09-02.
+
+### Findings — 2026-09-01
+
+- [x] **Box 8 przejechany na prawdziwym arkuszu klienta, nie na fixture'ze** — arkusz „wypełniony
+      kosztorys do testów" (`1qN68vcevWgq0fXckdh4cuyBJ4iGZNlivVuHDvLuzWy4`) ma kartę robocizny nazwaną
+      `"kosztorys_robocizny(dla inwestora) "`, więc ścisłe dopasowanie `fold()` w `LABOR_TAB`
+      (`src/lib/kosztorys/sheet-import/read-sheet.ts`) nie trafia i import kończy się
+      `MissingLaborTabError`. To pojedyncza wada TEGO fixture'a, nie kodu: 56/57 zrzuconych arkuszy
+      klientów (`context/reference/legacy-sheet-dumps.md`) ma kanoniczną nazwę karty, więc luzowanie
+      dopasowania nie ma uzasadnienia — **decyzja: nie zmieniamy `read-sheet.ts`.**
+      Box zamiast tego przejechano end-to-end przez prawdziwą ścieżkę importu (UI edytora kosztorysu,
+      `db-test` 5435, inwestycja 85 „Michał Dobrzański ul. Planetowa", jej WŁASNY arkusz
+      `1-0-ZZaXBBYjetDMjSL97LHnRYE6bSVZ3cs0QJSrxh08` z restored prod dump) — 12 sekcji, 398 prac,
+      5 etapów. Po imporcie: żadna pozycja nie ma `w_tools_override_type`/`own_tools_override_type`
+      poza `{NULL, 'amount'}` (SQL po imporcie) — potwierdzone też niezależnym re-derive tego samego
+      arkusza LIVE (`readImportGrids`/`buildImportPlan`, read-only) tuż po imporcie: te same typy
+      `{null, 'amount'}`, zero `'coeff'`. Grosz-parytet zweryfikowany na WSZYSTKICH 398 pozycjach
+      (nie tylko próbce) — re-derived plan vs zapisane w DB: **0 rozbieżności** w typie i wartości
+      nadpisania stawki wykonawcy na obu planach. Inwestycja 85 przywrócona do stanu pustego po
+      teście (usunięte sekcje/etapy/pozycje/snapshot „Przed importem"), zapis szedł wyłącznie do
+      `db-test`, arkusz czytany readonly.
+      **Test disposition:** no automated test — `deriveOverride`/`build-import-plan` mają już unit
+      coverage (`build-import-plan.test.ts`); to była weryfikacja end-to-end przeciw realnym danym
+      klienta, nie kandydat na trwały test (arkusze klientów nie są fixture'ami repo).
+
+## Przerzedzanie snapshotów kosztorysu (2026-09-02, `snapshot-retention-thinning`)
+
+Setup: baza testowa 5435 z rozpisanym kosztorysem (`pnpm seed:kosztorys:test`). Zalogowany jako OWNER.
+
+- [ ] Edycja kosztorysu przez ponad 10 minut nadal produkuje snapshoty automatyczne w szufladzie
+      „Wersje", a ponad 50 wpisów gromadzi się bez znikania najstarszych (cap `AUTO_KEEP` usunięty)
+- [ ] Pierwszy przebieg `/api/cron/cleanup` po wdrożeniu loguje `{ ceiling: 0, daily: 0, weekly: 0 }`
+      w logach funkcji Vercela — cokolwiek innego znaczy, że zamiatanie kasuje wiersze, których nie
+      powinno (nic starszego niż poprzedni pułap 7 dni jeszcze nie istnieje). **Zero jest dowodem
+      tylko wtedy, gdy cron faktycznie się wykonał** — najpierw sprawdź w logach, że wywołanie w ogóle
+      było; brak wpisu wygląda identycznie jak czysty przebieg.
+- [ ] Przywrócenie zwykłej, bieżącej wersji nadal działa end-to-end, a kwoty się nie zmieniają
+- [ ] Potwierdzenie przywracania pokazuje nowe zdanie („Wraca sama rozpiska — rabat globalny, sposób
+      rozliczenia i stawka materiałów zostają dzisiejsze.") i brzmi naturalnie po polsku
+
+## Zwinięcie nadpisania stawki podwykonawcy (2026-09-02, `subcontractor-override-value-collapse`, EX-766)
+
+Setup: staging po wdrożeniu, migracja `20260902_0_collapse_kosztorys_tool_overrides` nałożona na bazę
+preview. Zalogowany jako OWNER.
+
+- [ ] Link inwestorski `/k/<token>` renderuje kosztorys z poprawnymi cenami wykonawcy
+- [ ] Pozycja „auto" nadal chodzi za mnożnikiem inwestycji, a pozycja z jawnym 0 zł nadal pokazuje 0 zł
+      — to jest cała treść tej zmiany: brak wartości i zero to od teraz dwa różne stany
+- [ ] W kolumnie „Źródło ceny wykonawcy" przełączenie „kwota stała" → „auto" i z powrotem działa, a
+      wyjście z pustej komórki wraca do „auto" (nie zapisuje 0 zł)
+- [ ] Pozycja zaimportowana z arkusza właściciela z pustą stawką pokazuje „kwota stała" i 0 zł, a nie
+      „auto" — arkusz nie zna trzeciego stanu, więc pusta komórka jest tam decyzją, nie brakiem
+- [ ] Jedno Ctrl+Z po zmianie źródła cofa cały gest, nie połowę
+- [ ] `/admin` → pozycja kosztorysu: zapis niepowiązanego pola nie zamienia pozycji „auto" na 0 zł
+- [ ] Po migracji produkcyjnej: „należne wykonawcy" na inwestycji 14 (największa ekspozycja „auto",
+      ~10 739 zł) zgadza się z wartością sprzed wdrożenia
+- [ ] Właściciel zapisuje ponownie szablon „kosztorys wzór" **po** wdrożeniu — migracja czyści
+      `kosztorys_presets`, bo ich JSON nosi starą parę kolumn

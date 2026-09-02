@@ -1,33 +1,32 @@
-import type { ReactNode, Ref } from 'react'
+import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils/cn'
 
 // `muted` covers the derived-value case: a subcontractor cell showing a value it isn't editable in
 // this mode. `danger` flags a figure that's out of bounds (e.g. more executed than offered) — it
 // overrides `muted` when both are set, since a cell is never muted AND alarming at once.
-// Width-only, never `size-full` — .dsg-cell centres its children via flex, and a 100%-height span
-// defeats that, top-aligning the text while the editable cells' inputs still centre theirs.
+// The vertical box is globals.css's business: it stretches this span to the cell and pads it so the
+// clip lands between lines rather than through one. Don't set a height here.
 export function ReadOnlyCellText({
   children,
   muted,
   danger,
   emphasize,
   className,
-  ref,
 }: {
   children: ReactNode
   muted?: boolean
   danger?: boolean
   emphasize?: boolean
   className?: string
-  // Truncation is only observable from the DOM (`scrollWidth > clientWidth`), so a caller that has
-  // to react to it — the read-only long-text cell — needs the node this span renders.
-  ref?: Ref<HTMLSpanElement>
 }) {
   return (
     <span
-      ref={ref}
       className={cn(
-        'block w-full truncate px-2 text-left text-sm',
+        // Wraps rather than truncating: a row taller than one line must fill that height with text,
+        // and the row's own height is what limits how much shows. `break-words` keeps a single
+        // unbroken word (a pasted URL, a long part number) inside the column instead of widening it.
+        // `whitespace-pre-line` preserves the newlines the editing textarea lets people type.
+        'block w-full px-2 text-left text-sm break-words whitespace-pre-line',
         muted && 'text-muted-foreground',
         danger && 'text-destructive',
         emphasize && 'font-medium',

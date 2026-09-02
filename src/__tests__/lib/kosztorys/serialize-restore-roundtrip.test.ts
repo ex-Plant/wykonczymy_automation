@@ -137,10 +137,8 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
               discountType: null,
               discountValue: 0,
               clientPrice: 0,
-              wToolsOverrideType: null,
-              wToolsOverrideValue: 0,
-              ownToolsOverrideType: null,
-              ownToolsOverrideValue: 0,
+              wToolsOverrideValue: null,
+              ownToolsOverrideValue: null,
               note: null,
             },
             {
@@ -153,14 +151,13 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
               discountType: 'amount',
               discountValue: 33.33,
               clientPrice: 149.99,
-              wToolsOverrideType: 'coeff',
-              wToolsOverrideValue: 0.62,
-              ownToolsOverrideType: 'amount',
+              wToolsOverrideValue: null,
               ownToolsOverrideValue: 88.5,
               note: 'Uwaga: różnica ±5 cm\nDrugi wiersz — ćwierć „cudzysłów"',
             },
-            // The mirrored override combo. Per plane each of the two legal types must appear
-            // somewhere, or a swapped pair of override columns survives the roundtrip unnoticed.
+            // The mirrored override combo. Per plane both legal states — „kwota stała" and „auto" —
+            // must appear somewhere, or a swapped pair of override columns survives the roundtrip
+            // unnoticed.
             {
               description: 'Odwrócone nadpisania',
               unit: 'szt',
@@ -168,10 +165,8 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
               discountType: 'percent',
               discountValue: 5,
               clientPrice: 75,
-              wToolsOverrideType: 'amount',
               wToolsOverrideValue: 210.4,
-              ownToolsOverrideType: 'coeff',
-              ownToolsOverrideValue: 0.33,
+              ownToolsOverrideValue: null,
             },
           ],
         },
@@ -225,7 +220,6 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
     // New ids everywhere — proves a real wipe-and-reinsert, not an in-place no-op.
     const ids = (snap: SnapshotPayloadT) => snap.sections.map((s) => s.id).sort((a, b) => a - b)
     expect(ids(after)).not.toEqual(ids(before))
-    // ...but content + order is identical.
     expect(canonical(after)).toEqual(canonical(before))
   })
 

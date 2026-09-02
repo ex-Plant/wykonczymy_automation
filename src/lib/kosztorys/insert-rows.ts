@@ -29,9 +29,7 @@ export const ITEM_INSERT_COLUMNS = [
   'discount_type',
   'discount_value',
   'client_price',
-  'w_tools_override_type',
   'w_tools_override_value',
-  'own_tools_override_type',
   'own_tools_override_value',
   'note',
 ] as const
@@ -88,7 +86,9 @@ export function remapNewIds<K>(
 export async function insertSections(
   db: DbExecutorT,
   investmentId: number,
-  rows: { displayOrder: number; section: KosztorysSectionT }[],
+  // `Omit<…, 'displayOrder'>`: the caller passes display_order separately (an append offsets it), and
+  // a section read out of a stored payload may not carry the key at all.
+  rows: { displayOrder: number; section: Omit<KosztorysSectionT, 'displayOrder'> }[],
 ): Promise<number[]> {
   if (rows.length === 0) return []
   const values = rows.map(
@@ -120,7 +120,7 @@ export async function insertItems(
   if (rows.length === 0) return []
   const values = rows.map(
     ({ sectionId, item: it }) =>
-      sql`(${investmentId}, ${sectionId}, ${it.displayOrder}, ${it.description ?? null}, ${it.unit ?? null}, ${it.plannedQty}, ${it.sheetMeasuredQty ?? null}, ${it.discountType ?? null}, ${it.discountValue}, ${it.clientPrice}, ${it.wToolsOverrideType ?? null}, ${it.wToolsOverrideValue}, ${it.ownToolsOverrideType ?? null}, ${it.ownToolsOverrideValue}, ${it.note ?? null})`,
+      sql`(${investmentId}, ${sectionId}, ${it.displayOrder}, ${it.description ?? null}, ${it.unit ?? null}, ${it.plannedQty}, ${it.sheetMeasuredQty ?? null}, ${it.discountType ?? null}, ${it.discountValue}, ${it.clientPrice}, ${it.wToolsOverrideValue}, ${it.ownToolsOverrideValue}, ${it.note ?? null})`,
   )
   const res = await db.execute(sql`
     INSERT INTO kosztorys_items (${sql.raw(ITEM_INSERT_COLUMNS.join(', '))})

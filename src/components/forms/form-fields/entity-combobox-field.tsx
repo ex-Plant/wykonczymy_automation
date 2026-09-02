@@ -40,6 +40,15 @@ const VARIANT_CONFIG = {
     noItemsMessage: 'Brak pracowników',
     noActiveItemsMessage: 'Brak aktywnych pracowników',
   },
+  owner: {
+    name: 'owner',
+    label: 'Właściciel',
+    placeholder: 'Wybierz właściciela',
+    searchPlaceholder: 'Szukaj pracownika...',
+    emptySearchMessage: 'Nie znaleziono pracownika.',
+    noItemsMessage: 'Brak pracowników',
+    noActiveItemsMessage: 'Brak aktywnych pracowników',
+  },
 } as const satisfies Record<string, VariantConfigT>
 
 type EntityComboboxFieldPropsT<TVariant extends keyof typeof VARIANT_CONFIG> = {

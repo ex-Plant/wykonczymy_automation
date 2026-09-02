@@ -3,11 +3,19 @@ import type { Payload, PayloadRequest } from 'payload'
 import { getDb } from '@/lib/db/get-db'
 import { nextSectionDisplayOrder } from '@/lib/kosztorys/display-order'
 import { insertItems, insertSections } from '@/lib/kosztorys/insert-rows'
+import {
+  itemWithColumnDefaults,
+  type StoredSnapshotPayloadT,
+} from '@/lib/kosztorys/snapshot-format'
 import type { KosztorysItemT, KosztorysSectionT } from '@/lib/kosztorys/types'
 
 // One section from a preset payload + its items, ready to append. `section`/`items` still carry the
-// preset's OLD ids — this helper mints new ones and returns the remapped slice.
-export type SectionSliceT = { section: KosztorysSectionT; items: KosztorysItemT[] }
+// preset's OLD ids — this helper mints new ones and returns the remapped slice. The STORED types:
+// a preset payload is jsonb written by an older schema, so a column added since simply has no key.
+export type SectionSliceT = {
+  section: StoredSnapshotPayloadT['sections'][number]
+  items: StoredSnapshotPayloadT['items'][number][]
+}
 
 // The created slice with NEW ids, in the nested shape getKosztorysTree yields (section + its items),
 // so the client can build grid rows without a refetch.
@@ -42,19 +50,25 @@ export async function appendPresetSections(
   )
 
   // Items keep the preset's per-section display_order — the offset is a section concern only.
-  const itemRows = slices.flatMap((slice, i) =>
-    slice.items.map((item) => ({ sectionId: newSectionIds[i], item })),
+  // itemWithColumnDefaults for the same 23502 reason as a restore: this is a stored payload.
+  const filledSlices = slices.map(({ items }) => items.map(itemWithColumnDefaults))
+  const itemRows = filledSlices.flatMap((items, i) =>
+    items.map((item) => ({ sectionId: newSectionIds[i], item })),
   )
   const newItemIds = await insertItems(db, investmentId, itemRows)
 
   // The cursor is only valid because itemRows above was flattened in this same slice order.
   let cursor = 0
-  return slices.map(({ section: s, items }, i) => ({
+  return slices.map(({ section: s }, i) => ({
     id: newSectionIds[i],
     name: s.name,
     displayOrder: base + i,
     // A preset/snapshot written before the colour column has no `color` key at all.
     color: s.color ?? null,
-    items: items.map((it) => ({ ...it, id: newItemIds[cursor++], sectionId: newSectionIds[i] })),
+    items: filledSlices[i].map((it) => ({
+      ...it,
+      id: newItemIds[cursor++],
+      sectionId: newSectionIds[i],
+    })),
   }))
 }

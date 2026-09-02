@@ -7,6 +7,7 @@ import { KosztorysVersionsDrawer } from '@/components/kosztorys/editor/dialogs/k
 import { useAutoSnapshot } from '@/components/kosztorys/editor/hooks/use-auto-snapshot'
 import { useRestoreRemount } from '@/components/kosztorys/editor/hooks/use-restore-remount'
 import { useUndoRedo } from '@/components/kosztorys/editor/hooks/use-undo-redo'
+import { refreshDataAction } from '@/lib/actions/refresh'
 import type { KosztorysEditorDataT } from '@/lib/kosztorys/types'
 
 type PropsT = KosztorysEditorDataT
@@ -22,7 +23,11 @@ export function KosztorysEditorV2(props: PropsT) {
   // close over the unmounted body's setRows/refs.
   const undoRedo = useUndoRedo()
   const [versionsOpen, setVersionsOpen] = useState(false)
-  const { remountKey, triggerRestore } = useRestoreRemount(tree.revision)
+  // The latch's freshness token. `revision` (investment.updatedAt) alone answers a restore and an
+  // import — both bump it — but not a row deleted in ANOTHER tab, which changes nothing on the
+  // investment and is one of the ways a write comes back NOT_FOUND. The item count closes that half.
+  const treeToken = `${tree.revision}:${tree.sections.reduce((n, section) => n + section.items.length, 0)}`
+  const { remountKey, triggerRestore } = useRestoreRemount(treeToken)
 
   // Live stack revision for the interval closure (which captures values at setup time, so it can't
   // read the render-fresh `undoRedo.revision`). The eslint rule is too strict for this "latest value"
@@ -44,6 +49,20 @@ export function KosztorysEditorV2(props: PropsT) {
     autoSnapshot.skipNext()
   }
 
+  // Recovery from the other direction: the tree was replaced somewhere ELSE (another tab, another
+  // session), so this editor learns of it only when a write comes back NOT_FOUND. Same reseed as a
+  // restore, and deliberately through the same latch: the fresh tree arrives as a router transition
+  // whose commit can't be awaited, so a remount fired from the action's continuation would render
+  // BEFORE that pending transition and reseed the body from the tree it already holds. Arming first
+  // and letting the prop landing drive the remount has no such ordering to get wrong.
+  // `refreshDataAction` is the sidebar's „Odśwież dane" — data, not the page.
+  function handleStaleTree() {
+    triggerRestore()
+    undoRedo.reset()
+    autoSnapshot.skipNext()
+    return refreshDataAction()
+  }
+
   return (
     <>
       <KosztorysEditorBody
@@ -52,6 +71,7 @@ export function KosztorysEditorV2(props: PropsT) {
         undoRedo={undoRedo}
         onOpenVersions={() => setVersionsOpen(true)}
         onTreeReplaced={handleTreeReplaced}
+        onStaleTree={handleStaleTree}
       />
       <KosztorysVersionsDrawer
         investmentId={investmentId}

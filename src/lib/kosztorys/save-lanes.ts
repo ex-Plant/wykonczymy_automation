@@ -1,4 +1,4 @@
-import type { ActionResultT } from '@/types/action'
+import type { ActionErrorCodeT, ActionResultT } from '@/types/action'
 
 // A per-key serialized write lane. Every write for a given key (item field, item×stage) chains behind
 // the previous one, so a forward autosave and an undo's inverse write to the same cell can never race:
@@ -27,13 +27,19 @@ export function createSaveLanes() {
 
   // Chain `run` behind the key's current tail. Failures (logical `!success` or a thrown/rejected
   // action) route to `onError` and are swallowed so the lane never rejects and the next write still
-  // runs. Returns the promise for *this* write settling.
-  function enqueue(key: string, run: LaneRunT, onError?: (message: string) => void): Promise<void> {
+  // runs. The failure's `code` rides along: a write refused because its row is GONE needs a different
+  // recovery from one refused on its value, and the message alone can't be branched on. Returns the
+  // promise for *this* write settling.
+  function enqueue(
+    key: string,
+    run: LaneRunT,
+    onError?: (message: string, code?: ActionErrorCodeT) => void,
+  ): Promise<void> {
     const prev = tails.get(key) ?? Promise.resolve()
     const next = prev.then(async () => {
       try {
         const res = await run()
-        if (!res.success) onError?.(res.error)
+        if (!res.success) onError?.(res.error, res.code)
       } catch (error) {
         onError?.(error instanceof Error ? error.message : 'Błąd zapisu')
       }

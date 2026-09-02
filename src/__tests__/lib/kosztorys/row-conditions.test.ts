@@ -10,6 +10,7 @@ import {
   isFoldSuppressed,
   sectionIdsWhereAllMatch,
 } from '@/lib/kosztorys/row-conditions'
+import { planePriceKey } from '@/lib/kosztorys/plane-price-keys'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
@@ -18,6 +19,16 @@ const STAGES: KosztorysStageT[] = [
   { id: 2, ordinal: 2, label: null, plane: 'w_tools', workerId: 5 },
 ]
 const CTX = { stages: STAGES, hasSettledMaterial: false }
+
+// The client's cena j.m. plus one crew's rate pair — what a price problem on that plane is repaired
+// in. Both planes' columns exist in every view now, so a reveal that named both would answer a
+// question about one crew with the other crew's numbers beside it.
+const priceCells = (...planes: ('w_tools' | 'own_tools')[]) => [
+  'price',
+  ...planes.flatMap((plane) =>
+    (['priceMode', 'price'] as const).map((base) => planePriceKey(base, plane)),
+  ),
+]
 
 function row(overrides: Partial<KosztorysV2RowT> = {}): KosztorysV2RowT {
   return {
@@ -31,10 +42,8 @@ function row(overrides: Partial<KosztorysV2RowT> = {}): KosztorysV2RowT {
     discountType: null,
     discountValue: 0,
     clientPrice: 100,
-    wToolsOverrideType: null,
-    wToolsOverrideValue: 0,
-    ownToolsOverrideType: null,
-    ownToolsOverrideValue: 0,
+    wToolsOverrideValue: null,
+    ownToolsOverrideValue: null,
     note: null,
     sectionName: 'Podłogi',
     sectionColor: null,
@@ -68,12 +77,7 @@ describe('the conditions, each on its boundary', () => {
   it('„bez ceny j.m. i bez wykonanej pracy" asks the client price, the only one typed by hand', () => {
     expect(matches('no-client-price', row({ clientPrice: 0 }))).toBe(true)
     // A subcontractor override cannot stand in for a missing client price.
-    expect(
-      matches(
-        'no-client-price',
-        row({ clientPrice: 0, wToolsOverrideType: 'amount', wToolsOverrideValue: 80 }),
-      ),
-    ).toBe(true)
+    expect(matches('no-client-price', row({ clientPrice: 0, wToolsOverrideValue: 80 }))).toBe(true)
     expect(matches('no-client-price', row({ clientPrice: 100 }))).toBe(false)
   })
 
@@ -140,19 +144,18 @@ describe('the conditions, each on its boundary', () => {
 
   // The same guard that reddens the cell, so the filter and the colour can never disagree.
   it('„z nieprawidłową ceną wykonawcy" reads the guard, per plane', () => {
-    const overridden = (type: 'amount', value: number) =>
-      row({ wToolsOverrideType: type, wToolsOverrideValue: value })
+    const overridden = (value: number) => row({ wToolsOverrideValue: value })
 
     // clientPrice 100 → the ceiling is 80; typed at exactly the ceiling it must stand.
-    expect(matches('overpriced-w-tools', overridden('amount', 80))).toBe(false)
-    expect(matches('overpriced-w-tools', overridden('amount', 80.01))).toBe(true)
-    expect(matches('overpriced-w-tools', overridden('amount', -1))).toBe(true)
+    expect(matches('overpriced-w-tools', overridden(80))).toBe(false)
+    expect(matches('overpriced-w-tools', overridden(80.01))).toBe(true)
+    expect(matches('overpriced-w-tools', overridden(-1))).toBe(true)
     // An unpriced pozycja is „bez ceny j.m." — a different problem, and the ceiling collapses to zero.
     expect(matches('overpriced-w-tools', row({ clientPrice: 0 }))).toBe(false)
   })
 
   it('keeps the two planes apart — a fault on one is silent on the other', () => {
-    const subject = row({ ownToolsOverrideType: 'amount', ownToolsOverrideValue: 95 })
+    const subject = row({ ownToolsOverrideValue: 95 })
     expect(matches('overpriced-own-tools', subject)).toBe(true)
     expect(matches('overpriced-w-tools', subject)).toBe(false)
   })
@@ -161,9 +164,7 @@ describe('the conditions, each on its boundary', () => {
   // exactly like a priced one in the grid, so without this it is findable only by scrolling.
   it('„bez ceny wykonawcy" finds a stawka explicitly set to zero, per plane', () => {
     const blank = row({
-      wToolsOverrideType: 'amount',
       wToolsOverrideValue: 0,
-      ownToolsOverrideType: 'amount',
       ownToolsOverrideValue: 0,
     })
     expect(matches('no-w-tools-price', blank)).toBe(true)
@@ -171,7 +172,7 @@ describe('the conditions, each on its boundary', () => {
 
     // An ujemna stawka is the guard's row, not this one's — counted by both it would show up twice in
     // the „Problemy" list and be chased twice in the grid.
-    const negative = row({ wToolsOverrideType: 'amount', wToolsOverrideValue: -1 })
+    const negative = row({ wToolsOverrideValue: -1 })
     expect(matches('no-w-tools-price', negative)).toBe(false)
     expect(matches('overpriced-w-tools', negative)).toBe(true)
 
@@ -179,6 +180,20 @@ describe('the conditions, each on its boundary', () => {
     expect(matches('no-w-tools-price', row())).toBe(false)
     // „bez ceny j.m." owns this row; here the crew price is zero only because the client's is.
     expect(matches('no-w-tools-price', row({ clientPrice: 0 }))).toBe(false)
+  })
+
+  // The whole point of collapsing the override pair into one nullable number: `null` and `0` are two
+  // different answers, and every reader has to keep them apart. `null` = auto, the pozycja takes the
+  // investment's mnożnik. `0` = a stawka someone set to zero on purpose. A `coalesce`/`??` that folds
+  // one into the other reads as „darmowa robocizna" on every auto pozycja and this is the guard.
+  it('holds auto and an explicit 0 zł apart on both planes', () => {
+    const auto = row({ wToolsOverrideValue: null, ownToolsOverrideValue: null })
+    expect(matches('no-w-tools-price', auto)).toBe(false)
+    expect(matches('no-own-tools-price', auto)).toBe(false)
+
+    const freeOfCharge = row({ wToolsOverrideValue: 0, ownToolsOverrideValue: 0 })
+    expect(matches('no-w-tools-price', freeOfCharge)).toBe(true)
+    expect(matches('no-own-tools-price', freeOfCharge)).toBe(true)
   })
 
   // One direction only: the „Sekcje" list is built from filters, so nothing else may carry a label.
@@ -203,8 +218,8 @@ describe('the conditions, each on its boundary', () => {
       row({ [stageKey(2)]: 3 }),
       row({ discountType: 'percent', discountValue: 10 }),
       row({ discountType: null, discountValue: 10 }),
-      row({ wToolsOverrideType: 'amount', wToolsOverrideValue: 80 }),
-      row({ ownToolsOverrideType: 'coeff', ownToolsOverrideValue: 0.4 }),
+      row({ wToolsOverrideValue: 80 }),
+      row({ ownToolsOverrideValue: 40 }),
       row({ note: 'do potwierdzenia z klientem' }),
       row({ note: '   ' }),
     ]
@@ -251,13 +266,11 @@ describe('the conditions, each on its boundary', () => {
   })
 
   it('judges each rate source on its own plane, never the other one', () => {
-    const manualWithTools = row({ wToolsOverrideType: 'amount', wToolsOverrideValue: 80 })
+    const manualWithTools = row({ wToolsOverrideValue: 80 })
     expect(matches('manual-rate-w-tools', manualWithTools)).toBe(true)
     // The same row is still on the formula for the plane it says nothing about.
     expect(matches('manual-rate-own-tools', manualWithTools)).toBe(false)
     expect(matches('formula-rate-own-tools', manualWithTools)).toBe(true)
-    // 'coeff' is a hand-typed multiplier, not the derived one — still „wpisana ręcznie".
-    expect(matches('manual-rate-own-tools', row({ ownToolsOverrideType: 'coeff' }))).toBe(true)
   })
 
   it('„bez komentarza" reads a blank as no comment, and null and empty alike', () => {
@@ -273,6 +286,31 @@ describe('the conditions, each on its boundary', () => {
 // material, so the detector fires on the combination it CAN see — the investment has material folded
 // into robocizna, the pozycja has executed work, and the stawka for the plane that work was done at is
 // a percentage of a client price that contains the material.
+// The two conditions split „ktoś to wpisał ręcznie" from „wyliczyło się" — exactly the question the
+// single stawka field answers: a number is a decision, `null` is the global mnożnik.
+describe('the rate-source pair', () => {
+  it('reads a kwota stała as hand-typed', () => {
+    const fixed = row({ wToolsOverrideValue: 42 })
+    expect(matches('manual-rate-w-tools', fixed)).toBe(true)
+    expect(matches('formula-rate-w-tools', fixed)).toBe(false)
+  })
+
+  // Complementary by construction: every wiersz falls on exactly one side, or the pair could not
+  // express „pokaż mi tylko te drugie". An explicit 0 zł is on the hand-typed side — somebody typed
+  // it — which is the same distinction the „bez ceny wykonawcy" spec above turns on.
+  it('never claims a wiersz twice, and never drops one', () => {
+    for (const subject of [
+      row(),
+      row({ wToolsOverrideValue: 42 }),
+      row({ wToolsOverrideValue: 0 }),
+    ]) {
+      expect(matches('manual-rate-w-tools', subject)).toBe(
+        !matches('formula-rate-w-tools', subject),
+      )
+    }
+  })
+})
+
 describe('„ze stawką wykonawcy od ceny z materiałem" — the overpaid-crew guard', () => {
   const STAGES_BOTH_PLANES: KosztorysStageT[] = [
     { id: 1, ordinal: 1, label: null, plane: 'w_tools', workerId: null },
@@ -303,28 +341,16 @@ describe('„ze stawką wykonawcy od ceny z materiałem" — the overpaid-crew g
 
   // The convention the owner confirmed: on such pozycje the stawka is typed as a fixed amount.
   it('accepts a stawka typed as a fixed amount', () => {
-    const typed = row({ wToolsOverrideType: 'amount', wToolsOverrideValue: 40 })
+    const typed = row({ wToolsOverrideValue: 40 })
     expect(
       fires('material-percent-rate-w-tools', { ...typed, [stageKey(1)]: 4 } as KosztorysV2RowT),
     ).toBe(false)
   })
 
-  // A hand-typed multiplier is still a multiplier: 0,6 × a price that contains material hands the crew
-  // a cut of the material just like the default 0,65 does. Only a flat amount escapes.
-  it('fires on a hand-typed multiplier too, not just the inherited one', () => {
-    const multiplied = row({ wToolsOverrideType: 'coeff', wToolsOverrideValue: 0.6 })
-    expect(
-      fires('material-percent-rate-w-tools', {
-        ...multiplied,
-        [stageKey(1)]: 4,
-      } as KosztorysV2RowT),
-    ).toBe(true)
-  })
-
   // The case that decides the whole design: one plane typed by hand, the other left on a multiplier.
   // Which one is a fault depends on where the work was actually executed.
   it('judges the plane the work was executed at, not both', () => {
-    const halfTyped = row({ wToolsOverrideType: 'amount', wToolsOverrideValue: 40 })
+    const halfTyped = row({ wToolsOverrideValue: 40 })
 
     const doneWTools = { ...halfTyped, [stageKey(1)]: 4 } as KosztorysV2RowT
     expect(fires('material-percent-rate-w-tools', doneWTools)).toBe(false)
@@ -344,7 +370,7 @@ describe('„ze stawką wykonawcy od ceny z materiałem" — the overpaid-crew g
   })
 
   it('still lets a fixed amount clear the plane it was typed on', () => {
-    const halfTyped = row({ wToolsOverrideType: 'amount', wToolsOverrideValue: 40 })
+    const halfTyped = row({ wToolsOverrideValue: 40 })
     const undecided = { ...halfTyped, [stageKey(3)]: 9 } as KosztorysV2RowT
 
     expect(fires('material-percent-rate-w-tools', undecided)).toBe(false)
@@ -354,11 +380,9 @@ describe('„ze stawką wykonawcy od ceny z materiałem" — the overpaid-crew g
   it('sends each half to the plane it judges, and reveals the cells that repair it', () => {
     expect(engagedPlane(['material-percent-rate-w-tools'])).toBe('w_tools')
     expect(engagedPlane(['material-percent-rate-own-tools'])).toBe('own_tools')
-    expect([...columnsRevealedBy(['material-percent-rate-w-tools'])].sort()).toEqual([
-      'price',
-      'priceCoeff',
-      'priceMode',
-    ])
+    expect(columnsRevealedBy(['material-percent-rate-w-tools'])).toEqual(
+      new Set(priceCells('w_tools')),
+    )
   })
 })
 
@@ -501,40 +525,51 @@ describe('columnsRevealedBy', () => {
     expect([...columnsRevealedBy([])]).toEqual([])
   })
 
-  // The price is the symptom; „Źródło ceny wykonawcy" and „Mnożnik" are the only way to change it, so
-  // revealing the first alone would show a number nobody can act on.
+  // The price is the symptom; „Cena j.m." and „Źródło ceny wykonawcy" are the only way to change it,
+  // so revealing the symptom alone would show a number nobody can act on.
   it('brings the two cells that compute a stawka along with the stawka', () => {
-    expect([...columnsRevealedBy(['overpriced-w-tools'])].sort()).toEqual([
-      'price',
-      'priceCoeff',
-      'priceMode',
-    ])
+    expect(columnsRevealedBy(['overpriced-w-tools'])).toEqual(new Set(priceCells('w_tools')))
+  })
+
+  // …and only that crew's: the other plane's stawka is not what the problem is about, even though its
+  // columns are now assembled in the same view.
+  it('leaves the other plane alone', () => {
+    const revealed = columnsRevealedBy(['overpriced-w-tools'])
+    expect(revealed.has(planePriceKey('price', 'own_tools'))).toBe(false)
   })
 
   it('unions two engaged problems without repeating their shared column', () => {
     const revealed = columnsRevealedBy(['no-client-price', 'overpriced-own-tools'])
-    expect([...revealed].sort()).toEqual(['price', 'priceCoeff', 'priceMode'])
+    expect(revealed).toEqual(new Set(priceCells('w_tools', 'own_tools')))
   })
 
   // The subcontractor stawki derive from the client price, so a missing cena j.m. is a missing stawka
-  // too and gets the same three cells rather than „Cena j.m." alone.
-  it('gives a missing cena j.m. the same three cells as a bad stawka', () => {
-    expect([...columnsRevealedBy(['no-client-price'])].sort()).toEqual([
-      'price',
-      'priceCoeff',
-      'priceMode',
-    ])
+  // too — on BOTH planes at once, which is why this one problem reveals everything the two guards
+  // above split between them.
+  it('gives a missing cena j.m. every cell the fix could be typed into', () => {
+    expect(columnsRevealedBy(['no-client-price'])).toEqual(
+      new Set(priceCells('w_tools', 'own_tools')),
+    )
   })
 
   // A problem that claims work was executed has to put that work on screen, or the claim cannot be
   // checked against the pozycja it narrowed to.
   it('adds the pomiar to the price cells when the problem is about executed work', () => {
-    expect([...columnsRevealedBy(['no-client-price-with-work'])].sort()).toEqual([
-      'price',
-      'priceCoeff',
-      'priceMode',
-      'stageQtySum',
-    ])
+    expect(columnsRevealedBy(['no-client-price-with-work'])).toEqual(
+      new Set([...priceCells('w_tools', 'own_tools'), 'stageQtySum']),
+    )
+  })
+
+  // The four „skąd wzięła się ta stawka" filters narrow on a figure that starts hidden, so each one
+  // has to bring its own crew's stawka along — otherwise unticking one leaves the right pozycje on
+  // screen with the thing they were selected by invisible.
+  it('brings its own crew’s stawka along when narrowing by the source of the rate', () => {
+    for (const id of ['manual-rate-w-tools', 'formula-rate-w-tools']) {
+      expect(columnsRevealedBy([id])).toEqual(new Set(priceCells('w_tools')))
+    }
+    for (const id of ['manual-rate-own-tools', 'formula-rate-own-tools']) {
+      expect(columnsRevealedBy([id])).toEqual(new Set(priceCells('own_tools')))
+    }
   })
 
   // Same rule as the rest of the registry: an id persisted under a condition since removed must be

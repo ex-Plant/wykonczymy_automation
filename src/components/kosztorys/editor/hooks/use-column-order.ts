@@ -20,15 +20,11 @@ export function useColumnOrder(): {
 } {
   const ranks = dropNonFiniteRanks(useJsonMap<number>(store))
 
-  function setRank(key: string, rank: number) {
-    store.update((prev) => ({ ...prev, [key]: rank }))
-  }
-
   // Writes an empty map rather than removing the key — subscribers are notified through update(),
   // and the identity return on an already-empty map skips a pointless write.
   function resetOrder() {
     store.update((prev) => (Object.keys(prev).length === 0 ? prev : {}))
   }
 
-  return { ranks, setRank, resetOrder }
+  return { ranks, setRank: store.set, resetOrder }
 }

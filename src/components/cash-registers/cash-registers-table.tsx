@@ -12,13 +12,14 @@ import {
 } from '@/components/filters/search-filter-input'
 import { getCashRegisterColumns, REGISTER_TYPE_LABELS } from '@/components/tables/cash-registers'
 import { RegisterBalanceChart } from '@/components/dashboard/register-balance-chart'
+import { AddCashRegisterDialog } from '@/components/dialogs/add-cash-register-dialog'
 import { useActiveFilter } from '@/hooks/use-active-filter'
 import { useClientMultiFilter } from '@/hooks/use-client-multi-filter'
 import { useSearchFilter } from '@/hooks/use-search-filter'
 import { useOptimisticToggle } from '@/hooks/use-optimistic-toggle'
 import { toggleCashRegisterActive } from '@/lib/actions/toggle-active'
 import type { CashRegisterRowT } from '@/types/table-rows'
-import type { CashRegisterTypeT } from '@/types/reference-data'
+import type { CashRegisterTypeT, WorkerRefT } from '@/types/reference-data'
 
 const isCashRegisterActive = (row: CashRegisterRowT) => row.active
 const getActiveUpdate = (newActive: boolean) => ({ active: newActive })
@@ -28,6 +29,7 @@ const getCashRegisterSearchText = (row: CashRegisterRowT) => `${row.name} ${row.
 
 type CashRegistersTablePropsT = {
   data: CashRegisterRowT[]
+  workers: WorkerRefT[]
   className?: string
 }
 
@@ -36,7 +38,7 @@ const TYPE_OPTIONS = (Object.keys(REGISTER_TYPE_LABELS) as CashRegisterTypeT[]).
   label: REGISTER_TYPE_LABELS[value],
 }))
 
-export function CashRegistersTable({ data, className }: CashRegistersTablePropsT) {
+export function CashRegistersTable({ data, workers, className }: CashRegistersTablePropsT) {
   const { optimisticData, handleToggle } = useOptimisticToggle(
     data,
     getActiveUpdate,
@@ -111,6 +113,7 @@ export function CashRegistersTable({ data, className }: CashRegistersTablePropsT
               activeLabel="Aktywne"
               allLabel="Wszystkie"
             />
+            <AddCashRegisterDialog workers={workers} />
             <ColumnToggle table={table} columnVisibility={cv} {...order} />
           </>
         )}

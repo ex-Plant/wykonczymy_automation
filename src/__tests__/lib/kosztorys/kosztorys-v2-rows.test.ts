@@ -9,7 +9,7 @@ import {
   hasStagesOverPlanned,
 } from '@/lib/kosztorys/settlement-rows'
 import { applyRestoreItem, revertField } from '@/lib/kosztorys/row-ops'
-import { planItemRemoval, REMOVE_BLOCK_LAST_ITEM } from '@/lib/kosztorys/delete-policy'
+import { isLastItemInSection } from '@/lib/kosztorys/delete-policy'
 import { rowDoneFraction } from '@/lib/kosztorys/calc'
 import {
   STAGE_QTY_PREFIX,
@@ -425,9 +425,7 @@ describe('wartość wiersza idzie za etapami', () => {
         id: 1,
         clientPrice: 100,
         plannedQty: 10,
-        wToolsOverrideType: 'amount',
         wToolsOverrideValue: 500,
-        ownToolsOverrideType: 'amount',
         ownToolsOverrideValue: 1,
         ...done(12),
       }),
@@ -435,9 +433,7 @@ describe('wartość wiersza idzie za etapami', () => {
         id: 2,
         clientPrice: 100,
         plannedQty: 10,
-        wToolsOverrideType: 'amount',
         wToolsOverrideValue: 1,
-        ownToolsOverrideType: 'amount',
         ownToolsOverrideValue: 500,
         ...done(3),
       }),
@@ -470,7 +466,6 @@ describe('wartość wiersza idzie za etapami', () => {
         id: 1,
         sectionId: 10,
         clientPrice: 100,
-        wToolsOverrideType: 'amount',
         wToolsOverrideValue: 500,
         ...done(10),
       }),
@@ -479,7 +474,6 @@ describe('wartość wiersza idzie za etapami', () => {
         sectionId: 20,
         sectionName: 'Sekcja B',
         clientPrice: 100,
-        wToolsOverrideType: 'amount',
         wToolsOverrideValue: 1,
         ...done(10),
       }),
@@ -503,49 +497,22 @@ describe('wartość wiersza idzie za etapami', () => {
   })
 })
 
-describe('planItemRemoval', () => {
-  const stages = [{ id: 100, ordinal: 1, label: null, plane: null, workerId: null }]
-  const row = (id: number, sectionId: number, over: Partial<KosztorysV2RowT> = {}) =>
-    ({ id, sectionId, [stageKey(100)]: 0, ...over }) as unknown as KosztorysV2RowT
+describe('isLastItemInSection', () => {
+  const row = (id: number, sectionId: number) => ({ id, sectionId }) as unknown as KosztorysV2RowT
 
-  it('środek sekcji (sekcja ma >1 pozycję) → usuń pozycję, bez potwierdzenia', () => {
+  it('sekcja ma jeszcze inne pozycje → nie jest ostatnia', () => {
     const rows = [row(1, 10), row(2, 10), row(3, 20)]
-    expect(planItemRemoval(rows, rows[0], stages)).toEqual({
-      kind: 'remove-item',
-      requiresConfirm: false,
-    })
+    expect(isLastItemInSection(rows, rows[0])).toBe(false)
   })
 
-  it('ostatnia pozycja sekcji (są inne sekcje) → kaskadowo usuń sekcję, bez potwierdzenia', () => {
+  it('jedyna pozycja swojej sekcji → jest ostatnia, choć kosztorys ma inne sekcje', () => {
     const rows = [row(1, 10), row(2, 20)]
-    expect(planItemRemoval(rows, rows[1], stages)).toEqual({
-      kind: 'cascade-section',
-      requiresConfirm: false,
-    })
+    expect(isLastItemInSection(rows, rows[1])).toBe(true)
   })
 
-  it('ostatni wiersz całego kosztorysu → zablokowane (próg pustego arkusza)', () => {
+  it('jedyna pozycja całego kosztorysu → jest ostatnia (opróżnienie do zera jest dozwolone)', () => {
     const rows = [row(1, 10)]
-    expect(planItemRemoval(rows, rows[0], stages)).toEqual({
-      kind: 'blocked',
-      reason: REMOVE_BLOCK_LAST_ITEM,
-    })
-  })
-
-  it('wiersz z postępem etapu → usuwalny, ale wymaga potwierdzenia', () => {
-    const rows = [row(1, 10, { [stageKey(100)]: 2 }), row(2, 20)]
-    expect(planItemRemoval(rows, rows[0], stages)).toEqual({
-      kind: 'cascade-section',
-      requiresConfirm: true,
-    })
-  })
-
-  it('próg pustego arkusza ma pierwszeństwo nad blokadą wypełnienia', () => {
-    const rows = [row(1, 10, { [stageKey(100)]: 5 })]
-    expect(planItemRemoval(rows, rows[0], stages)).toEqual({
-      kind: 'blocked',
-      reason: REMOVE_BLOCK_LAST_ITEM,
-    })
+    expect(isLastItemInSection(rows, rows[0])).toBe(true)
   })
 })
 

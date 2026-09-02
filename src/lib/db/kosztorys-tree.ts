@@ -8,10 +8,10 @@ import type {
   KosztorysSectionT,
   KosztorysStageT,
   StageProgressT,
-  SubcontractorOverrideTypeT,
   ToolPlaneT,
 } from '@/lib/kosztorys/types'
 import type { DbExecutorT } from './get-db'
+import { numOrNull } from './row-coerce'
 
 // Everything behind the editor tree in ONE round trip.
 //
@@ -26,9 +26,6 @@ import type { DbExecutorT } from './get-db'
 // because a null column must read as 0, not NaN.
 
 const num = (v: unknown): number => Number(v ?? 0)
-// Distinct from `num`: these columns are nullable in the domain sense — an unset coefficient means
-// „inherit the default", which 0 would silently answer as „free".
-const numOrNull = (v: unknown): number | null => (v == null ? null : Number(v))
 const str = (v: unknown): string | null => (v == null ? null : String(v))
 
 export type KosztorysTreeDataT = {
@@ -71,8 +68,7 @@ export async function selectKosztorysTreeData(
           SELECT id, section_id, display_order, description, unit, planned_qty,
                  sheet_measured_qty,
                  discount_type, discount_value, client_price,
-                 w_tools_override_type, w_tools_override_value,
-                 own_tools_override_type, own_tools_override_value,
+                 w_tools_override_value, own_tools_override_value,
                  note
           FROM kosztorys_items WHERE investment_id = ${investmentId}
         ) i
@@ -145,10 +141,10 @@ const mapItem = (row: RowT): KosztorysItemT & { sectionId: number } => ({
   discountType: str(row.discount_type) as DiscountTypeT | null,
   discountValue: num(row.discount_value),
   clientPrice: num(row.client_price),
-  wToolsOverrideType: str(row.w_tools_override_type) as SubcontractorOverrideTypeT | null,
-  wToolsOverrideValue: num(row.w_tools_override_value),
-  ownToolsOverrideType: str(row.own_tools_override_type) as SubcontractorOverrideTypeT | null,
-  ownToolsOverrideValue: num(row.own_tools_override_value),
+  // `numOrNull`, not `num`: NULL is „auto", and folding it to 0 would price the praca at zero
+  // złotych instead of at the investment's współczynnik (EX-766).
+  wToolsOverrideValue: numOrNull(row.w_tools_override_value),
+  ownToolsOverrideValue: numOrNull(row.own_tools_override_value),
   note: str(row.note),
 })
 

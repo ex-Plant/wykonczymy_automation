@@ -1,5 +1,5 @@
 import {
-  effectiveCoeff,
+  overrideValueFor,
   rowDiscountForView,
   rowDoneFraction,
   rowPlannedNetForView,
@@ -15,13 +15,13 @@ import {
   rowValueForView,
 } from '@/lib/kosztorys/settlement-rows'
 import { stagesForView } from '@/lib/kosztorys/settlement-view'
+import { planePriceKeyParts } from '@/lib/kosztorys/plane-price-keys'
 import {
   stageIdFromValueGrossKey,
   stageIdFromValueNetKey,
   stageKey,
 } from '@/lib/kosztorys/stage-keys'
-import { overrideSnapshot } from '@/lib/kosztorys/subcontractor-price-edit'
-import type { KosztorysStageT, KosztorysV2RowT, ToolPlaneT } from '@/lib/kosztorys/types'
+import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 // The wartość of one etap, as its cell computes it. The denominator is Σ etapów of the whole VIEW,
 // never a narrowed list (kosztorys-v2-columns.tsx) — `rowTotalQtyDone` applies that filter itself, so
@@ -41,20 +41,6 @@ function stageValueNetSortValue(
     view,
   )
 }
-
-// The multiplier „Mnożnik" actually SHOWS, which is not one field: own under 'coeff', the inherited
-// investment/section default under auto, and nothing at all under 'amount' (the cell renders „—").
-// Reading `effectiveCoeff` unconditionally would sort every hand-set row by the default it overrode.
-function viewCoeffSortValue(row: KosztorysV2RowT, view: ToolPlaneT): number | null {
-  const { type, value } = overrideSnapshot(row, view)
-  if (type === 'amount') return null
-  if (type === 'coeff') return value ?? null
-  return effectiveCoeff(row, view)
-}
-
-// „Źródło ceny wykonawcy" ascending runs inherited → hand-overridden, which is the only question
-// asked of that column. Alphabetical would split the two override modes around „auto".
-const PRICE_MODE_RANK = { auto: 0, coeff: 1, amount: 2 } as const
 
 // The sort key for a grid column. Most columns in kosztorys-v2-columns.tsx are COMPUTED — their
 // value is derived at render from calc/settlement, never stored on the row — so a `row[field]` read
@@ -81,8 +67,22 @@ export function columnSortValue(
     return net === null ? null : toGross(net, row.vatRate)
   }
 
+  // The two subcontractor-rate namespaces, for the same reason: their ids are not row fields (the
+  // fields are per-plane, OVERRIDE_FIELDS), and the plane they price rides in the id now that every
+  // view assembles both. Reading the ACTIVE view here would sort „bez narzędzi" by the „z
+  // narzędziami" numbers — a wrong order that looks like a plausible one.
+  const pricePart = planePriceKeyParts(field)
+  if (pricePart !== null) {
+    const { base, plane } = pricePart
+    if (base === 'price') return viewPrice(row, plane)
+    // „Źródło ceny wykonawcy" ascending runs inherited → hand-overridden, which is the only question
+    // asked of that column. Alphabetical would put „auto" after „kwota stała".
+    return overrideValueFor(row, plane) === null ? 0 : 1
+  }
+
   switch (field) {
-    // Editable (client) / subcontractor price column: the value is the view's price, not a stored field.
+    // The client's own price column — the only price id left without a plane, and assembled only in
+    // the client view, so `view` is the plane to read.
     case 'price':
       return viewPrice(row, view)
     case 'priceGross':
@@ -112,13 +112,6 @@ export function columnSortValue(
       return rowRemainingForView(row, stages, view)
     case 'remainingGross':
       return toGross(rowRemainingForView(row, stages, view), row.vatRate)
-    // The two subcontractor columns are the other shape no exact-match case could reach: their ids
-    // are not row fields — the fields are per-plane (OVERRIDE_FIELDS). Neither column is assembled in
-    // the client view, and `effectiveCoeff` has no client plane to read.
-    case 'priceCoeff':
-      return view === 'client' ? null : viewCoeffSortValue(row, view)
-    case 'priceMode':
-      return view === 'client' ? null : PRICE_MODE_RANK[overrideSnapshot(row, view).type ?? 'auto']
     default: {
       const value = row[field as keyof KosztorysV2RowT]
       if (typeof value === 'number') return value

@@ -2,7 +2,6 @@ import type { PriceViewT } from '@/lib/kosztorys/calc'
 import type { ColumnRanksT } from '@/lib/table/column-order'
 import type { LayerT } from '@/lib/kosztorys/layer'
 import type { MoneyAxisT } from '@/lib/kosztorys/money-axis'
-import type { ItemRemovalPlanT } from '@/lib/kosztorys/delete-policy'
 import type { SortPickT, SortStateT } from '@/lib/kosztorys/row-view'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import type { KosztorysStageT, KosztorysV2RowT, ToolPlaneT } from '@/lib/kosztorys/types'
@@ -40,12 +39,7 @@ export type BuildV2ColumnsOptsT = {
   columnRanks?: ColumnRanksT
   onGuide?: (x: number | null) => void
   onCommitColumn?: (id: string, width: number) => void
-  // Row actions: removing an item + reading a section's item count (to enforce the
-  // "≥1 item" invariant).
   onRemoveItem?: (row: KosztorysV2RowT) => void
-  // What deleting this row does: a hard block (disabled + tooltip reason) for the empty-sheet floor,
-  // or a removable plan carrying whether a populated-row confirm is required first.
-  getRemovePlan?: (row: KosztorysV2RowT) => ItemRemovalPlanT
   // Reordering items within a section (Przesuń w górę/dół). Greyed out while a column sort is
   // active — "up/down" has no meaning against a price-sorted list.
   onReorderItem?: (row: KosztorysV2RowT, dir: 'up' | 'down') => void
@@ -81,6 +75,10 @@ export type BuildV2ColumnsOptsT = {
   // layer or the preview allowlist. Transient like the two flags above; the tick itself is untouched,
   // so disengaging restores exactly what the user had chosen.
   revealedColumnIds?: ReadonlySet<string>
+  // Is „Zapisz do katalogu…" offered on a praca? A flag rather than a callback because the dialog
+  // owns its own state next to the menu — the grid must not re-render because a dialog opened. Off
+  // in the read-only view, through the same `editorOnly` gate as every mutation callback here.
+  canSaveItemToCatalogue?: boolean
   // Item count for a section, to size the "removes N items" confirm before deleting it.
   getSectionItemCount?: (sectionId: number) => number
   // Global discount active → the four per-item discount columns are overridden, so drop them from

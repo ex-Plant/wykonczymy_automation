@@ -9,12 +9,12 @@ import { HeaderLabel } from '@/components/ui/datasheet-grid/header-label'
 import { SimpleTooltip } from '@/components/ui/tooltip'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import { KosztorysRowActionsMenu } from '@/components/kosztorys/editor/grid/menus/kosztorys-row-actions-menu'
+import { useCataloguePicker } from '@/components/kosztorys/editor/actions/catalogue-picker-host'
 import { ResizableHeader } from '@/components/ui/datasheet-grid/column-resize-handle'
 import { decimalColumn } from '@/components/kosztorys/editor/grid/cells/decimal-column'
 import { computedColumn } from '@/components/kosztorys/editor/grid/cells/computed-cell'
 import { divergenceColumn } from '@/components/kosztorys/editor/grid/cells/divergence-cell'
 import {
-  subcontractorCoeffColumn,
   subcontractorModeColumn,
   subcontractorPriceColumn,
 } from '@/components/kosztorys/editor/grid/cells/subcontractor-columns'
@@ -33,6 +33,7 @@ import {
 } from '@/components/kosztorys/editor/grid/cells/discount-columns'
 import { unitColumn } from '@/components/kosztorys/editor/grid/cells/unit-column'
 import { SectionNameCell } from '@/components/kosztorys/editor/grid/cells/section-name-cell'
+import { wrapColumnHeaderClass } from '@/lib/kosztorys/row-content-lines'
 import { longTextColumn } from '@/components/ui/datasheet-grid/long-text-cell'
 import { type ColumnToggleItemT } from '@/components/ui/column-toggle-menu'
 import {
@@ -55,7 +56,9 @@ import {
   UNPICKABLE_COLUMNS,
   columnLabelForView,
 } from '@/lib/kosztorys/column-config'
-import { HEADER_TIPS } from '@/lib/kosztorys/header-tips'
+import { headerTipFor } from '@/lib/kosztorys/header-tips'
+import { TOOL_PLANES } from '@/lib/kosztorys/constants'
+import { planePriceKey } from '@/lib/kosztorys/plane-price-keys'
 import { LAYER_DEFAULT, layerAllows } from '@/lib/kosztorys/layer'
 import { MONEY_AXIS_DEFAULT, axisAllows } from '@/lib/kosztorys/money-axis'
 import { formatPercent, formatQty } from '@/lib/kosztorys/format'
@@ -149,7 +152,14 @@ function title(
   field: string,
   opts: Pick<BuildV2ColumnsOptsT, 'sort' | 'onSetSort' | 'onPersistKosztorysOrder' | 'view'>,
 ): ReactNode {
-  return sortableHeader(columnLabelForView(field, opts.view), field, HEADER_TIPS[field], opts)
+  return sortableHeader(
+    columnLabelForView(field, opts.view),
+    field,
+    // Base key: a plane's „Cena j.m. netto" and „Źródło ceny wykonawcy" explain the same figure on
+    // both planes, so the tip is written once and every plane reads it.
+    headerTipFor(field),
+    opts,
+  )
 }
 
 // Header of a per-stage value column: a read-only mirror of the stage's name. One source for the
@@ -160,7 +170,7 @@ function title(
 function stageValueHeader(
   stage: KosztorysStageT,
   suffix: string,
-  tip: string,
+  tip: string | undefined,
   field: string,
   opts: Pick<BuildV2ColumnsOptsT, 'sort' | 'onSetSort' | 'onPersistKosztorysOrder'>,
 ): ReactNode {
@@ -210,13 +220,12 @@ function RowActionsCell({
   rowData: KosztorysV2RowT
   opts: BuildV2ColumnsOptsT
 }) {
-  const plan = opts.getRemovePlan?.(rowData)
-  const removeBlockReason = plan?.kind === 'blocked' ? plan.reason : undefined
-  const removeNeedsConfirm = plan != null && plan.kind !== 'blocked' && plan.requiresConfirm
-
   // All four section callbacks come from one `editorOnly()` gate, so this reads as a single
   // "editor mode?" test rather than four independent ones.
   const { onInsertSection, onReorderSection, onSetSectionColor, onRemoveSection } = opts
+  // Read from context rather than threaded through opts: the picker's open state must not sit
+  // anywhere the grid re-renders from (EX-496), and this opener never changes identity.
+  const openCataloguePicker = useCataloguePicker()
   const section =
     onInsertSection && onReorderSection && onSetSectionColor && onRemoveSection
       ? {
@@ -236,14 +245,15 @@ function RowActionsCell({
   return (
     <KosztorysRowActionsMenu
       sortActive={opts.sort != null}
-      removeBlockReason={removeBlockReason}
-      removeNeedsConfirm={removeNeedsConfirm}
       item={{
         onInsertAbove: () => opts.onInsertItem?.(rowData, 'above'),
         onInsertBelow: () => opts.onInsertItem?.(rowData, 'below'),
         onMoveUp: () => opts.onReorderItem?.(rowData, 'up'),
         onMoveDown: () => opts.onReorderItem?.(rowData, 'down'),
         onRemove: () => opts.onRemoveItem?.(rowData),
+        savableItemId: opts.canSaveItemToCatalogue ? rowData.id : undefined,
+        // Lands in this row's SECTION, which is why it rides the section gate rather than its own.
+        onAddFromCatalogue: section ? () => openCataloguePicker(rowData.sectionId) : undefined,
       }}
       section={section}
     />
@@ -271,8 +281,27 @@ function actionColumn(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT> {
 // "which columns are there in this view" to drift.
 function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[] {
   const { stages, view } = opts
-  // Client view: a simple editable price. Subcontractor views: a "Źródło ceny" column (override)
-  // + "Cena" showing the derived/override price.
+  // Both planes' subcontractor rates in EVERY view, so the owner compares them without switching
+  // tabs. Not a copy of the columns: the same factories called with the other plane, which is why the
+  // two can't drift — the cells read their own `columnData.view`, never the active view.
+  //
+  // „Źródło ceny wykonawcy" is the exception: it is an EDIT control, not a figure to compare, and the
+  // client view is where the offer is read, so it assembles only on the subcontractor planes. The
+  // rate itself stays editable in EVERY view — typing a number IS „kwota stała", and Delete is the
+  // way back to „auto", so the column needs no source picker beside it to be fully operable. The
+  // rates are hidden by default (DEFAULT_HIDDEN_COLUMNS) and barred from the client preview by the
+  // allowlist.
+  const withMode = view !== 'client'
+  const subcontractorPriceCols: Column<KosztorysV2RowT>[] = TOOL_PLANES.flatMap((plane) => [
+    ...(withMode
+      ? [subcontractorModeColumn(plane, title(planePriceKey('priceMode', plane), opts))]
+      : []),
+    subcontractorPriceColumn(plane, title(planePriceKey('price', plane), opts)),
+  ])
+  // The client's own „Cena j.m. netto" is a different figure — the offer price, editable only where
+  // the offer is read — so it stays on the client view and keeps its bare `price` id (that id is
+  // allowlisted and stored in each investment's client-view settings; renaming it would DROP it from the
+  // stored hidden set and reveal the price to clients who had hidden it).
   const priceCols: Column<KosztorysV2RowT>[] =
     view === 'client'
       ? [
@@ -282,12 +311,9 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
             title('price', opts),
             numericFieldPolicy<'clientPrice', KosztorysV2RowT>('clientPrice', formatPLN),
           ),
+          ...subcontractorPriceCols,
         ]
-      : [
-          subcontractorModeColumn(view, title('priceMode', opts)),
-          subcontractorCoeffColumn(view, title('priceCoeff', opts)),
-          subcontractorPriceColumn(view, title('price', opts)),
-        ]
+      : subcontractorPriceCols
   const identity: Column<KosztorysV2RowT>[] = [
     {
       id: 'sectionName',
@@ -308,6 +334,8 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
       title: title('description', opts),
       minWidth: 360,
       grow: 2,
+      // Marks the header cell the row-height measurement reads this column's width off.
+      headerClassName: wrapColumnHeaderClass('description'),
     }),
   ]
 
@@ -335,8 +363,8 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   }
 
   // Σ etapów for the row — the denominator every stage-value cell divides by. There are 2×|etapy| of
-  // those cells per row (netto + brutto) and each used to re-run the O(|etapy|) reduce to arrive at
-  // the SAME number, making a row O(|etapy|²).
+  // those cells per row (netto + brutto) and each would otherwise re-run the O(|etapy|) reduce to
+  // arrive at the SAME number, making a row O(|etapy|²).
   const totalQtyDone = memoisedByRow((row: KosztorysV2RowT) =>
     rowTotalQtyDone(row, viewStages, view),
   )
@@ -472,7 +500,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     const header = stageValueHeader(
       st,
       'netto',
-      HEADER_TIPS[STAGE_VALUE_NET_COLUMN_GROUP],
+      headerTipFor(STAGE_VALUE_NET_COLUMN_GROUP),
       field,
       opts,
     )
@@ -487,7 +515,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     const header = stageValueHeader(
       st,
       'brutto',
-      HEADER_TIPS[STAGE_VALUE_GROSS_COLUMN_GROUP],
+      headerTipFor(STAGE_VALUE_GROSS_COLUMN_GROUP),
       field,
       opts,
     )
@@ -542,7 +570,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
       title: title('note', opts),
       minWidth: 200,
       grow: 1,
-      headerClassName: 'border-l border-border',
+      headerClassName: `border-l border-border ${wrapColumnHeaderClass('note')}`,
       cellClassName: 'border-l border-border',
     }),
   ]
@@ -595,6 +623,10 @@ function toggleKey(columnId: string): string {
 // says it out loud at the one chokepoint both build paths cross. It throws rather than repairing the
 // opts: a caller that got this wrong has a bug worth seeing, and silently overriding its `view` would
 // hide it.
+//
+// What this pin does not cover: the four per-plane rate columns. They carry their plane in the id
+// and assemble in EVERY view, so pinning `view` to 'client' does nothing for them — the allowlist is
+// their only barrier, and it is the half to check before touching either.
 function assertDisclosurePair(opts: BuildV2ColumnsOptsT): void {
   if (opts.previewVisible && opts.view !== 'client') {
     throw new Error(
@@ -639,8 +671,8 @@ function selectV2Columns(
 }
 
 // A trailing empty spacer column pinned to the far right of the grid. Resizable (min ≠ max) so its
-// width is the user's call; 48 is only the default basis. The Praca/Postęp divider is now „Komentarz"
-// itself (which carries the border and sits at the seam) — this is just the end-of-grid gap.
+// width is the user's call; 48 is only the default basis. The Praca/Postęp divider is „Komentarz"
+// itself, at the seam — this column is only the end-of-grid gap.
 const layerGapColumn: Column<KosztorysV2RowT> = {
   id: 'layerGap',
   title: <span />,
@@ -657,8 +689,7 @@ const layerGapColumn: Column<KosztorysV2RowT> = {
 
 // Append the empty spacer to the far right of the visible grid. Inserted here, post-filter, so it
 // never appears in the column picker and always shows. Wrapped in withResize (not in the assembly
-// map, which runs before this append) so it gets a drag handle. The Praca/Postęp divider itself is
-// „Komentarz" at the seam — see assembleV2Columns.
+// map, which runs before this append) so it gets a drag handle.
 function appendTrailingGap(
   columns: Column<KosztorysV2RowT>[],
   opts: Pick<BuildV2ColumnsOptsT, 'onGuide' | 'onCommitColumn' | 'widths'>,

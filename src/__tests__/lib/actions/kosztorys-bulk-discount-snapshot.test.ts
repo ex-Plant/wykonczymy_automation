@@ -90,8 +90,8 @@ describe.skipIf(!ENV_READY)('bulk percent rabat — snapshot-before-overwrite (D
     return Number(item.id)
   }
 
-  // Newest auto-snapshot id, or 0 — a capture is proven by this rising (pruneAutoCount can hold the
-  // total count flat), matching the delete-guard suite's convention.
+  // Newest auto-snapshot id, or 0 — a capture is proven by this rising (the global retention sweep
+  // can move the total count under us), matching the delete-guard suite's convention.
   async function latestAutoSnapshotId(): Promise<number> {
     const res = await db.execute(sql`
       SELECT coalesce(max(id), 0)::int AS id FROM kosztorys_snapshots

@@ -765,6 +765,44 @@
   throwaway, and whether the listing path asserts the version at all.
 - **Applies to**: `src/lib/kosztorys/snapshot-format.ts`, `snapshots.ts`, `presets.ts`; any column drop
   that appears in a serialized payload.
+- **Corollary (2026-09-02, snapshot retention thinning)**: a bump is **not done until the existing
+  rows are dealt with**. Three exits, and exactly one must be picked: **don't bump** (additive, or a
+  key the mapper never reads — five column drops have taken this exit with no failure), **migrate the
+  stored payloads** (presets — a hand-curated library, deleting it destroys real work), **delete the
+  stored rows** (snapshots — ambient history, cheap to re-accumulate). Forbidden: bump and leave.
+  What that buys is the invariant _every row in `kosztorys_snapshots` is readable by the current
+  code_, which is why `listSnapshots` deliberately carries **no** `schema_version` filter — a filter
+  would guard a state that must not exist, and an unreadable snapshot is not history, it is a row that
+  lies on a list. The same corollary kills the phrase "additive fields need no bump": a new column
+  that is NOT NULL **without** a DEFAULT breaks every stored payload however additive it looks,
+  because `insertKosztorysTree` only defaults the NOT NULL DEFAULT columns and `display_order`.
+
+## A tolerance the code relies on must be a TYPE, or the dead-code rule licenses deleting it
+
+- **Context**: extending kosztorys snapshot retention from 7 days to a year (2026-09-02) made "an old
+  stored payload restores correctly" load-bearing for the first time. Every numeric column on the tree
+  tables is NOT NULL DEFAULT 0, and a payload captured before a column existed simply has no key —
+  which binds an explicit NULL, and Postgres does **not** substitute a DEFAULT for an explicit NULL
+  (23502). The insert path therefore carries a `?? 0` on each of them.
+- **Problem**: those fallbacks were typed against the strict `SnapshotPayloadT`, where the fields are
+  required — so to `tsc` every `??` was a dead branch. This repo gates dead-code removal on a green
+  typecheck (deliberately, see the dead-code lesson), which means the next cleanup pass would have
+  been told it may delete the exact guards a year of retention depends on, and the typecheck would
+  have agreed. A comment saying "these are load-bearing" is not evidence a tool reads.
+- **Rule**: when stored data may legitimately be shaped differently from what today's serializer
+  writes, declare that in a second type (`StoredSnapshotPayloadT` = the strict type with exactly the
+  NOT NULL DEFAULT columns marked optional) and give the discharging function the **strict** type as
+  its return. Then the compiler, not a comment, guarantees each optional field got filled, and the
+  fallbacks stop looking dead. Thread the tolerant type through _every_ reader of the stored payload —
+  restore, presets, catalogue seed — because they share the exposure; the discharge point is the
+  payload boundary, not the SQL bind, since the same primitives are also called with rows built in
+  code where a missing value is a caller bug to surface.
+- **Applies to**: `src/lib/kosztorys/snapshot-format.ts`, and any other jsonb payload read back after
+  the schema it was written against has moved on.
+- **Aside on the premise**: the old 7-day / 50-row limits were never derived — the S-06 brief filed
+  them as "starting points". Measuring killed the only argument for keeping them: a snapshot is
+  **~23 KB** stored, so the entire old ceiling was ~1,2 MB per investment. Measure before defending a
+  placeholder.
 
 ## Migration filenames sort lexically — the unpadded counter breaks at 10
 
@@ -1542,3 +1580,24 @@ is the test of the test, and skipping it is how a decorative assertion gets comm
 - **Problem**: two independent defects, neither of which throws. (1) `parseFloat('12,5')` is **12**, not `NaN` — JS parses the longest valid **prefix** and returns it, so a decimal comma is not an error, it is a silent truncation, and the cell stored a figure ten times too small while looking like it had accepted the input. (2) `new Intl.NumberFormat()` with no locale argument formats in the **runtime's** locale, so on a Polish machine the cell rendered `12,5` — the very separator its parser refused. The two halves conspire: the display teaches the user a convention the input rejects, and the rejection is invisible because it returns a plausible number instead of an error.
 - **Rule**: (1) Never let `parseFloat` / `Number.parseFloat` validate user input — prefix parsing turns garbage into a number rather than `NaN`. Parse through a contract that can say **reject** as a distinct outcome from _empty_ and _value_ (`parseDecimalInput`'s three-way result is exactly that, which is why the slice was told not to touch it). (2) Any `Intl.*` constructor without an explicit locale reads the environment's; pin it wherever the app has one convention — here comma in, comma out, no thousands separator, one representation both directions. (3) A ready-made column from a grid library bakes both decisions in invisibly: read its parse **and** its format before pointing it at money or quantities. (4) The cheap guard is a round trip, not a parse test — type the app's canonical figure, then assert both what the row stores and what the cell displays.
 - **Applies to**: implement, code-review, frontend grid/table work
+
+## A mount-frozen client copy of a wipe-and-reinsert tree writes to dead ids forever — and a bare framework „not found" is what the user sees
+
+- **Context**: the kosztorys grid seeds its rows once at mount (EX-441) and autosaves per cell. A sheet import (`applyKosztorysImport`) and a version restore both go through `replaceTreeWithSnapshot`, which **deletes and re-inserts the whole tree**, so every item id changes. In-tab that is handled (`useRestoreRemount` remounts the body); across tabs / sessions nothing tells the open editor. Reported by the owner 2026-08-31: typing „222" into Przedmiar left „2" and a red toast reading „Nie znaleziono".
+- **Problem**: two failures stacked. (1) Every write from the stale tab hit `payload.update` on an id that no longer existed, so Payload threw `NotFound`, whose Polish message is the bare `general:notFound` — „Nie znaleziono" — with no subject and no remedy; the wrapper passed it through verbatim, and the revert-on-error handler then rolled the cell back to a value from a tree that no longer exists. Nothing had persisted for the whole session, once per keystroke, and the DB confirmed it: `max(updated_at)` on `kosztorys_items` predated the session entirely. (2) Around it sat the same class of silence from the other side — `handleAddItem`, `handleInsertItem`, `handleAddSection`, `handleInsertSection`, `handleAddStage` all did `if (!res.success) return`, and the ▲▼ reorders fired `void swapItemOrderAction(...)`, so a refused structural change was invisible **and** left the grid showing an order or a row the DB never had.
+- **Rule**: (1) A failure whose meaning is „your whole copy is stale" is not the same event as „your value was rejected", and a message cannot be branched on — carry a **code** (`ActionResultT.code`, set from `NotFound` in one place) and let the client pick the recovery. (2) The recovery for a stale copy is a **reseed, never a revert**: reverting restores a value from the tree that vanished. Refresh the DATA (the server action whose response carries the fresh tree) and remount the grid — not the page. (3) Guard the reseed with a one-shot: a stale tree fails every pending write, so the failures arrive as a burst and each one would otherwise queue its own refresh. (4) Never surface a framework's own not-found sentence to a user; it names nothing and suggests nothing. (5) `if (!res.success) return` and `void someAction()` are the two shapes a swallowed failure takes — an optimistic mutation owes a rollback **and** a toast on every path, including the ones that "can't fail".
+- **Applies to**: implement, code-review, plan
+
+## A note appended to a name is welded into that name's identity key — and only one of the writers remembers to strip it
+
+- **Context**: ~750 prace pulled out of 57 old investment sheets into the katalog prac carry a visible „[stary arkusz]" note at the end of their `description`, which the owner deletes by hand while reviewing. No column for it — deliberately (owner, 2026-09-01). But `description` is half of `catalogueKey(description, unit)`, the katalog's identity, so the note sits inside the key's input. EX-753.
+- **Problem**: the import script knew to strip the note before computing `match_key`; the katalog's own edit form did not, and the form is the surface the whole review runs through. So the first time the owner corrected a price on a marked praca, the row's key silently became `…stary arkusz|szt` — a key nothing else in the app computes. That praca then stopped matching itself: it lost its wzór twin in „Porównaj z cennikiem", and the insert-only production load, finding no such key, would have added a second copy of a praca already there. Nothing throws, nothing renders red — the row looks correct in the listing, and the damage only shows up as a duplicate weeks later. It survived review because the marker was designed as _display text_, and reviewing display text does not prompt anyone to ask who else computes the key from it.
+- **Rule**: (1) Adding anything to a field that feeds an identity key makes that addition part of the identity by default — the question is not "is this display text?" but "which functions compute a key from this field, and do all of them strip it?" Enumerate the writers before choosing the field, not after. (2) When the answer is more than one writer, the strip belongs in a module both import, next to the marker's own definition — a rule that lives at call sites is a rule that is missing at the third one. (3) Prefer a suffix over a prefix for a marker on a name that gets sorted: a suffix stands the marked row next to its unmarked twin, which is exactly the comparison a human review is doing; a prefix piles every marked row into one block, sorted by the marker instead of by the name. (4) The regression guard asserts the **persisted** key (`SELECT match_key …`), never the action's return value — a successful result is what a poisoned key looks like from the outside.
+- **Applies to**: implement, code-review, plan
+
+## Namespacing a column id splits two lookups that used to be one — config resolves by BASE key, disclosure only by the FULL id
+
+- **Context**: both subcontractor planes' „Cena j.m. netto" had to stand next to the client price in the Inwestor view, so the column id stopped being a constant and became a function of the plane (`price__w_tools`, `price__own_tools`, built by `plane-price-keys.ts` on the `stage-keys.ts` pattern). Everything downstream keys off that id: labels, header tips, the money axis, the Praca/Postęp layer, the preview allowlist, the „Problemy" reveal, sorting, widths, the hidden-columns set. `kosztorys-contractor-price-columns-in-client-view`, 2026-09-01.
+- **Problem**: the two obvious answers are both wrong. Adding an entry per plane to every config map means one map eventually gets forgotten — the exact divergence the change exists to prevent, and the invariant specs (`COLUMN_MONEY_AXIS` ⊆ `COLUMN_LABELS`, same for `COLUMN_LAYER`) only catch the half that was added. Resolving every lookup through the base key is worse in the opposite direction: `PREVIEW_VISIBLE_COLUMNS` would then read `price__own_tools` as `price`, and a subcontractor rate would inherit the client price's pass into the offer the client reads. The two lookups look identical at the call site and have opposite failure modes — one fails by drifting, the other by leaking.
+- **Rule**: (1) A namespaced id needs an explicit split: configuration that describes _what kind of figure this is_ (label, axis, layer, tip) resolves through the base key so one concept keeps one entry; anything that decides _who may see it_ matches the full id, and says so in a comment at the definition. (2) The gate on an audience is the audience flag (`previewVisible`), never the view — a view flag read as an audience flag is a regression this repo has already paid for once. (3) Never rename an id that is persisted in a client's **hidden**-columns set: the sanitizer drops unknown keys, so a lost key does not hide the column, it reveals it — renaming fails open, in the one direction that matters. That is why the client's own `price` kept its bare id while the crew rates took the suffix. (4) An id that carries a dimension must not collapse in the picker the way stage keys do: the point of two ids is showing one plane without the other.
+- **Applies to**: implement, plan, code-review, kosztorys grid work

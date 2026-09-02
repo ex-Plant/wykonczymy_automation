@@ -8,7 +8,7 @@ import type { PriceViewT } from '@/lib/kosztorys/calc'
 import { stageAxisForView } from '@/lib/kosztorys/settlement-aggregates'
 import { rowRemainingForView, rowTotalQtyDone } from '@/lib/kosztorys/settlement-rows'
 import { stagesForView } from '@/lib/kosztorys/settlement-view'
-import { stageKey, stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
+import { stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 /**
@@ -21,6 +21,11 @@ import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
  *
  * A column absent from the map renders blank. That is the honest outcome for a column whose total is
  * not a sum of its own cells (a share, a ratio) — never a 0, which would claim a reading.
+ *
+ * The quantity columns („Przedmiar", „Pomiar (razem etapy)", each etap's ilość) are absent for that
+ * reason: rows in one section carry different jednostki miary, so 40 m² + 12 mb + 3 szt. adds to 55
+ * of nothing. Only the zł columns share a unit across rows and may be summed. Per row those columns
+ * still total fine — one row is one jednostka — which is why the columns themselves stay.
  *
  * `net` is the executed value BEFORE any rabat globalny, matching what the „Razem" row has always
  * shown: the global rabat is a single subtraction the summary panel makes once, not a per-row figure
@@ -38,7 +43,6 @@ export function columnTotalsForRows(
   let net = 0
   let plannedNet = 0
   let discount = 0
-  let plannedQty = 0
   let remaining = 0
   for (const row of rows) {
     // One pomiar per row, priced twice: the value and the rabat taken on it must stand on the same
@@ -47,7 +51,6 @@ export function columnTotalsForRows(
     net += netForQtyForView(row, qtyDone, view)
     plannedNet += rowPlannedNetForView(row, view)
     discount += rowDiscountForView(row, qtyDone, view)
-    plannedQty += row.plannedQty ?? 0
     remaining += rowRemainingForView(row, stages, view)
   }
 
@@ -63,20 +66,13 @@ export function columnTotalsForRows(
   totals.set('remainingGross', toGross(remaining, vatRate))
   totals.set('discountAmount', discount)
   totals.set('discountAmountGross', toGross(discount, vatRate))
-  totals.set('plannedQty', plannedQty)
-
   // Iterated over the view's own stages only: an out-of-view etap has no column here to total, and
   // stageAxisForView deliberately gives it no share of the value either.
   const stageAxis = stageAxisForView(rows, stages, view)
-  let stageQtySum = 0
   for (const stage of viewStages) {
-    const stageQty = stageAxis.qty.get(stage.id) ?? 0
-    stageQtySum += stageQty
-    totals.set(stageKey(stage.id), stageQty)
     const stageValueNet = stageAxis.net.get(stage.id) ?? 0
     totals.set(stageValueNetKey(stage.id), stageValueNet)
     totals.set(stageValueGrossKey(stage.id), toGross(stageValueNet, vatRate))
   }
-  totals.set('stageQtySum', stageQtySum)
   return totals
 }

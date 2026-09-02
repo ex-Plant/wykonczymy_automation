@@ -205,20 +205,20 @@ wprowadzenia, nie defekt.
 
 ## KROK 5 — Ranking refaktorów
 
-1. **Brak podłogi „≥1 pozycja" przy usuwaniu.** `removeItemAction`
-   (`src/lib/actions/kosztorys.ts:417`) nie sprawdza, czy to ostatnia pozycja; reguła
-   `REMOVE_BLOCK_LAST_ITEM` żyje wyłącznie po stronie klienta
-   (`delete-policy.ts:26,45`). Klasyczny niezmiennik egzekwowany w UI zamiast w agregacie.
-   → slice „niezmienniki".
-2. **Agregat Kosztorys Item.** `stage-progress` zapisywany niezależnie od pozycji, więc niezmiennik
+1. **Agregat Kosztorys Item.** `stage-progress` zapisywany niezależnie od pozycji, więc niezmiennik
    „pomiar = Σ etapów" jest liczony przy odczycie, a nie chroniony przy zapisie. → slice „agregat".
-3. **`googleSheetId` wymagany i unikalny** (`sheets.ts:44-50`) — model mówi „kosztorys istnieje sam
+2. **`googleSheetId` wymagany i unikalny** (`sheets.ts:44-50`) — model mówi „kosztorys istnieje sam
    z siebie", schemat mówi „tylko jako cień arkusza". → slice „ACL".
-4. **Terminologia** — ten slice (EX-548).
+3. **Terminologia** — ten slice (EX-548).
 
 ### Świadome NIE-cele (nie proponować jako defekty)
 
 - **Ujemne saldo rejestru dozwolone** — decyzja klienta (git `76dd757`, EX-410 canceled).
+- **Nie ma podłogi „≥1 pozycja"** — decyzja właściciela (2026-08-31, EX-751 canceled): kosztorys
+  wolno opróżnić do zera. Podłoga stała wcześniej wyłącznie w UI i broniła stanu osiągalnego dwiema
+  innymi drogami („Wyczyść kosztorys", „Usuń sekcję") oraz w pełni obsłużonego (`EmptyState`
+  z menu „Dodaj" i importem z arkusza). Zdjęta razem z `REMOVE_BLOCK_LAST_ITEM` i całym
+  `ItemRemovalPlanT`; nie proponować jej z powrotem jako niezmiennika agregatu.
 - ~~**Kosztorys v2 rozłączony od marży**~~ — nieaktualne od EX-555 (robocizna i rabat na liście czytane z kosztorysu) i EX-649 (marża rzeczywista i prognoza w panelu oraz na liście).
 - **Polskie stringi UI i transkrybowane nagłówki arkusza** — poprawne z polityki.
 - **`'RABAT'` w enumie i `'planowana'` w statusie inwestycji** — wartości zamrożone migracjami.

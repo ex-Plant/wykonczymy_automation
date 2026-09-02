@@ -19,10 +19,8 @@ const row: ViewPricingT = {
   discountType: null,
   discountValue: 0,
   clientPrice: 100,
-  wToolsOverrideType: null,
-  wToolsOverrideValue: 0,
-  ownToolsOverrideType: null,
-  ownToolsOverrideValue: 0,
+  wToolsOverrideValue: null,
+  ownToolsOverrideValue: null,
   note: null,
   globalDiscountActive: false,
   globalWToolsCoeff: 0.65,
@@ -31,13 +29,6 @@ const row: ViewPricingT = {
 
 const amount = (value: number): ViewPricingT => ({
   ...row,
-  wToolsOverrideType: 'amount',
-  wToolsOverrideValue: value,
-})
-
-const coeff = (value: number): ViewPricingT => ({
-  ...row,
-  wToolsOverrideType: 'coeff',
   wToolsOverrideValue: value,
 })
 
@@ -49,19 +40,13 @@ describe('maxSubcontractorPrice', () => {
 })
 
 describe('checkSubcontractorPrice — sufit 80% ceny klienta', () => {
-  // 80 sits ABOVE the coefficient price (65), so this null is also what stops the retired amber tier
-  // from growing back: any verdict re-introduced below the ceiling fails right here.
+  // 80 sits ABOVE the coefficient price (65): any verdict introduced below the ceiling fails here.
   it('dokładnie na suficie przechodzi', () => {
     expect(checkSubcontractorPrice(amount(80), 'w_tools')).toBeNull()
   })
 
   it('włos powyżej sufitu jest odrzucany, a komunikat nazywa maksimum', () => {
     expect(checkSubcontractorPrice(amount(80.02), 'w_tools')).toContain('80,00')
-  })
-
-  it('własny mnożnik mierzy się tym samym sufitem', () => {
-    expect(checkSubcontractorPrice(coeff(0.81), 'w_tools')).not.toBeNull()
-    expect(checkSubcontractorPrice(coeff(0.8), 'w_tools')).toBeNull()
   })
 
   // A price landing on odd grosze (0.8 × 100.01) is retyped off the screen rounded to two decimals;
@@ -87,7 +72,6 @@ describe('checkSubcontractorPrice — tryb auto', () => {
 describe('checkSubcontractorPrice — druga płaszczyzna narzędziowa', () => {
   const ownAmount = (value: number): ViewPricingT => ({
     ...row,
-    ownToolsOverrideType: 'amount',
     ownToolsOverrideValue: value,
   })
 
@@ -99,7 +83,6 @@ describe('checkSubcontractorPrice — druga płaszczyzna narzędziowa', () => {
   it('mierzy cenę TEJ płaszczyzny, nie sąsiedniej', () => {
     const overOnW = {
       ...ownAmount(50),
-      wToolsOverrideType: 'amount' as const,
       wToolsOverrideValue: 90,
     }
     expect(checkSubcontractorPrice(overOnW, 'own_tools')).toBeNull()
@@ -136,7 +119,6 @@ describe('checkSubcontractorPrice — sufit liczy się od ceny przed rabatem', (
 describe('checkSubcontractorPrice — cena ujemna', () => {
   it('jest odrzucana', () => {
     expect(checkSubcontractorPrice(amount(-1), 'w_tools')).not.toBeNull()
-    expect(checkSubcontractorPrice(coeff(-0.5), 'w_tools')).not.toBeNull()
   })
 
   it('jest odrzucana także tam, gdzie sufit nie ma czego mierzyć', () => {

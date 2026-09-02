@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useDeferredValue, useMemo, useState } from 'react'
 import { foldText } from '@/lib/utils/fold-text'
 
 // Fold rather than lowercase, so an ASCII query reaches a Polish label (cmdk gets this via
@@ -27,11 +27,16 @@ export function filterBySearch<TItem>(
 
 export function useSearchFilter<TItem>(data: TItem[], getSearchableText: (item: TItem) => string) {
   const [searchTerm, setSearchTerm] = useState('')
+  // Matching is cheap; RENDERING the result is not — the katalog draws ~950 unvirtualized rows — so
+  // without the deferral the whole re-render sits between the keypress and the character appearing,
+  // and the field itself stutters.
+  const deferredTerm = useDeferredValue(searchTerm)
 
   const haystacks = useMemo(() => foldHaystacks(data, getSearchableText), [data, getSearchableText])
+
   const filteredData = useMemo(
-    () => filterBySearch(data, haystacks, searchTerm),
-    [data, haystacks, searchTerm],
+    () => filterBySearch(data, haystacks, deferredTerm),
+    [data, haystacks, deferredTerm],
   )
 
   return { filteredData, searchTerm, setSearchTerm } as const

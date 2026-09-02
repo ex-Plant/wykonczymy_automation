@@ -9,6 +9,7 @@ import type { CACHE_TAGS } from '@/lib/cache/tags'
 import { perfStart } from '@/lib/perf'
 import type { SessionUserT } from '@/types/auth'
 import type { ActionResultT } from '@/types/action'
+import { toActionFailure } from '@/lib/actions/action-failure'
 import { logError } from '@/lib/utils/log-error'
 
 type ActionCtxT = { payload: Payload; user: SessionUserT }
@@ -60,6 +61,6 @@ export async function protectedAction<TData = undefined>(
     return result
   } catch (err) {
     logError(`[ACTION_ERROR] ${label}`, err)
-    return { success: false, error: getErrorMessage(err) } as ActionResultT<TData>
+    return toActionFailure(err) as ActionResultT<TData>
   }
 }

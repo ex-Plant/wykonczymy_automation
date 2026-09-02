@@ -1,0 +1,23 @@
+import { describe, expect, it } from 'vitest'
+import { NotFound } from 'payload'
+import { toActionFailure } from '@/lib/actions/action-failure'
+
+// The regression this guards: a kosztorys autosave against a row that no longer exists (the tree was
+// replaced elsewhere — a sheet import or a version restore, both wipe-and-reinsert) surfaced as
+// Payload's bare „Nie znaleziono" toast, once per keystroke, with the grid still holding dead ids and
+// no way for the editor to tell that failure apart from a rejected value.
+describe('toActionFailure', () => {
+  it('tags a Payload NotFound so the caller can reseed instead of reverting one field', () => {
+    const failure = toActionFailure(new NotFound())
+
+    expect(failure.code).toBe('NOT_FOUND')
+    expect(failure.error).not.toBe('Nie znaleziono')
+  })
+
+  it('leaves any other error untagged, with its own message', () => {
+    const failure = toActionFailure(new Error('Kwota musi być dodatnia'))
+
+    expect(failure.code).toBeUndefined()
+    expect(failure.error).toBe('Kwota musi być dodatnia')
+  })
+})

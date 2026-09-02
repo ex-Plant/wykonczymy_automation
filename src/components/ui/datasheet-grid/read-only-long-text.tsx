@@ -22,10 +22,10 @@ export function ReadOnlyLongText({ value }: { value: string | null }) {
       onOpenChange={(next) => setOpen(next && isTruncated(textRef.current))}
     >
       <PopoverTrigger asChild>
-        <span className="block w-full min-w-0">
-          <ReadOnlyCellText ref={textRef} className="cursor-pointer">
-            {value}
-          </ReadOnlyCellText>
+        {/* The wrapper is what globals.css clips to the row, so it — not the text inside it — is
+            what knows whether the value still fits. */}
+        <span ref={textRef} className="block w-full min-w-0">
+          <ReadOnlyCellText className="cursor-pointer">{value}</ReadOnlyCellText>
         </span>
       </PopoverTrigger>
       <PopoverContent
@@ -39,6 +39,8 @@ export function ReadOnlyLongText({ value }: { value: string | null }) {
   )
 }
 
+// Vertical, not horizontal: the text wraps now, so it is never wider than its cell — a value that
+// does not fit is one whose row is too short for it.
 function isTruncated(node: HTMLSpanElement | null): boolean {
-  return node != null && node.scrollWidth > node.clientWidth
+  return node ? node.scrollHeight > node.clientHeight : false
 }

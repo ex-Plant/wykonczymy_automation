@@ -3,8 +3,11 @@ import { isAdminOrOwnerOrManager } from '@/access'
 import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
 
 // A sheet item. Client price = a snapshot. Subcontractor prices are derived from the
-// markup coefficient (investment), with a two-state per-item override:
-// *OverrideType ∈ {coeff, amount} | null (null = derive), *OverrideValue. „Pomiar z natury"
+// markup coefficient (investment), with one nullable per-item stawka per tool plane: a number is a
+// kwota frozen onto the praca, NULL means „auto" — derive it from the coefficient. `0` is a kwota
+// like any other, so neither field may carry a `defaultValue`: Payload treats a stored NULL as
+// present-but-empty and would backfill it, turning every „auto" praca into 0 zł (EX-766).
+// „Pomiar z natury"
 // (the executed quantity) is not stored — it is the stage sum (Σ D:M in the sheet), computed
 // live in the settlement layer. `sheetMeasuredQty` is not a second answer to that: it records what
 // the imported sheet CLAIMED, prices nothing, and exists only to be compared against the stage sum.
@@ -41,10 +44,8 @@ export const KosztorysItems: CollectionConfig = {
     { name: 'discountType', type: 'text' },
     { name: 'discountValue', type: 'number', required: true, defaultValue: 0 },
     { name: 'clientPrice', type: 'number', required: true, defaultValue: 0 },
-    { name: 'wToolsOverrideType', type: 'text' },
-    { name: 'wToolsOverrideValue', type: 'number', defaultValue: 0 },
-    { name: 'ownToolsOverrideType', type: 'text' },
-    { name: 'ownToolsOverrideValue', type: 'number', defaultValue: 0 },
+    { name: 'wToolsOverrideValue', type: 'number' },
+    { name: 'ownToolsOverrideValue', type: 'number' },
     { name: 'note', type: 'text', label: { en: 'Note', pl: 'Komentarz' } },
   ],
 }

@@ -13,7 +13,7 @@ import type { ActionResultT } from '@/types/action'
 
 // --- Capture triggers ---
 
-// Periodic auto snapshot — the client's 10-min interval calls this unconditionally (fire-and-forget).
+// Periodic auto snapshot — the client's 10-min interval calls this fire-and-forget.
 export async function snapshotAction(investmentId: number): Promise<ActionResultT> {
   return protectedAction('snapshotAction', async ({ payload, user }) => {
     const db = await getDb(payload)
@@ -24,7 +24,7 @@ export async function snapshotAction(investmentId: number): Promise<ActionResult
 
 const saveSnapshotSchema = z.object({ label: z.string().trim().min(1, 'Podaj nazwę wersji') })
 
-// Named manual snapshot ("Zapisz jako…") — required label, exempt from the auto count cap.
+// Named manual snapshot („Zapisz jako…") — required label, exempt from the auto thinning bands.
 export async function saveSnapshotAction(
   investmentId: number,
   label: string,

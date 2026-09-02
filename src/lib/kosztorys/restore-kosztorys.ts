@@ -4,7 +4,7 @@ import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
 import { lockInvestmentForReplace } from '@/lib/db/lock-investment'
 import { insertKosztorysTree, type InsertKosztorysTreeResultT } from './insert-kosztorys-tree'
-import type { SnapshotPayloadT } from './snapshot-format'
+import type { StoredSnapshotPayloadT } from './snapshot-format'
 
 // Atomically revert an investment's whole kosztorys to a serialized snapshot: wipe the live tree,
 // re-insert from the payload (insertKosztorysTree remaps child FKs to freshly-minted parent ids),
@@ -15,7 +15,7 @@ export async function restoreKosztorys(
   payload: Payload,
   req: PayloadRequest,
   investmentId: number,
-  snapshot: SnapshotPayloadT,
+  snapshot: StoredSnapshotPayloadT,
   { clearGlobalDiscount = false }: { clearGlobalDiscount?: boolean } = {},
 ): Promise<InsertKosztorysTreeResultT> {
   const db = await getDb(payload, req) // transaction-scoped Drizzle handle (req carries transactionID)
@@ -37,17 +37,25 @@ export async function restoreKosztorys(
 
   const inserted = await insertKosztorysTree(db, investmentId, snapshot)
 
-  // Load-bearing beyond the three columns it writes: it bumps `investment.updatedAt`, which is the
-  // `revision` token `useRestoreRemount` latches on to remount the grid. Writing the same values back
-  // is therefore NOT a deletable no-op — drop this and the editor keeps rendering the wiped rows.
+  // A payload predating `settings` (or a field inside it) has no key there, and dereferencing it
+  // unguarded throws a TypeError before any SQL runs — the tree is already wiped at that point, so
+  // the transaction rolls back and the restore is permanently impossible for that row. Omitting the
+  // key instead leaves the investment's CURRENT value in place, which is the right answer: the tree
+  // is what the user asked to bring back, the settings are not part of it.
+  const settings = snapshot.settings ?? {}
+
+  // Load-bearing beyond the three columns it writes: Payload stamps `updatedAt` on every update
+  // regardless of what `data` carries, and that is the `revision` token `useRestoreRemount` latches
+  // on to remount the grid. So this call is NOT a deletable no-op even when `data` comes out empty
+  // (an old payload with no `settings`) — drop it and the editor keeps rendering the wiped rows.
   await payload.update({
     collection: 'investments',
     id: investmentId,
     req,
     data: {
-      wToolsCoeff: snapshot.settings.wToolsCoeff,
-      ownToolsCoeff: snapshot.settings.ownToolsCoeff,
-      vatRate: snapshot.settings.vatRate,
+      ...(settings.wToolsCoeff != null ? { wToolsCoeff: settings.wToolsCoeff } : {}),
+      ...(settings.ownToolsCoeff != null ? { ownToolsCoeff: settings.ownToolsCoeff } : {}),
+      ...(settings.vatRate != null ? { vatRate: settings.vatRate } : {}),
       // The global discount lives outside the snapshot payload, so restoring a version leaves the
       // live amount discount alone. Only a caller replacing the rozpiska wholesale with zeroed
       // przedmiar asks for it to be cleared.

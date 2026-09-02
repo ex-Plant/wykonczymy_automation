@@ -14,7 +14,7 @@ import { createKosztorysTree } from '@/__tests__/helpers/kosztorys-db-tree'
 // whatever the test author believed the formula was, and both planes would go green on the same
 // mistake.
 //
-// Coverage is by BRANCH of subcontractorPrice — 'amount', 'coeff' and unset, on BOTH planes, because
+// Coverage is by BRANCH of subcontractorPrice — a flat amount and unset, on BOTH planes, because
 // the two planes read disjoint column pairs and a copy that swapped them would still agree on any
 // fixture where the panes happen to price alike.
 
@@ -42,20 +42,17 @@ describe.skipIf(!ENV_READY)('selectKosztorysSubcontractorDue (DB)', () => {
       description: 'kwota',
       plannedQty: 10,
       clientPrice: 100,
-      wToolsOverrideType: 'amount' as const,
       wToolsOverrideValue: 62,
-      ownToolsOverrideType: 'amount' as const,
       ownToolsOverrideValue: 48,
     },
-    // Per-row coefficients — client price × value, again different per plane.
+    // A second flat pair on a different client price — a copy that folded the rate into the client
+    // price instead of using it verbatim prices this row apart from the first.
     {
-      description: 'wspolczynnik',
+      description: 'kwota druga',
       plannedQty: 10,
       clientPrice: 250,
-      wToolsOverrideType: 'coeff' as const,
-      wToolsOverrideValue: 0.7,
-      ownToolsOverrideType: 'coeff' as const,
-      ownToolsOverrideValue: 0.6,
+      wToolsOverrideValue: 175,
+      ownToolsOverrideValue: 150,
     },
     // Nothing set: the price derives from the investment's own coefficients.
     { description: 'pochodna', plannedQty: 10, clientPrice: 80 },

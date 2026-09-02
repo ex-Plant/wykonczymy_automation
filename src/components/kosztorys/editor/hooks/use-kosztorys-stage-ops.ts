@@ -3,14 +3,13 @@
 import { useRef, useState } from 'react'
 import { addStageAction, removeStageAction, updateStageAction } from '@/lib/actions/kosztorys'
 import { stageKey, stageValueGrossKey, stageValueNetKey } from '@/lib/kosztorys/stage-keys'
-import { toastMessage } from '@/lib/utils/toast'
 import type {
   KosztorysStageT,
   KosztorysV2RowT,
   StagePatchT,
   ToolPlaneT,
 } from '@/lib/kosztorys/types'
-import type { ActionResultT } from '@/types/action'
+import type { ActionErrorCodeT, ActionResultT } from '@/types/action'
 
 type ArgsT = {
   investmentId: number
@@ -21,6 +20,8 @@ type ArgsT = {
   ) => void
   dropWidth: (...keys: string[]) => void
   save: (key: string, run: () => Promise<ActionResultT>, onError?: () => void) => void
+  // Surfaces a refused action (and reseeds the grid when the refusal means the tree is stale).
+  reportFailure: (error: string, code?: ActionErrorCodeT) => void
 }
 
 // The etap columns themselves: add/remove one, and the three header edits (label, plane, worker).
@@ -32,6 +33,7 @@ export function useKosztorysStageOps({
   patchRows,
   dropWidth,
   save,
+  reportFailure,
 }: ArgsT) {
   // Stages live in local state (like `rows`): add/remove optimistically add/drop a column.
   const [stages, setStages] = useState<KosztorysStageT[]>(initialStages)
@@ -46,7 +48,7 @@ export function useKosztorysStageOps({
   // coeffs), so the column renders 0s (not blanks) and the first progress entry diffs correctly.
   async function handleAddStage(plane: ToolPlaneT) {
     const res = await addStageAction(investmentId, plane)
-    if (!res.success) return
+    if (!res.success) return reportFailure(res.error, res.code)
     const { id, ordinal } = res.data
     setStages((s) => [...s, { id, ordinal, label: null, plane, workerId: null }])
     patchRows(
@@ -57,10 +59,7 @@ export function useKosztorysStageOps({
 
   async function handleRemoveStage(stageId: number) {
     const res = await removeStageAction(stageId)
-    if (!res.success) {
-      toastMessage(res.error ?? 'Nie udało się usunąć etapu', 'warning', 4000)
-      return
-    }
+    if (!res.success) return reportFailure(res.error, res.code)
     setStages((s) => s.filter((st) => st.id !== stageId))
     const key = stageKey(stageId)
     dropWidth(key, stageValueNetKey(stageId), stageValueGrossKey(stageId))

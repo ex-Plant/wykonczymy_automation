@@ -2,12 +2,9 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
-import { gcSnapshots, insertSnapshot, pruneAutoCount } from '@/lib/db/snapshots'
+import { gcSnapshots, insertSnapshot } from '@/lib/db/snapshots'
 import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
 import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
-
-// pruneAutoCount is raw SQL, so its "keep newest 50 auto, never touch manual" invariant is only real
-// against the DB — assert persisted row counts, not a return value.
 
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 
@@ -24,76 +21,16 @@ const emptyPayload: SnapshotPayloadT = {
   },
 }
 
-describe.skipIf(!ENV_READY)('pruneAutoCount (DB)', () => {
+// gcSnapshots thins in raw SQL over calendar buckets, so the only real assertion is which rows
+// survive in the DB. The mistake worth guarding is not the timezone — getting `AT TIME ZONE`
+// backwards costs at most one extra survivor — it is dropping `investment_id` from the PARTITION BY,
+// which silently keeps ONE row across every investment and is invisible to a single-investment
+// fixture. Hence two investments below.
+describe.skipIf(!ENV_READY)('gcSnapshots retention bands (DB)', () => {
   let payload: Payload
   let db: Awaited<ReturnType<typeof getDb>>
   let investmentId: number
-
-  beforeAll(async () => {
-    const { getPayload } = await import('payload')
-    const config = (await import('@payload-config')).default
-    payload = await getPayload({ config })
-    db = await getDb(payload)
-    investmentId = await createTestInvestment(payload, 'prune-auto-test')
-  })
-
-  afterAll(async () => {
-    if (investmentId) {
-      await deleteTestInvestment(payload, investmentId)
-    }
-  })
-
-  async function count(kind: 'auto' | 'manual'): Promise<number> {
-    const res = await db.execute(
-      sql`SELECT COUNT(*) AS n FROM kosztorys_snapshots WHERE investment_id = ${investmentId} AND kind = ${kind}`,
-    )
-    return Number(res.rows[0].n)
-  }
-
-  it('keeps only the newest 50 auto snapshots and never touches manual', async () => {
-    const autoIds: number[] = []
-    for (let i = 0; i < 55; i++) {
-      autoIds.push(
-        await insertSnapshot(db, {
-          investmentId,
-          kind: 'auto',
-          label: null,
-          takenBy: null,
-          payload: emptyPayload,
-        }),
-      )
-    }
-    for (let i = 0; i < 3; i++) {
-      await insertSnapshot(db, {
-        investmentId,
-        kind: 'manual',
-        label: `wersja ${i}`,
-        takenBy: null,
-        payload: emptyPayload,
-      })
-    }
-    expect(await count('auto')).toBe(55)
-
-    await pruneAutoCount(db, investmentId)
-
-    expect(await count('auto')).toBe(50)
-    expect(await count('manual')).toBe(3)
-
-    // The 5 OLDEST (lowest-id) auto rows are the ones dropped; the newest 50 survive.
-    const survivors = await db.execute(
-      sql`SELECT id FROM kosztorys_snapshots WHERE investment_id = ${investmentId} AND kind = 'auto' ORDER BY id`,
-    )
-    const survivingIds = survivors.rows.map((r) => Number(r.id))
-    expect(survivingIds).toEqual(autoIds.slice(5))
-  })
-})
-
-// gcSnapshots is raw SQL over now()-relative age windows, so its age caps are only real against the
-// DB — backdate taken_at and assert which rows survive, not a return value.
-describe.skipIf(!ENV_READY)('gcSnapshots age caps (DB)', () => {
-  let payload: Payload
-  let db: Awaited<ReturnType<typeof getDb>>
-  let investmentId: number
+  let otherInvestmentId: number
 
   beforeAll(async () => {
     const { getPayload } = await import('payload')
@@ -101,44 +38,139 @@ describe.skipIf(!ENV_READY)('gcSnapshots age caps (DB)', () => {
     payload = await getPayload({ config })
     db = await getDb(payload)
     investmentId = await createTestInvestment(payload, 'gc-snapshots-test')
+    otherInvestmentId = await createTestInvestment(payload, 'gc-snapshots-other')
   })
 
   afterAll(async () => {
-    if (investmentId) {
-      await deleteTestInvestment(payload, investmentId)
-    }
+    if (investmentId) await deleteTestInvestment(payload, investmentId)
+    if (otherInvestmentId) await deleteTestInvestment(payload, otherInvestmentId)
   })
 
-  // Insert a snapshot, then backdate its taken_at by `ageDays` so the age windows can be exercised
-  // deterministically (insertSnapshot always stamps now()).
-  async function insertAged(kind: 'auto' | 'manual', ageDays: number): Promise<number> {
+  // Backdate to a FIXED wall-clock point rather than an offset from now(): `now() - 40 days` sits at
+  // whatever time the suite happens to run, so "same day, three hours apart" straddles midnight on a
+  // pre-03:00 run and a sub-week offset lands in one week or two depending on the weekday. Anchoring
+  // on the same date_trunc the sweep uses makes the spec assert the bucketing instead of the clock.
+  async function insertAt(
+    targetInvestmentId: number,
+    kind: 'auto' | 'manual',
+    daysAgo: number,
+    hour: number,
+  ): Promise<number> {
     const id = await insertSnapshot(db, {
-      investmentId,
+      investmentId: targetInvestmentId,
       kind,
       label: kind === 'manual' ? 'wersja' : null,
       takenBy: null,
       payload: emptyPayload,
     })
-    await db.execute(
-      sql`UPDATE kosztorys_snapshots SET taken_at = now() - make_interval(days => ${ageDays}) WHERE id = ${id}`,
-    )
+    await db.execute(sql`
+      UPDATE kosztorys_snapshots SET taken_at = (
+        date_trunc('day', now() AT TIME ZONE 'Europe/Warsaw')
+          - make_interval(days => ${daysAgo})
+          + make_interval(hours => ${hour})
+      ) AT TIME ZONE 'Europe/Warsaw'
+      WHERE id = ${id}
+    `)
     return id
   }
 
-  it('drops auto >7 days and manual >1 year, keeps the rest', async () => {
-    const freshAuto = await insertAged('auto', 1) // < 7 days → kept
-    const oldAuto = await insertAged('auto', 10) // > 7 days → dropped
-    const recentManual = await insertAged('manual', 100) // < 1 year → kept
-    const ancientManual = await insertAged('manual', 400) // > 1 year → dropped
+  // Same anchoring, but on the calendar WEEK the sweep buckets by. Two rows placed on different days
+  // of one week is the only fixture that can tell date_trunc('week') from date_trunc('day') — with
+  // day-aligned rows only, a weekly band that truncated by day would keep both and still pass.
+  async function insertInWeek(weeksAgo: number, dayInWeek: number, hour: number): Promise<number> {
+    const id = await insertSnapshot(db, {
+      investmentId,
+      kind: 'auto',
+      label: null,
+      takenBy: null,
+      payload: emptyPayload,
+    })
+    await db.execute(sql`
+      UPDATE kosztorys_snapshots SET taken_at = (
+        date_trunc('week', now() AT TIME ZONE 'Europe/Warsaw')
+          - make_interval(weeks => ${weeksAgo})
+          + make_interval(days => ${dayInWeek}, hours => ${hour})
+      ) AT TIME ZONE 'Europe/Warsaw'
+      WHERE id = ${id}
+    `)
+    return id
+  }
 
-    await gcSnapshots(db)
-
-    const survivors = await db.execute(
-      sql`SELECT id FROM kosztorys_snapshots WHERE investment_id = ${investmentId} ORDER BY id`,
+  async function survivorsOf(targetInvestmentId: number): Promise<number[]> {
+    const res = await db.execute(
+      sql`SELECT id FROM kosztorys_snapshots WHERE investment_id = ${targetInvestmentId} ORDER BY id`,
     )
-    const survivingIds = survivors.rows.map((r) => Number(r.id))
-    expect(survivingIds).toEqual([freshAuto, recentManual].sort((a, b) => a - b))
-    expect(survivingIds).not.toContain(oldAuto)
-    expect(survivingIds).not.toContain(ancientManual)
+    return res.rows.map((row) => Number(row.id))
+  }
+
+  it('keeps full density for 30 days, one per day to 120, one per week to 365, and is idempotent', async () => {
+    // Every age sits clear of a band edge (30 / 120 / 365): the backdating UPDATE and the sweep's
+    // now() are separate transactions, so a row placed exactly on an edge races.
+
+    // Inside the full-density window — two rows on one day, both survive.
+    const freshEarly = await insertAt(investmentId, 'auto', 2, 8)
+    const freshLate = await insertAt(investmentId, 'auto', 2, 19)
+
+    // Daily band — three rows on day 40 collapse to the newest; day 41 keeps its own.
+    const day40Morning = await insertAt(investmentId, 'auto', 40, 2)
+    const day40Noon = await insertAt(investmentId, 'auto', 40, 10)
+    const day40Evening = await insertAt(investmentId, 'auto', 40, 20)
+    const day41 = await insertAt(investmentId, 'auto', 41, 12)
+
+    // Weekly band — Tuesday and Thursday of the same week (29 weeks back, well past 120 days)
+    // collapse to the Thursday row, which is what proves the bucket is a week and not a day.
+    const sameWeekEarlier = await insertInWeek(29, 1, 5)
+    const sameWeekLater = await insertInWeek(29, 3, 15)
+    const previousWeek = await insertInWeek(30, 3, 9)
+
+    // Manual rows under the ceiling survive both bands — the bands are kind = 'auto' only. One in
+    // each band, because a `kind` filter dropped from just one DELETE would still leave the other green.
+    const manualInDailyBand = await insertAt(investmentId, 'manual', 40, 6)
+    const manualInWeeklyBand = await insertAt(investmentId, 'manual', 200, 11)
+
+    // Both kinds past the ceiling.
+    const ancientAuto = await insertAt(investmentId, 'auto', 400, 9)
+    const ancientManual = await insertAt(investmentId, 'manual', 400, 9)
+
+    // A second investment with rows in the SAME calendar day as the daily-band fixture above.
+    const otherDay40Morning = await insertAt(otherInvestmentId, 'auto', 40, 3)
+    const otherDay40Evening = await insertAt(otherInvestmentId, 'auto', 40, 21)
+
+    const first = await gcSnapshots(db)
+    expect(first.daily).toBeGreaterThanOrEqual(3)
+    expect(first.weekly).toBeGreaterThanOrEqual(1)
+    expect(first.ceiling).toBeGreaterThanOrEqual(2)
+
+    const survivors = await survivorsOf(investmentId)
+    expect(survivors).toEqual(
+      [
+        freshEarly,
+        freshLate,
+        day40Evening,
+        day41,
+        sameWeekLater,
+        previousWeek,
+        manualInDailyBand,
+        manualInWeeklyBand,
+      ].sort((a, b) => a - b),
+    )
+    expect(survivors).not.toContain(day40Morning)
+    expect(survivors).not.toContain(day40Noon)
+    expect(survivors).not.toContain(sameWeekEarlier)
+    expect(survivors).not.toContain(ancientAuto)
+    expect(survivors).not.toContain(ancientManual)
+
+    // The other investment keeps ITS OWN newest row for that day — not zero, and not the same
+    // row as the first investment's
+    const otherSurvivors = await survivorsOf(otherInvestmentId)
+    expect(otherSurvivors).toEqual([otherDay40Evening])
+    expect(otherSurvivors).not.toContain(otherDay40Morning)
+
+    // Stateless and idempotent: the survivors ARE the state, so a second sweep has nothing left
+    // to thin. Asserted as survivor stability rather than `deleted === 0` — gcSnapshots sweeps the
+    // whole table, so rows an aborted neighbouring run left behind would show up in its counters.
+    await gcSnapshots(db)
+    expect(await survivorsOf(investmentId)).toEqual(survivors)
+    expect(await survivorsOf(otherInvestmentId)).toEqual(otherSurvivors)
   })
 })

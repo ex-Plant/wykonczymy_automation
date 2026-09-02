@@ -19,10 +19,6 @@ export type DiscountTypeT = 'percent' | 'amount'
 // total (PLN netto). Amount-only: a percent rabat isn't stored here — it's a one-shot tool that
 // stamps a percent into every per-item rabat (see applyPercentDiscountToAllItemsAction).
 export type GlobalDiscountT = { type: 'amount' | null; value: number }
-// Per-item subcontractor price override: 'coeff' = client × value (tracks the client
-// price), 'amount' = flat frozen amount, null = derive from the effective coefficient.
-export type SubcontractorOverrideTypeT = 'coeff' | 'amount'
-
 export type KosztorysSectionT = {
   id: number
   name: string
@@ -47,10 +43,12 @@ export type KosztorysItemT = {
   discountType: DiscountTypeT | null
   discountValue: number
   clientPrice: number
-  wToolsOverrideType: SubcontractorOverrideTypeT | null
-  wToolsOverrideValue: number
-  ownToolsOverrideType: SubcontractorOverrideTypeT | null
-  ownToolsOverrideValue: number
+  // Per-item subcontractor stawka, one nullable number per plane: a number = a kwota frozen onto
+  // the pozycja, null = „auto", derive it from the investment's effective współczynnik. `0` is a
+  // kwota like any other — a stawka someone set to zero on purpose — so it is NOT null and no
+  // reader may fold the two together (EX-766).
+  wToolsOverrideValue: number | null
+  ownToolsOverrideValue: number | null
   note: string | null
 }
 
@@ -66,9 +64,7 @@ export type ItemPatchT = Partial<
     | 'discountType'
     | 'discountValue'
     | 'clientPrice'
-    | 'wToolsOverrideType'
     | 'wToolsOverrideValue'
-    | 'ownToolsOverrideType'
     | 'ownToolsOverrideValue'
     | 'note'
   >

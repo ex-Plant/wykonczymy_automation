@@ -31,6 +31,7 @@ import { Transfers } from '@/collections/transfers'
 import { Users } from '@/collections/users'
 import { VehicleInspections } from '@/collections/vehicle-inspections'
 import { Vehicles } from '@/collections/vehicles'
+import { WorkCatalogueItems } from '@/collections/work-catalogue-items'
 import { KosztorysClientViewDefaults } from '@/globals/kosztorys-client-view-defaults'
 import { NotificationRecipients } from '@/globals/notification-recipients'
 
@@ -93,6 +94,7 @@ export default buildConfig({
     Leads,
     Vehicles,
     VehicleInspections,
+    WorkCatalogueItems,
     Media,
   ],
   globals: [KosztorysClientViewDefaults, NotificationRecipients],

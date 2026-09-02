@@ -122,7 +122,7 @@ export function KosztorysVersionsDrawer({
         title={
           pendingRestore ? `Przywrócić wersję z ${formatPLDateTime(pendingRestore.takenAt)}?` : ''
         }
-        description="Obecny stan zostanie zapisany jako punkt przywracania."
+        description="Obecny stan zostanie zapisany jako punkt przywracania. Wraca sama rozpiska — rabat globalny, sposób rozliczenia i stawka materiałów zostają dzisiejsze."
         confirmLabel="Przywróć"
         variant="neutral"
         pending={restoringId != null}

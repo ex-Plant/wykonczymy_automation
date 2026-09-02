@@ -36,10 +36,8 @@ function currentTree(overrides: Partial<SnapshotPayloadT> = {}): SnapshotPayload
         discountType: null,
         discountValue: 0,
         clientPrice: 999,
-        wToolsOverrideType: null,
-        wToolsOverrideValue: 0,
-        ownToolsOverrideType: null,
-        ownToolsOverrideValue: 0,
+        wToolsOverrideValue: null,
+        ownToolsOverrideValue: null,
         note: 'ustalone z klientem',
       },
     ],
@@ -84,11 +82,11 @@ describe('buildImportPlan', () => {
 
     // 78 / 120 = 0,65, i.e. the multiplier the whole cennik uses. A per-row „własny mnożnik" here
     // would read as a decision about this praca and would stop following the global narzutka.
-    expect(item).toMatchObject({ wToolsOverrideType: null, wToolsOverrideValue: 0 })
-    expect(item).toMatchObject({ ownToolsOverrideType: null, ownToolsOverrideValue: 0 })
+    expect(item).toMatchObject({ wToolsOverrideValue: null })
+    expect(item).toMatchObject({ ownToolsOverrideValue: null })
   })
 
-  it('keeps a praca marked up differently as an explicit multiplier', () => {
+  it('freezes a praca marked up differently at the sheet’s own rate', () => {
     const { tree } = plan(
       source({
         rateTabs: [
@@ -101,10 +99,10 @@ describe('buildImportPlan', () => {
     )
     const item = tree.items.find((row) => row.description === 'montaż jednostki wewnętrznej')!
 
-    // 84 / 120 = 0,7 against a cennik that otherwise runs at 0,65 — an exception, and the only kind
-    // of row the „Mnożnik" column should ever show.
-    expect(item).toMatchObject({ wToolsOverrideType: 'coeff', wToolsOverrideValue: 0.7 })
-    expect(item).toMatchObject({ ownToolsOverrideType: null })
+    // 84 / 120 = 0,7 against a cennik that otherwise runs at 0,65 — an exception, so it cannot go to
+    // auto. The stored value is the RATE from the sheet, not the ratio: 84, never 0,7.
+    expect(item).toMatchObject({ wToolsOverrideValue: 84 })
+    expect(item).toMatchObject({ ownToolsOverrideValue: null })
   })
 
   it('keeps the investment’s multipliers when no cennik formula follows Cena j.m.', () => {
@@ -145,8 +143,8 @@ describe('buildImportPlan', () => {
     )
     const item = tree.items.find((row) => row.description === 'montaż jednostki wewnętrznej')!
 
-    expect(item).toMatchObject({ wToolsOverrideType: 'amount', wToolsOverrideValue: 55 })
-    expect(item).toMatchObject({ ownToolsOverrideType: 'amount', ownToolsOverrideValue: 46.75 })
+    expect(item).toMatchObject({ wToolsOverrideValue: 55 })
+    expect(item).toMatchObject({ ownToolsOverrideValue: 46.75 })
   })
 
   it('freezes bez-narzędzi too when it is computed off a hand-typed z-narzędziami cell', () => {
@@ -170,7 +168,7 @@ describe('buildImportPlan', () => {
     )
     const item = tree.items.find((row) => row.description === 'montaż jednostki wewnętrznej')!
 
-    expect(item).toMatchObject({ ownToolsOverrideType: 'amount', ownToolsOverrideValue: 46.75 })
+    expect(item).toMatchObject({ ownToolsOverrideValue: 46.75 })
   })
 
   it('freezes a praca absent from the rate tabs at a flat zero, never at the global coefficient', () => {
@@ -179,7 +177,7 @@ describe('buildImportPlan', () => {
     )
     const item = tree.items.find((row) => row.description === RATES[0].description)!
 
-    expect(item).toMatchObject({ wToolsOverrideType: 'amount', wToolsOverrideValue: 0 })
+    expect(item).toMatchObject({ wToolsOverrideValue: 0 })
     // Reported as a count, not per praca: on a sheet whose cenniki fail to resolve every praca is
     // missing, and the per-praca list would drown the real disagreements it exists to show.
     expect(report.warnings).toContain('1 prac nie ma w żadnym cenniku — wejdą ze stawką 0 zł.')
@@ -200,12 +198,10 @@ describe('buildImportPlan', () => {
     )
     const item = tree.items.find((row) => row.description === 'montaż jednostki wewnętrznej')!
 
-    // `amount` 0, never `null`: „auto" would price the praca at the investment's global multiplier —
+    // 0, never `null`: „auto" would price the praca at the investment's global multiplier —
     // a stawka nobody chose, on the one row where the sheet failed to state one.
     expect(item).toMatchObject({
-      wToolsOverrideType: 'amount',
       wToolsOverrideValue: 0,
-      ownToolsOverrideType: 'amount',
       ownToolsOverrideValue: 0,
     })
     const conflict = report.rateDecisions.find((rate) => rate.kind === 'conflict')!

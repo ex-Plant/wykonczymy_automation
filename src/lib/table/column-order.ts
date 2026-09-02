@@ -41,8 +41,8 @@ export function dropNonFiniteRanks(stored: ColumnRanksT): ColumnRanksT {
 // can't either. Ties would fall through to the assemble index, which no scalar rank can then override.
 //
 // Only within that view, though — the rank map is global while the assemble index is per-view („Inwestor"
-// assembles one price column, the subcontractor views three), so a rank set in one view can tie an
-// unranked key in another. That resolves deterministically by assemble index; it is a weaker guarantee,
+// assembles the client's cena j.m. on top of both crews' rate columns, the subcontractor views only the
+// latter), so a rank set in one view can tie an unranked key in another. That resolves deterministically by assemble index; it is a weaker guarantee,
 // not a broken one. Same reason a midpoint can straddle a group the picker filters out (the rabat
 // columns under a global discount): invisible where it was computed, ordered once it comes back.
 export function rankForMove(

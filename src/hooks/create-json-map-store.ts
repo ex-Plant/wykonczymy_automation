@@ -45,6 +45,12 @@ export type JsonMapStoreT<V> = {
   subscribe: (callback: () => void) => () => void
   getSnapshot: () => string
   update: (updater: (prev: Record<string, V>) => Record<string, V>) => void
+  // The two writes every domain hook on top of this needs, so none of them has to re-derive the
+  // spread or remember that dropping goes through `dropKeys` to keep the skip-if-unchanged identity.
+  // They are also stable references, which is what lets a hook hand them straight to a memoized
+  // column without a per-render closure.
+  set: (key: string, value: V) => void
+  drop: (...keys: string[]) => void
 }
 
 export function createJsonMapStore<V>(storageKey: string): JsonMapStoreT<V> {
@@ -79,7 +85,13 @@ export function createJsonMapStore<V>(storageKey: string): JsonMapStoreT<V> {
     for (const listener of listeners) listener()
   }
 
-  return { subscribe, getSnapshot, update }
+  return {
+    subscribe,
+    getSnapshot,
+    update,
+    set: (key, value) => update((prev) => ({ ...prev, [key]: value })),
+    drop: (...keys) => update((prev) => dropKeys(prev, keys)),
+  }
 }
 
 // The parsed map, re-derived only when the persisted string changes. Domain hooks layer their own

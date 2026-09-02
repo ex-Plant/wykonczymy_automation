@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   globalDiscountAmount,
+  subcontractorPrice,
   globalDiscountForMode,
   isGlobalDiscountActive,
   netForQtyForView,
@@ -26,9 +27,7 @@ const item: ViewPricingT = {
   discountType: null,
   discountValue: 0,
   clientPrice: 20,
-  wToolsOverrideType: 'amount',
   wToolsOverrideValue: 12,
-  ownToolsOverrideType: 'amount',
   ownToolsOverrideValue: 10,
   note: null,
   globalDiscountActive: false,

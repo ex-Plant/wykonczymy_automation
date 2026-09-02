@@ -144,10 +144,9 @@ Prefer hand-editing `@package.json` over `pnpm remove` / `pnpm install`. On this
 ## Databases And Live Data
 
 - **The real DB is Neon Postgres** — `DB_POSTGRES_URL_PROD` in `.env` is the live prod credential. **Never run SQL, migrations, or dumps-restores against the Neon URL**; a human applies prod migrations.
-- **Kosztorys data is throwaway while production holds no kosztorys rows** (owner, 2026-07-16; re-anchored 2026-08-26 — the editor shipped to `main` long ago, nobody has entered a kosztorys on production). So a change that drops a column, invalidates a snapshot, or breaks a preset owes **no data-preservation path**: delete the stale rows and move on. Don't plan a backfill, a compat shim, or a two-step migration for data nobody has. **Scope: kosztorys only** — transfers, investments, and registers on the same DB are restored from prod dumps and are real. The condition is checkable, so check it rather than trust this line: `SELECT count(*) FROM kosztorys_items;` against production must return `0`. The moment it doesn't, delete this bullet — the rules above then apply unqualified.
 - The local app points at the docker Postgres on 5433 (`DB_POSTGRES_URL`, db `wykonczymy-db`) — a copy restored from Neon dumps: `pnpm db:dump` (prod → `dumps/dump-latest.sql`, also run by the pre-push hook) and `pnpm db:import` (dump → local). Refreshable, but confirm before wiping it — a restore loses anything entered locally since the last dump.
 - The **E2E suite** runs against an isolated `db-test` container on **5435** (`DB_POSTGRES_URL_TEST`, db `wykonczymy-test`), never the dev DB. Populate/reset its fixtures with `pnpm db:import:test` (same dump → test DB). `pnpm test:e2e` starts the container (`--wait` on its healthcheck) but does **not** import — run `db:import:test` once after a fresh volume or to reset.
-- **A `db-test` reset is three commands, not one: `pnpm db:import:test` → `pnpm seed:kosztorys:test` → `pnpm seed:deposits:test`.** The prod dump carries zero kosztorys rows and not one wpłata brutto, and `pnpm test:parity`'s dataset floor fails closed on both. Without the kosztorys seed every listing figure reads zero robocizny; without the wpłata-brutto seed the whole brutto plane and the legacy bridge (`net_amount IS NULL`, derived at VAT) are zero everywhere — so the guard would pass green having tested neither.
+- **A `db-test` reset is three commands, not one: `pnpm db:import:test` → `pnpm seed:kosztorys:test` → `pnpm seed:deposits:test`.** The prod dump carries no wpłata brutto, and `pnpm test:parity`'s dataset floor fails closed on it: without the wpłata-brutto seed the whole brutto plane and the legacy bridge (`net_amount IS NULL`, derived at VAT) are zero everywhere, so the guard would pass green having tested neither.
 - **Google Sheets: two service accounts — reads everywhere, writes only from production.** The sheet
   id comes from the DB and every non-production database is a restored prod dump, so localhost,
   preview and the E2E DB all carry **live sheet ids**. That is how eight sheets took 36 foreign rows
@@ -218,6 +217,10 @@ Prefer hand-editing `@package.json` over `pnpm remove` / `pnpm install`. On this
   is a point-in-time copy, so an invoice newer than the last restore 404s locally; top it up with
   `pnpm blob:refresh:preview` (needs `lftp`; caches the FTP mirror in `dumps/blob-mirror`, uploads at
   most `BLOB_REFRESH_MAX` files per run). Detail: `context/reference/blob-recovery-runbook.md` §3.
+- **Dumpy starych arkuszy klientów leżą poza gitem** — `~/.local/share/wykonczymy-legacy-sheets/`
+  (kopia w `dumps/legacy-sheets/`, wycięta przez `.gitignore`): 57 arkuszy + `raport.md`. Skrypty,
+  które je pobrały, są skasowane i żyją tylko w historii. Mapa:
+  `context/reference/legacy-sheet-dumps.md`.
 - Never `git push`; a human pushes to remotes.
 
 ## Architecture
@@ -264,7 +267,7 @@ Most are self-describing (`src/collections`, `src/access`, `src/stores`, …). T
   second form uses it.
   The counting is over **directories, not files**: three cells in one directory sharing a hook is
   still one consumer, so `useCellDraft` stays colocated in `editor/grid/cells/` while
-  `useInlineRename` — read from two directories — sits in `src/hooks/`. Promote a hook when a second
+  `useInlineRename` — read from two directories — sits in `editor/hooks/`. Promote a hook when a second
   directory reaches for it, not when a third file in the same one does.
 - `src/components/ui` is the domain-agnostic primitives layer — a component that knows it is filtering
   a list belongs in `src/components/filters/` (EX-730 moved the last four out of `ui/`; git history and

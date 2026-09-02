@@ -1,4 +1,5 @@
 import { AXIS_EXEMPT_COLUMNS, COLUMN_MONEY_AXIS } from '@/lib/kosztorys/column-config'
+import { basePriceKey } from '@/lib/kosztorys/plane-price-keys'
 import type { PriceViewT } from '@/lib/kosztorys/calc'
 
 // The grid's second reading axis: the owner reads netto when settling with a subcontractor and brutto
@@ -29,9 +30,12 @@ export function effectiveMoneyAxis(view: PriceViewT, axis: MoneyAxisT): MoneyAxi
 }
 
 export function axisAllows(toggleKey: string, axis: MoneyAxisT): boolean {
-  if (AXIS_EXEMPT_COLUMNS.has(toggleKey) || axis === 'both') return true
+  // Both planes of a subcontractor rate answer to the base column's tag — one entry per concept, so
+  // the two planes cannot end up on opposite sides of the netto/brutto axis.
+  const key = basePriceKey(toggleKey)
+  if (AXIS_EXEMPT_COLUMNS.has(key) || axis === 'both') return true
 
-  const columnAxis = COLUMN_MONEY_AXIS[toggleKey]
+  const columnAxis = COLUMN_MONEY_AXIS[key]
   if (columnAxis === undefined) return true
   if (axis === 'none') return false
   return columnAxis === axis

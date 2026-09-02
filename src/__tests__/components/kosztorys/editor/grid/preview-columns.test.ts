@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { planePriceKey } from '@/lib/kosztorys/plane-price-keys'
 import {
   buildV2Columns,
   buildV2Grid,
@@ -74,8 +75,8 @@ describe('preview columns', () => {
   // What the sheet measured against what the etapy carry is the company's own bookkeeping, and the
   // payload DOES carry the reference figure (preview-kosztorys.ts ships the whole tree by decision),
   // so the render is the gate. „Pomiar (razem etapy)" is the one client-visible column derived from
-  // the same rows, and it used to hang the sheet figure off a hover tip — the leak channel is now
-  // closed by construction, and this holds it closed: the client still needs the column itself.
+  // the same rows, and the client still needs that column itself — so the render gate is what keeps
+  // the sheet figure off it.
   it('never surfaces the sheet pomiar to the client', () => {
     const columnData = (opts: Partial<BuildV2ColumnsOptsT>) =>
       buildV2Columns({ view: 'client', stages: STAGES, ...opts }).find(
@@ -131,7 +132,8 @@ describe('preview columns', () => {
   })
 })
 
-// The allowlist alone is not a lock: `price`/`net`/`gross` are on it and would compute at a
+// The allowlist alone is not a lock for the CLIENT-named columns: `price`/`net`/`gross` are on it and
+// would compute at a
 // subcontractor's cost basis, under client column names. No column looks foreign, so the leak does not
 // announce itself — which is why the pair is enforced by an exception rather than a comment.
 describe('the pair: allowlist + price plane', () => {
@@ -147,17 +149,22 @@ describe('the pair: allowlist + price plane', () => {
     expect(() => previewIds()).not.toThrow()
   })
 
-  // Held by the PLANE, not the allowlist: `priceMode`/`priceCoeff` are only assembled at
-  // `view !== 'client'`, so a preview can never reach them. Their absence from the allowlist is
-  // defence in depth.
-  it('cannot reach the subcontractor-only columns', () => {
+  // For „Cena j.m." the allowlist is the ONLY half holding it back: a crew's stawka is assembled in
+  // every view since the owner asked to compare both planes from „Inwestor", so the client view
+  // reaches it too and only its absence from PREVIEW_VISIBLE_COLUMNS keeps it off a client's
+  // document. „Źródło" has both halves again — it is not assembled at the client plane at all.
+  it('cannot reach the subcontractor rate columns, in either plane', () => {
     const visible = previewIds()
-    expect(visible).not.toContain('priceMode')
-    expect(visible).not.toContain('priceCoeff')
-    // The editor at a subcontractor plane still gets them — proof the assertion above has teeth.
-    expect(buildV2Columns({ view: 'w_tools', stages: STAGES }).map((c) => c.id)).toContain(
-      'priceMode',
-    )
+    for (const plane of ['w_tools', 'own_tools'] as const) {
+      for (const base of ['priceMode', 'price'] as const) {
+        expect(visible).not.toContain(planePriceKey(base, plane))
+      }
+    }
+    // The editor gets the rate in the client view too, which is exactly why the allowlist is
+    // load-bearing.
+    const editorIds = buildV2Columns({ view: 'client', stages: STAGES }).map((c) => c.id)
+    expect(editorIds).toContain(planePriceKey('price', 'w_tools'))
+    expect(editorIds).toContain(planePriceKey('price', 'own_tools'))
   })
 
   // The subcontractor plane without the allowlist is just the owner's own view — the pair binds one

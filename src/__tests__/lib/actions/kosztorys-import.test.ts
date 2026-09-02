@@ -118,12 +118,12 @@ describe.skipIf(!ENV_READY)('kosztorys import actions — persisted state (DB)',
     expect(Number(investment.rows[0].own_tools_coeff)).toBeCloseTo(0.5, 6)
 
     const item = await db.execute(sql`
-      SELECT w_tools_override_type, own_tools_override_type FROM kosztorys_items
+      SELECT w_tools_override_value, own_tools_override_value FROM kosztorys_items
       WHERE investment_id = ${investmentId} AND description = 'montaż jednostki wewnętrznej'
     `)
     expect(item.rows[0]).toMatchObject({
-      w_tools_override_type: null,
-      own_tools_override_type: null,
+      w_tools_override_value: null,
+      own_tools_override_value: null,
     })
   })
 

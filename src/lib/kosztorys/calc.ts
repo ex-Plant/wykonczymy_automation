@@ -1,4 +1,11 @@
-import type { GlobalDiscountT, ToolPlaneT, ViewPricingT } from '@/lib/kosztorys/types'
+import { OVERRIDE_FIELDS } from '@/lib/kosztorys/constants'
+import type {
+  GlobalDiscountT,
+  KosztorysGlobalCoeffsT,
+  KosztorysItemT,
+  ToolPlaneT,
+  ViewPricingT,
+} from '@/lib/kosztorys/types'
 
 // VAT: a single rate per investment (vatRate), carried on the row. No section→item cascade.
 
@@ -60,16 +67,42 @@ function applyDiscount(gross: number, item: ViewPricingT): number {
 // --- Price views (one dataset → three views: client / subcontractor with/without tools) ---
 export type PriceViewT = 'client' | ToolPlaneT
 
-export function effectiveCoeff(row: ViewPricingT, view: ToolPlaneT): number {
+function effectiveCoeff(row: ViewPricingT, view: ToolPlaneT): number {
   return view === 'w_tools' ? row.globalWToolsCoeff : row.globalOwnToolsCoeff
 }
 
-/** Subcontractor price by view: null→derived (client×coeff), coeff→client×%, amount→flat. */
+/**
+ * This plane's own nadpisanie, or `null` for „auto". `null` is the load-bearing answer — it is what
+ * „the row said nothing, derive it from the global współczynnik" looks like, and what a cennik
+ * „auto" means one layer up. `0` is not that: it is a kwota someone set to zero.
+ */
+export function overrideValueFor(
+  row: Pick<ViewPricingT, 'wToolsOverrideValue' | 'ownToolsOverrideValue'>,
+  view: ToolPlaneT,
+): number | null {
+  return row[OVERRIDE_FIELDS[view]]
+}
+
+/**
+ * A `KosztorysItemT` seen as a priceable row. The globals default to 0 for callers that price only
+ * planes carrying their OWN nadpisanie — a kwota stała reads no global, so there the zeros are inert
+ * rather than a stand-in for a real współczynnik.
+ */
+export function asViewPricing(
+  item: KosztorysItemT,
+  coeffs: KosztorysGlobalCoeffsT = { wTools: 0, ownTools: 0 },
+): ViewPricingT {
+  return {
+    ...item,
+    globalDiscountActive: false,
+    globalWToolsCoeff: coeffs.wTools,
+    globalOwnToolsCoeff: coeffs.ownTools,
+  }
+}
+
 export function subcontractorPrice(row: ViewPricingT, view: ToolPlaneT): number {
-  const type = view === 'w_tools' ? row.wToolsOverrideType : row.ownToolsOverrideType
-  const value = view === 'w_tools' ? row.wToolsOverrideValue : row.ownToolsOverrideValue
-  if (type === 'amount') return value
-  if (type === 'coeff') return row.clientPrice * value
+  const override = overrideValueFor(row, view)
+  if (override !== null) return override
   return row.clientPrice * effectiveCoeff(row, view)
 }
 

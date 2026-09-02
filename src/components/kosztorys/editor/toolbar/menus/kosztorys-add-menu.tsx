@@ -1,14 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { FolderPlus, Hammer, LibraryBig, Plus } from 'lucide-react'
+import { FolderPlus, Hammer, LibraryBig, ListChecks, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useCataloguePicker } from '@/components/kosztorys/editor/actions/catalogue-picker-host'
 import { AddSectionsFromPresetDialog } from '@/components/kosztorys/editor/dialogs/add-sections-from-preset-dialog'
 import { planeIcon } from '@/components/kosztorys/editor/plane-icons'
 import { useKosztorysEditorContext } from '@/components/kosztorys/editor/use-kosztorys-editor-context'
@@ -17,21 +21,16 @@ import { PLANE_LABELS, TOOL_PLANES } from '@/lib/kosztorys/constants'
 export function KosztorysAddMenu() {
   const {
     investmentId,
-    collapsedSectionIds,
     subtotals,
     handleAddItem,
     handleAddSection,
     handleAppendedSections,
     handleAddStage,
   } = useKosztorysEditorContext()
+  const openCataloguePicker = useCataloguePicker()
   // Owned here, OUTSIDE the dropdown content: the menu unmounts on close, so a dialog rendered inside
-  // it would unmount before it could open. The item only flips this flag.
-  const [pickerOpen, setPickerOpen] = useState(false)
-
-  // The new praca lands in the single expanded section when the fold isolates one, else the last.
-  const expanded = subtotals.filter((s) => !collapsedSectionIds.has(s.sectionId))
-  const onlyExpanded = expanded.length === 1 ? expanded[0].sectionId : undefined
-  const addItemSectionId = onlyExpanded ?? subtotals.at(-1)?.sectionId ?? null
+  // it would unmount before it could open.
+  const [presetDialogOpen, setPresetDialogOpen] = useState(false)
 
   return (
     <>
@@ -43,13 +42,40 @@ export function KosztorysAddMenu() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
-          <DropdownMenuItem
-            disabled={addItemSectionId == null}
-            onSelect={() => addItemSectionId != null && handleAddItem(addItemSectionId)}
-          >
-            <Hammer />
-            Praca
-          </DropdownMenuItem>
+          {/* No section is preselected — any default lands the praca where the user isn't looking,
+              which is the whole reason this is a picker. With no sekcja to offer, „Praca" goes
+              through handleAddSection, which mints a section WITH its first pozycja inside. */}
+          {subtotals.length === 0 ? (
+            <DropdownMenuItem onSelect={handleAddSection}>
+              <Hammer />
+              Praca
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Hammer />
+                Praca
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {subtotals.map((section) => (
+                  <DropdownMenuItem
+                    key={section.sectionId}
+                    onSelect={() => handleAddItem(section.sectionId)}
+                  >
+                    {section.sectionName}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
+          {/* Only with a sekcja to land in — the picker's whole first step is choosing one, and an
+              empty kosztorys has none to offer. */}
+          {subtotals.length > 0 && (
+            <DropdownMenuItem onSelect={() => openCataloguePicker()}>
+              <ListChecks />
+              Praca z katalogu…
+            </DropdownMenuItem>
+          )}
           {/* Plane is forced at creation — each etap plane is its own top-level item, so there is no
               plane-less „Etap" and no new stage is ever unconfirmed. The worker is deliberately NOT
               forced the same way: an unassigned etap is a legitimate resting state (it earns its own
@@ -64,7 +90,7 @@ export function KosztorysAddMenu() {
             <FolderPlus />
             Sekcja
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setPickerOpen(true)}>
+          <DropdownMenuItem onSelect={() => setPresetDialogOpen(true)}>
             <LibraryBig />
             Sekcja z szablonu…
           </DropdownMenuItem>
@@ -72,8 +98,8 @@ export function KosztorysAddMenu() {
       </DropdownMenu>
       <AddSectionsFromPresetDialog
         investmentId={investmentId}
-        open={pickerOpen}
-        onOpenChange={setPickerOpen}
+        open={presetDialogOpen}
+        onOpenChange={setPresetDialogOpen}
         onAppended={handleAppendedSections}
       />
     </>

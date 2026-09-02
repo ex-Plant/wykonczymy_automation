@@ -1,0 +1,35 @@
+diff --git a/dist/components/DataSheetGrid.js b/dist/components/DataSheetGrid.js
+index ec561f6812c13bb948f23aa6f48ad16cf114c74d..20b5ad2e02c0870ca9acb2a04e34392dd6b6eb42 100644
+--- a/dist/components/DataSheetGrid.js
++++ b/dist/components/DataSheetGrid.js
+@@ -72,7 +72,7 @@ exports.DataSheetGrid = react_1.default.memo(react_1.default.forwardRef(({ value
+     const afterTabIndexRef = (0, react_1.useRef)(null);
+     // Default value is 1 for the border
+     const [heightDiff, setHeightDiff] = (0, useDebounceState_1.useDebounceState)(1, 100);
+-    const { getRowSize, totalSize, getRowIndex } = (0, useRowHeights_1.useRowHeights)({
++    const { getRowSize, totalSize, getRowIndex, resetAfter } = (0, useRowHeights_1.useRowHeights)({
+         value: data,
+         rowHeight,
+     });
+@@ -1265,6 +1265,9 @@ exports.DataSheetGrid = react_1.default.memo(react_1.default.forwardRef(({ value
+             setSelectionMode({ columns: false, active: false, rows: false });
+             setSelectionCell(null);
+         },
++        resetRowHeights: (fromIndex) => {
++            resetAfter(Math.max(0, fromIndex !== null && fromIndex !== void 0 ? fromIndex : 0));
++        },
+     }));
+     const callbacksRef = (0, react_1.useRef)({
+         onFocus,
+diff --git a/dist/types.d.ts b/dist/types.d.ts
+index 52c4b80895fbb1398d87fb8880e6def17feaadc1..cf521cc0a35ceb45ecaa55425a40a07f41558026 100644
+--- a/dist/types.d.ts
++++ b/dist/types.d.ts
+@@ -193,6 +193,7 @@ export type DataSheetGridRef = {
+     selection: SelectionWithId | null;
+     setActiveCell: (activeCell: CellWithIdInput | null) => void;
+     setSelection: (selection: SelectionWithIdInput | null) => void;
++    resetRowHeights: (fromIndex?: number) => void;
+ };
+ export {};
+ //# sourceMappingURL=types.d.ts.map

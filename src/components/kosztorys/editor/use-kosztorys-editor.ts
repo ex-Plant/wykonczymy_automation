@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useDebouncedSave } from '@/components/kosztorys/editor/hooks/use-debounced-save'
+import { useStaleTreeRecovery } from '@/components/kosztorys/editor/hooks/use-stale-tree-recovery'
 import {
   coalesceFieldChanges,
   coalesceStageChanges,
@@ -18,6 +19,7 @@ import { buildReversalPatches, planReversalWrites } from '@/lib/kosztorys/undo-r
 import type { UndoCommandT, UndoRedoApiT } from '@/components/kosztorys/editor/hooks/use-undo-redo'
 import type { ClientViewSettingsT } from '@/lib/kosztorys/client-view-settings'
 import { useColumnWidths } from '@/components/kosztorys/editor/hooks/use-column-widths'
+import { useRowHeights } from '@/components/kosztorys/editor/hooks/use-row-heights'
 import { useConditionRowLatch } from '@/components/kosztorys/editor/hooks/use-condition-row-latch'
 import { engagedProblemIds, engagedStageProblemIds } from '@/lib/kosztorys/problem-conditions'
 import { useKosztorysSettings } from '@/components/kosztorys/editor/hooks/use-kosztorys-settings'
@@ -29,7 +31,6 @@ import { useLayer } from '@/components/kosztorys/editor/hooks/use-layer'
 import { useMoneyAxis } from '@/components/kosztorys/editor/hooks/use-money-axis'
 import { effectiveMoneyAxis } from '@/lib/kosztorys/money-axis'
 import { useElementHeight } from '@/hooks/use-element-height'
-import { toastMessage } from '@/lib/utils/toast'
 import { buildV2Grid } from '@/components/kosztorys/editor/grid/kosztorys-v2-columns'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import {
@@ -48,12 +49,7 @@ import {
   swapSectionBlock,
   type BlankRowInputT,
 } from '@/lib/kosztorys/row-ops'
-import {
-  planItemRemoval,
-  planItemRemovalFromCounts,
-  sectionItemCounts,
-  type ItemRemovalPlanT,
-} from '@/lib/kosztorys/delete-policy'
+import { isLastItemInSection, sectionItemCounts } from '@/lib/kosztorys/delete-policy'
 import { columnTotalsForRows } from '@/lib/kosztorys/column-totals'
 import { sectionSubtotalsForView, stageAxisForView } from '@/lib/kosztorys/settlement-aggregates'
 import { clientTotalsFromSubtotals } from '@/lib/kosztorys/settlement-client-totals'
@@ -77,6 +73,7 @@ import { planKosztorysRenumber } from '@/lib/kosztorys/display-order-plan'
 import { DEFAULT_SECTION_NAME } from '@/lib/kosztorys/constants'
 import type { SectionColorKeyT } from '@/lib/kosztorys/section-colors'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
+import { sectionFooterRowId, sectionHeaderRowId } from '@/lib/kosztorys/synthetic-rows'
 import { roundToCents } from '@/lib/utils/round-to-cents'
 import {
   addItemAction,
@@ -114,6 +111,9 @@ type ArgsT = {
   // problem (EX-708). Optional with a `false` default for the client-share entry points, which count
   // no problems at all; on the owner's editor it is always supplied.
   hasSettledMaterial?: boolean
+  // The shell's reseed-the-whole-tree path, taken when a write comes back NOT_FOUND — see
+  // useStaleTreeRecovery. Absent on the read-only body, which never writes.
+  onStaleTree?: () => Promise<void>
 }
 
 // Grace period after the last keystroke before a grid edit burst becomes one undo entry. Longer
@@ -135,13 +135,15 @@ export function useKosztorysEditor({
   undoRedo,
   workers,
   hasSettledMaterial = false,
+  onStaleTree,
 }: ArgsT) {
   const router = useRouter()
-  const { save, runNow } = useDebouncedSave(500)
+  const { recoverStaleTree, reportFailure } = useStaleTreeRecovery(onStaleTree)
+  const { save, runNow } = useDebouncedSave(500, recoverStaleTree)
   // Per-mount undo/redo stack, owned by the shell (KosztorysEditorV2) and passed in. Capture pushes
   // here; the toolbar + keyboard call undo/redo (re-exported below).
   const { push, undo, redo, canUndo, canRedo, pruneByIds, amendTop } = undoRedo
-  const [gridRef, gridHeight] = useElementHeight()
+  const [gridRef, gridHeight, gridNode] = useElementHeight()
   // The row store (this + prevById + rowsRef + patchRows + revertOne) reads like the obvious fourth
   // extraction after settlement settings / stage ops / view state, and isn't one (EX-702): those three
   // each had a narrow seam, while the store has ~47 references across ~30 handlers below. Pulling it
@@ -168,11 +170,14 @@ export function useKosztorysEditor({
     resetFilters,
     guideX,
     setGuideX,
+    guideY,
+    setGuideY,
   } = useKosztorysViewState({ investmentId, preview, clientView })
 
   // Column widths: persisted in localStorage, committed on handle release (not per pointermove —
   // that would be a write per pixel).
   const { widths, setWidth, dropWidth } = useColumnWidths()
+  const { heights: rowHeights, setHeight: setRowHeight, dropHeight } = useRowHeights()
   const { isHidden, toggleColumn, setAllColumns } = useHiddenColumns()
   const {
     ranks: columnRanks,
@@ -216,6 +221,7 @@ export function useKosztorysEditor({
     patchRows,
     dropWidth,
     save,
+    reportFailure,
   })
 
   // Grid edit burst awaiting a coalesced undo entry (see UNDO_COALESCE_MS). onChange appends each
@@ -346,8 +352,8 @@ export function useKosztorysEditor({
     handleApplyPercentDiscount,
   } = useKosztorysSettings({ investmentId, tree, rowsRef, patchRows, pushReversible })
 
-  // One O(n) pass feeding the render-hot getRemovePlan (see below) an O(1) per-row lookup.
-  const removalCounts = sectionItemCounts(rows)
+  // One O(n) pass; every row's actions menu reads its own section's count for the delete confirm.
+  const sectionCounts = sectionItemCounts(rows)
 
   // onRemoveItem/onReorderItem read prevById.current / rowsRef.current — stable refs —
   // only from a cell's onClick, never during render, so passing them here is safe.
@@ -460,8 +466,8 @@ export function useKosztorysEditor({
     onInsertSection: editorOnly(handleInsertSection),
     onPersistKosztorysOrder: editorOnly(handlePersistKosztorysOrder),
     onSetSectionColor: editorOnly(handleSetSectionColor),
-    getSectionItemCount: (sectionId: number) => removalCounts.get(sectionId) ?? 0,
-    getRemovePlan: editorOnly(getRemovePlan),
+    canSaveItemToCatalogue: editorOnly(true),
+    getSectionItemCount: (sectionId: number) => sectionCounts.get(sectionId) ?? 0,
     globalDiscountActive,
     divergenceFilterEngaged,
     engagedStageConditionIds,
@@ -692,9 +698,26 @@ export function useKosztorysEditor({
   // server exchanges with whatever is rank-adjacent NOW, so replaying a stale id would diverge the
   // moment a row landed between the pair (insert between A and X, then undo). `swapItemInSection` is
   // the same primitive the forward gesture uses, which is what makes both halves one operation.
+  // A ▲▼ swap is optimistic, so a refusal has to put the pair back — otherwise the grid keeps showing
+  // an order no reload can reproduce. `swapItemInSection` with the opposite direction is the exact
+  // inverse of the move that was applied. Fire-and-forget only in the sense that the CALLER doesn't
+  // await it; the result is never dropped.
+  //
+  // `command` is the undo entry the gesture pushed. Rolling the rows back without retracting it would
+  // leave the stack claiming a swap that never happened, and Cmd+Z would then move the row one slot
+  // PAST where it started (EX-737's rule: a retraction cancels against the command already pushed).
+  // `amendTop` is identity-guarded, so anything the user did since makes this a silent no-op.
+  async function persistItemSwap(itemId: number, dir: 'up' | 'down', command?: UndoCommandT) {
+    const res = await swapItemOrderAction(itemId, dir)
+    if (res.success) return
+    setRows((rs) => swapItemInSection(rs, itemId, dir === 'up' ? 'down' : 'up'))
+    if (command) amendTop(command, null)
+    reportFailure(res.error, res.code)
+  }
+
   function runReorderReversal(itemId: number, dir: 'up' | 'down') {
     setRows((rs) => swapItemInSection(rs, itemId, dir))
-    void swapItemOrderAction(itemId, dir)
+    void persistItemSwap(itemId, dir)
   }
 
   // The tree-level half of a blank row (VAT, global coefficients, the stage axis) is identical at
@@ -716,7 +739,7 @@ export function useKosztorysEditor({
 
   async function handleAddItem(sectionId: number) {
     const res = await addItemAction(sectionId)
-    if (!res.success) return
+    if (!res.success) return reportFailure(res.error, res.code)
     // Take the denormalized section fields from any existing row of that section.
     const sample = [...prevById.current.values()].find((r) => r.sectionId === sectionId)
     const row = makeBlankRow({
@@ -738,7 +761,7 @@ export function useKosztorysEditor({
   async function handleInsertItem(anchorRow: KosztorysV2RowT, dir: 'above' | 'below') {
     if (sort) return
     const res = await insertItemAction(anchorRow.id, dir)
-    if (!res.success) return
+    if (!res.success) return reportFailure(res.error, res.code)
     const sample =
       [...prevById.current.values()].find((r) => r.sectionId === anchorRow.sectionId) ?? anchorRow
     const row = makeBlankRow({
@@ -752,33 +775,10 @@ export function useKosztorysEditor({
     setRows((rs) => applyInsertItem(rs, anchorRow.id, row, dir))
   }
 
-  // What deleting a row does — read at event time from the full dataset (prevById), not the view,
-  // so the handler decides on accurate counts. The render-hot per-cell path uses getRemovePlan.
-  function removalPlan(row: KosztorysV2RowT) {
-    return planItemRemoval([...prevById.current.values()], row, stages)
-  }
-
-  // Render-hot: called per cell. Counts are precomputed once per render (removalCounts below), so this
-  // is O(1) per row — going through removalPlan (which spreads prevById and rescans per row) here would
-  // make the whole grid's per-row delete plan O(n²).
-  function getRemovePlan(row: KosztorysV2RowT): ItemRemovalPlanT {
-    return planItemRemovalFromCounts(
-      rows.length,
-      removalCounts.get(row.sectionId) ?? 0,
-      row,
-      stages,
-    )
-  }
-
   async function handleRemoveItem(row: KosztorysV2RowT) {
-    const plan = removalPlan(row)
-    // Backstop: the trash button is disabled when a reason exists, so this is normally unreachable.
-    if (plan.kind === 'blocked') {
-      toastMessage(plan.reason, 'warning', 4000)
-      return
-    }
-    // Last item in its section → cascade-delete the section so no orphaned 0-row section is left.
-    if (plan.kind === 'cascade-section') {
+    // Decided at event time against the full dataset (prevById), not the view, so a filtered or
+    // searched grid can't make a row look like the last one in its section.
+    if (isLastItemInSection([...prevById.current.values()], row)) {
       await handleRemoveSection(row.sectionId)
       return
     }
@@ -786,6 +786,7 @@ export function useKosztorysEditor({
     const removedAt = rowsAtRemoval.findIndex((r) => r.id === row.id)
     const afterId = removedAt > 0 ? rowsAtRemoval[removedAt - 1].id : null
     prevById.current.delete(row.id)
+    dropHeight(String(row.id))
     setRows((rs) => applyRemoveItem(rs, row.id))
     // Flush any still-buffering burst into a command first, then drop every stack command touching the
     // deleted row — otherwise undoing one would fire writes against a dead id and `setStageProgressAction`
@@ -800,7 +801,7 @@ export function useKosztorysEditor({
       // this row stays gone — a rare failure path on throwaway data, not worth reconstructing.
       prevById.current.set(row.id, row)
       setRows((rs) => applyRestoreItem(rs, row, afterId))
-      toastMessage(res.error ?? 'Nie udało się usunąć pozycji', 'warning', 4000)
+      reportFailure(res.error, res.code)
     }
   }
 
@@ -809,17 +810,20 @@ export function useKosztorysEditor({
     const neighbor = sectionNeighbor(rs, row.id, dir)
     if (!neighbor) return // edge of the block → no-op
     setRows(swapItemInSection(rs, row.id, dir))
-    // ▲▼ is a swap of two neighbors → the server exchanges just their display_order (2 updates, not a
-    // renumbering of the whole section — that choked with 1000+ rows). The action fires from the
-    // event handler, not from the setRows updater (there its cache revalidation would move the Router during render).
-    void swapItemOrderAction(row.id, dir)
     const back = dir === 'up' ? 'down' : 'up'
-    pushCommand({
+    // Built before the write so a refusal can retract exactly this entry; pushed after it, because
+    // the push is synchronous and the rejection can only land in a later tick.
+    const command: UndoCommandT = {
       label: 'Zmiana kolejności',
       undo: () => runReorderReversal(row.id, back),
       redo: () => runReorderReversal(row.id, dir),
       touchedIds: [row.id, neighbor.id],
-    })
+    }
+    // ▲▼ is a swap of two neighbors → the server exchanges just their display_order (2 updates, not a
+    // renumbering of the whole section — that choked with 1000+ rows). The action fires from the
+    // event handler, not from the setRows updater (there its cache revalidation would move the Router during render).
+    void persistItemSwap(row.id, dir, command)
+    pushCommand(command)
   }
 
   // Menu nagłówka → „Zapisz kolejność": the active sort is only a view, so this is what makes it
@@ -837,7 +841,7 @@ export function useKosztorysEditor({
     const res = await renumberKosztorysOrderAction(investmentId, next)
     if (!res.success) {
       setRows((rs) => applyKosztorysOrder(rs, revertTo))
-      toastMessage(res.error ?? 'Nie udało się zapisać kolejności', 'warning', 4000)
+      reportFailure(res.error, res.code)
     }
   }
 
@@ -861,12 +865,21 @@ export function useKosztorysEditor({
     })
   }
 
+  // Section twin of persistItemSwap, down to the rollback and the undo retraction.
+  async function persistSectionSwap(sectionId: number, dir: 'up' | 'down', command?: UndoCommandT) {
+    const res = await swapSectionOrderAction(sectionId, dir)
+    if (res.success) return
+    setRows((rs) => swapSectionBlock(rs, sectionId, dir === 'up' ? 'down' : 'up'))
+    if (command) amendTop(command, null)
+    reportFailure(res.error, res.code)
+  }
+
   // Mirrors handleReorderItem one level up: the grid regroups its blocks, the DB exchanges the two sections' display_order (2 updates, not a renumbering). Returns
   // false at the edge so the undo command isn't pushed for a no-op.
-  function applySectionSwap(sectionId: number, dir: 'up' | 'down') {
+  function applySectionSwap(sectionId: number, dir: 'up' | 'down', command?: UndoCommandT) {
     if (neighborSectionId(rowsRef.current, sectionId, dir) == null) return false
     setRows((rs) => swapSectionBlock(rs, sectionId, dir))
-    void swapSectionOrderAction(sectionId, dir)
+    void persistSectionSwap(sectionId, dir, command)
     return true
   }
 
@@ -876,14 +889,15 @@ export function useKosztorysEditor({
     // Captured BEFORE the swap: deleting the section later prunes this command, so an undo can
     // never re-derive a neighbour from rows the section no longer has.
     const touchedIds = rowsRef.current.filter((r) => r.sectionId === sectionId).map((r) => r.id)
-    if (!applySectionSwap(sectionId, dir)) return
     const back = dir === 'up' ? 'down' : 'up'
-    pushCommand({
+    const command: UndoCommandT = {
       label: 'Zmiana kolejności sekcji',
       undo: () => void applySectionSwap(sectionId, back),
       redo: () => void applySectionSwap(sectionId, dir),
       touchedIds,
-    })
+    }
+    if (!applySectionSwap(sectionId, dir, command)) return
+    pushCommand(command)
   }
 
   // The first row of a brand-new section: the section's own fields are still the defaults the action
@@ -904,7 +918,7 @@ export function useKosztorysEditor({
   async function handleInsertSection(anchorSectionId: number, dir: 'above' | 'below') {
     if (sort) return
     const res = await insertSectionAction(anchorSectionId, dir)
-    if (!res.success) return
+    if (!res.success) return reportFailure(res.error, res.code)
     const row = buildNewSectionRow(res.data.section.id, res.data.item)
     prevById.current.set(row.id, row)
     setRows((rs) => applyInsertSectionRow(rs, anchorSectionId, row, dir))
@@ -912,7 +926,7 @@ export function useKosztorysEditor({
 
   async function handleAddSection() {
     const res = await addSectionAction(investmentId)
-    if (!res.success) return
+    if (!res.success) return reportFailure(res.error, res.code)
     const row = buildNewSectionRow(res.data.section.id, res.data.item)
     prevById.current.set(row.id, row)
     setRows((rs) => applyAddItem(rs, row))
@@ -940,6 +954,29 @@ export function useKosztorysEditor({
     router.refresh()
   }
 
+  // The twin of handleAppendedSections for prace inserted into an EXISTING sekcja. It cannot append
+  // to the array's end: the grid walks rows in order to build its section bands, so a row parked past
+  // a later section would open a second band for a section that already has one. Each row therefore
+  // goes through applyAddItem, which lands it after the last row of its own sekcja — and folding them
+  // in order keeps the katalog's selection order, since each new row becomes the next one's anchor.
+  function handleAppendedCatalogueItems(slice: KosztorysTreeT['sections'][number]) {
+    const appended = treeToRows({
+      sections: [slice],
+      stages,
+      progress: [],
+      globalCoeffs: tree.globalCoeffs,
+      vatRate: tree.vatRate,
+      settlementMode: tree.settlementMode,
+      materialsNetRate: tree.materialsNetRate,
+      globalDiscount,
+      revision: tree.revision,
+    })
+    for (const row of appended) prevById.current.set(row.id, row)
+    setRows((rs) => appended.reduce(applyAddItem, rs))
+    unfoldSection(slice.id)
+    router.refresh()
+  }
+
   async function handleRemoveSection(sectionId: number) {
     // The summary confirms before calling here (EX-477); a populated section cascade-deletes its
     // items + stage_progress server-side, guarded only by the confirm dialog, not a block.
@@ -947,6 +984,12 @@ export function useKosztorysEditor({
       .filter((r) => r.sectionId === sectionId)
       .map((r) => prevById.current.get(r.id) ?? r)
     setRows((rs) => rs.filter((r) => r.sectionId !== sectionId))
+    // The section's band and footer carry heights of their own — they have a handle too.
+    dropHeight(
+      ...removed.map((r) => String(r.id)),
+      String(sectionHeaderRowId(sectionId)),
+      String(sectionFooterRowId(sectionId)),
+    )
     for (const [id, r] of prevById.current) {
       if (r.sectionId === sectionId) prevById.current.delete(id)
     }
@@ -960,7 +1003,7 @@ export function useKosztorysEditor({
       // Server rejected (predicate drift) — restore the section's rows and surface the block.
       for (const r of removed) prevById.current.set(r.id, r)
       setRows((rs) => [...rs, ...removed])
-      toastMessage(res.error ?? 'Nie udało się usunąć sekcji', 'warning', 4000)
+      reportFailure(res.error, res.code)
     }
   }
 
@@ -1089,8 +1132,12 @@ export function useKosztorysEditor({
   }
 
   return {
+    // The whole rozpiska, unfiltered and unsorted — „Wybierz pozycję z katalogu prac" reads it to
+    // tell which cennik prace are already in. viewRows would answer for the active filter instead.
+    rows,
     // grid data + layout
     gridRef,
+    gridNode,
     gridHeight,
     columns,
     columnToggleItems,
@@ -1109,6 +1156,12 @@ export function useKosztorysEditor({
     view,
     sort,
     guideX,
+    guideY,
+    rowHeights,
+    // The handle's callbacks are composed one layer out, in the body: fitting a row to its text
+    // needs the measured column widths, which only the rendered grid knows.
+    setRowHeight,
+    setGuideY,
     collapsedSectionIds,
     storedCollapsedSectionIds,
     toggleSectionCollapsed,
@@ -1157,6 +1210,7 @@ export function useKosztorysEditor({
     handleAddItem,
     handleAddSection,
     handleAppendedSections,
+    handleAppendedCatalogueItems,
     handleAddStage,
     handleGlobalCoeffChange,
     handleVatChange,

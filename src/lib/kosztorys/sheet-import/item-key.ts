@@ -27,7 +27,7 @@ const FOLDED_TYPO_FIXES = TYPO_FIXES.map(
   ([from, to]) => [foldRule(from), foldRule(to)] as const,
 ).filter(([from, to]) => from !== to)
 
-function foldDescription(description: string | null): string {
+export function foldDescription(description: string | null): string {
   return FOLDED_TYPO_FIXES.reduce(
     (text, [from, to]) => text.split(from).join(to),
     fold(description),

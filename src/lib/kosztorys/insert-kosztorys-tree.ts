@@ -1,7 +1,7 @@
 import 'server-only'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import type { DbExecutorT } from '@/lib/db/get-db'
-import type { SnapshotPayloadT } from './snapshot-format'
+import { itemWithColumnDefaults, type StoredSnapshotPayloadT } from './snapshot-format'
 import { insertItems, insertSections, remapNewIds } from './insert-rows'
 
 export const STAGE_INSERT_COLUMNS = [
@@ -58,20 +58,21 @@ async function liveWorkerIds(db: DbExecutorT, ids: number[]): Promise<Set<number
 export async function insertKosztorysTree(
   db: DbExecutorT,
   investmentId: number,
-  tree: SnapshotPayloadT,
+  tree: StoredSnapshotPayloadT,
 ): Promise<InsertKosztorysTreeResultT> {
   const sections = tree.sections ?? []
   const sectionIds = await insertSections(
     db,
     investmentId,
-    sections.map((section) => ({ displayOrder: section.displayOrder, section })),
+    // `?? index`, not `?? 0` — same natural-key reason as itemWithColumnDefaults above.
+    sections.map((section, index) => ({ displayOrder: section.displayOrder ?? index, section })),
   )
   const sectionIdMap = new Map(sections.map((s, i) => [s.id, sectionIds[i]]))
 
   // Skip an item whose parent section is absent (dangling FK).
-  const itemRows = (tree.items ?? []).flatMap((item) => {
+  const itemRows = (tree.items ?? []).flatMap((item, index) => {
     const sectionId = sectionIdMap.get(item.sectionId)
-    return sectionId === undefined ? [] : [{ sectionId, item }]
+    return sectionId === undefined ? [] : [{ sectionId, item: itemWithColumnDefaults(item, index) }]
   })
   const itemIds = await insertItems(db, investmentId, itemRows)
   const itemIdMap = new Map(itemRows.map(({ item }, i) => [item.id, itemIds[i]]))
@@ -114,7 +115,8 @@ export async function insertKosztorysTree(
   )
   if (progress.length > 0) {
     const rows = progress.map(
-      (p) => sql`(${itemIdMap.get(p.itemId)}, ${stageIdMap.get(p.stageId)}, ${p.qtyDone})`,
+      // `?? 0` for the same 23502 reason as itemWithColumnDefaults above.
+      (p) => sql`(${itemIdMap.get(p.itemId)}, ${stageIdMap.get(p.stageId)}, ${p.qtyDone ?? 0})`,
     )
     await db.execute(sql`
       INSERT INTO stage_progress (${sql.raw(PROGRESS_INSERT_COLUMNS.join(', '))})

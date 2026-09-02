@@ -210,10 +210,8 @@ export function buildImportPlan(
         id: itemId,
         sectionId,
         displayOrder: items.length,
-        wToolsOverrideType: wTools.type,
-        wToolsOverrideValue: wTools.value,
-        ownToolsOverrideType: ownTools.type,
-        ownToolsOverrideValue: ownTools.value,
+        wToolsOverrideValue: wTools,
+        ownToolsOverrideValue: ownTools,
         // The sheet has no column for it, so a matched praca keeps what the app holds rather
         // than having it blanked by an import that never had an opinion. `sheetMeasuredQty` gets
         // the opposite treatment on purpose — it rides the spread above and OVERWRITES, because it

@@ -15,17 +15,12 @@ type ArgsT = {
   clientView?: ClientViewSettingsT
 }
 
-// How the grid is being read — plane, search, sort, folds, the resize guide. Depends on nothing in
-// the data plane: no rows, no stages, no actions.
 const EMPTY_COLLAPSED: ReadonlySet<number> = new Set()
 
+// How the grid is being read — plane, search, sort, folds, the resize guides. Depends on nothing in
+// the data plane: no rows, no stages, no actions.
 export function useKosztorysViewState({ investmentId, preview, clientView }: ArgsT) {
   const [persistedView, setView] = usePriceView(investmentId)
-  // Pinning the plane is the second half of the preview's disclosure lock (the allowlist is the
-  // first — why the two only work as a pair is at `assertDisclosurePair`, which enforces it). Pinning
-  // it HERE is also what closes the attack where a client sets localStorage['kosztorys-view:<id>'] to
-  // a subcontractor view: the public page ships the full tree, coefficients included, so an unpinned
-  // plane would simply render it.
   const [search, setSearch] = useState('')
   // Which named conditions are hiding pozycje — persisted per investment, so a filter set yesterday
   // is still on today. Under the preview the owner's own picks are dropped wholesale like `view`
@@ -51,6 +46,11 @@ export function useKosztorysViewState({ investmentId, preview, clientView }: Arg
   // visible control would be dead while a filter is on.
   const [viewPickedManually, setViewPickedManually] = useState(false)
   const problemPlane = viewPickedManually ? undefined : engagedPlane(engagedConditionIds)
+  // Pinning the plane under `preview` is the second half of the disclosure lock (the allowlist is
+  // the first — why the two only work as a pair is at `assertDisclosurePair`, which enforces it).
+  // Pinning it HERE is also what closes the attack where a client sets
+  // localStorage['kosztorys-view:<id>'] to a subcontractor view: the public page ships the full
+  // tree, coefficients included, so an unpinned plane would simply render it.
   const view = preview ? 'client' : (problemPlane ?? persistedView)
   const [sort, setSort] = useState<SortStateT>(null)
   // Which sections are folded shut under their band — the single description of what the grid shows,
@@ -72,8 +72,10 @@ export function useKosztorysViewState({ investmentId, preview, clientView }: Arg
     : storedCollapsedSectionIds
 
   // During a column resize we only show a vertical guide (guideX = cursor X), without touching the
-  // grid — a re-layout per pointermove would be a re-render per pixel.
+  // grid — a re-layout per pointermove would be a re-render per pixel. guideY is the row-resize
+  // twin: same reason, rotated.
   const [guideX, setGuideX] = useState<number | null>(null)
+  const [guideY, setGuideY] = useState<number | null>(null)
 
   function pickView(next: PriceViewT) {
     setViewPickedManually(true)
@@ -145,5 +147,7 @@ export function useKosztorysViewState({ investmentId, preview, clientView }: Arg
     resetFilters,
     guideX,
     setGuideX,
+    guideY,
+    setGuideY,
   }
 }

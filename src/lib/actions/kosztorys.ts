@@ -42,8 +42,6 @@ import type { ItemPatchT, StagePatchT, ToolPlaneT } from '@/lib/kosztorys/types'
 // Derived from TOOL_PLANES rather than re-listing the union, so a plane added to the pickers can't
 // be silently rejected by validation.
 const stagePlaneSchema = z.enum(TOOL_PLANES)
-const overrideTypeSchema = z.enum(['coeff', 'amount'])
-
 const SECTION_MISSING = 'Sekcja nie istnieje.'
 const ITEM_MISSING = 'Pozycja nie istnieje.'
 
@@ -60,10 +58,10 @@ const itemPatchSchema = z
     // type is 'amount' (discount-edit.ts).
     discountValue: z.coerce.number().min(0),
     clientPrice: z.coerce.number(),
-    wToolsOverrideType: overrideTypeSchema.nullable(),
-    wToolsOverrideValue: z.coerce.number(),
-    ownToolsOverrideType: overrideTypeSchema.nullable(),
-    ownToolsOverrideValue: z.coerce.number(),
+    // `.nullable()` WRAPS the coercion rather than following a coerced number: `z.coerce.number()`
+    // turns null into 0, which is the one value that must stay distinguishable from „auto".
+    wToolsOverrideValue: z.coerce.number().nullable(),
+    ownToolsOverrideValue: z.coerce.number().nullable(),
     note: z.string().nullable(),
   })
   .partial()

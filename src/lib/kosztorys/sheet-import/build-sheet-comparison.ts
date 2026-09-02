@@ -1,6 +1,7 @@
 import { columnLetter } from '@/lib/google/sheet-configs'
 import {
   MONEY_TOLERANCE,
+  asViewPricing,
   globalDiscountAmount,
   isGlobalDiscountActive,
   netForQtyForView,
@@ -96,12 +97,10 @@ export type SheetComparisonResultT =
 
 // Neither plane's coefficient can reach a client-plane figure, and no snapshot carries a global
 // discount, so the client price is fully determined by the item itself. The parsed rows additionally
-// lack the four override fields — see `ParsedItemT` — which the client view never reads.
+// lack both stawka fields — see `ParsedItemT` — which the client view never reads.
 const asClientPricing = (item: ParsedItemT | KosztorysItemT): ViewPricingT => ({
-  wToolsOverrideType: null,
-  wToolsOverrideValue: 0,
-  ownToolsOverrideType: null,
-  ownToolsOverrideValue: 0,
+  wToolsOverrideValue: null,
+  ownToolsOverrideValue: null,
   ...item,
   globalDiscountActive: false,
   globalWToolsCoeff: 0,
@@ -110,12 +109,8 @@ const asClientPricing = (item: ParsedItemT | KosztorysItemT): ViewPricingT => ({
 
 // The one place the investment's global coefficients matter: an item with no override inherits them,
 // so a stawka read without them would look like a 0 zł crew cost on every such praca.
-const asPlanePricing = (item: KosztorysItemT, settings: SnapshotSettingsT): ViewPricingT => ({
-  ...item,
-  globalDiscountActive: false,
-  globalWToolsCoeff: settings.wToolsCoeff,
-  globalOwnToolsCoeff: settings.ownToolsCoeff,
-})
+const asPlanePricing = (item: KosztorysItemT, settings: SnapshotSettingsT): ViewPricingT =>
+  asViewPricing(item, { wTools: settings.wToolsCoeff, ownTools: settings.ownToolsCoeff })
 
 function sumQtyDone(progress: readonly StageProgressT[]): Map<number, number> {
   const byItem = new Map<number, number>()
@@ -187,7 +182,7 @@ export function buildSheetComparison(
   const appSectionName = new Map(currentTree.sections.map((section) => [section.id, section.name]))
 
   const sheetByKey = keyItems(
-    // `keyItems` wants full items; the parsed ones lack the four override fields, which it never
+    // `keyItems` wants full items; the parsed ones lack both stawka fields, which it never
     // reads. Only the section, description and their order matter for keying.
     parsed.items as unknown as KosztorysItemT[],
     (item) => sheetSectionName.get(item.sectionId) ?? '',

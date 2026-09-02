@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { planePriceKey } from '@/lib/kosztorys/plane-price-keys'
 import {
   clientViewSettingsForMode,
   sameClientViewConfig,
@@ -84,6 +85,22 @@ describe('sanitizeClientViewConfig', () => {
   it('drops a stored key that is outside the disclosure ceiling', () => {
     const config = sanitizeClientViewConfig({
       variants: { OFFER: { hiddenColumns: ['price', 'subcontractorPrice'], hideEmptyRows: true } },
+    })
+
+    expect(config.variants.OFFER.hiddenColumns).toEqual(['price'])
+  })
+
+  // A crew's rate id resembles the client's `price` — it is that key plus a plane — and the stored
+  // set is the HIDDEN one, so a key that survived here would be read as „the owner chose to hide
+  // this", implying the allowlist could show it. The ceiling matches the full id, never the base.
+  it('drops a subcontractor rate key hand-added to the stored settings', () => {
+    const config = sanitizeClientViewConfig({
+      variants: {
+        OFFER: {
+          hiddenColumns: ['price', planePriceKey('price', 'w_tools'), 'priceCoeff__own_tools'],
+          hideEmptyRows: true,
+        },
+      },
     })
 
     expect(config.variants.OFFER.hiddenColumns).toEqual(['price'])

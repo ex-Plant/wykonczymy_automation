@@ -1,0 +1,45 @@
+'use client'
+
+import { Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { FormDialog } from '@/components/ui/form-dialog'
+import { CashRegisterForm } from '@/components/forms/cash-register-form/cash-register-form'
+import { createCashRegisterAction } from '@/lib/actions/cash-registers'
+import type { CashRegisterFormValuesT } from '@/components/forms/cash-register-form/cash-register-schema'
+import type { WorkerRefT } from '@/types/reference-data'
+
+const EMPTY_DEFAULTS: CashRegisterFormValuesT = {
+  name: '',
+  owner: '',
+  type: 'AUXILIARY',
+  active: true,
+}
+
+export function AddCashRegisterDialog({ workers }: { workers: WorkerRefT[] }) {
+  return (
+    <FormDialog
+      formId="add-cash-register"
+      trigger={
+        <Button variant="outline" size="sm">
+          <Plus />
+          Dodaj
+        </Button>
+      }
+      title="Nowa kasa"
+    >
+      {(onSubmitSuccess, keepOpen) => (
+        <CashRegisterForm
+          formId="add-cash-register"
+          defaultValues={EMPTY_DEFAULTS}
+          action={createCashRegisterAction}
+          successMessage="Kasa dodana"
+          submitLabel="Dodaj"
+          submittingLabel="Dodawanie..."
+          onSubmitSuccess={onSubmitSuccess}
+          keepOpen={keepOpen}
+          workers={workers}
+        />
+      )}
+    </FormDialog>
+  )
+}

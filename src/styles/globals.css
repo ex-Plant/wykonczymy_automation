@@ -278,6 +278,45 @@
   box-shadow: none !important;
 }
 
+/* Wrapped text has to stop at the row's edge — dsg's cells are absolutely positioned, so a
+   description taller than its row would otherwise paint over the rows beneath it. The clip sits on
+   the TEXT, never on the cell: a cell that clips its own overflow also clips the long-text editing
+   overlay (a textarea deliberately sized to float over the rows below) and the outer half of the
+   column-width handle, which straddles the header cell's right edge.
+
+   And it has to stop on a WHOLE line. Clipping a centred text block leaves the top of the first
+   line and the bottom of the last one shaved off — two half-lines where the truncated one-liner used
+   to be, which reads worse than the truncation did. So the read-only text stretches to the cell and
+   clips itself instead, with vertical padding chosen to leave a content box that is an exact
+   multiple of the 20px line: the row is `lines × 20 + 12` (see row-height.ts) and dsg's cell eats
+   1px of that on its top border, hence 5 above and 6 below rather than 6 and 6.
+   `safe center` is what vertically centres the text in the row while keeping that clip honest: it
+   centres whenever the text FITS, and falls back to top-aligned the moment it doesn't. Plain
+   centring would push an over-long description out of BOTH ends of the box and leave a shaved
+   half-line at the top and the bottom — worse than the truncation this replaced.
+   The gutter is out — its only child is the resize handle, positioned absolutely.
+   MARGIN, not padding: `overflow: hidden` clips at the padding box, so padding would let the next
+   line show through the 6px below the text. A margin sits outside the box that clips. */
+.kosztorys-grid .dsg-cell:not(.dsg-cell-gutter) > span {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: safe center;
+  overflow: hidden;
+  margin-top: 5px;
+  margin-bottom: 6px;
+}
+
+/* A span that only exists to be a tooltip trigger around a cell's input. The rule above is written
+   for read-only TEXT — it wraps, clips and pulls the box 5px/6px off the cell's edges — and an input
+   put through it renders its figure a couple of pixels above the identical figure in a plain cell.
+   Neutralised to nothing, the input fills the cell exactly as it does without a tooltip. */
+.kosztorys-grid .dsg-cell:not(.dsg-cell-gutter) > span.kosztorys-cell-input-body {
+  display: block;
+  margin: 0;
+  overflow: visible;
+}
+
 /* The Akcje column is `disabled` only to keep the cell cursor out of it, so dsg's grey
    "unavailable input" fill is wrong there — the cell holds a button. Transparent rather than the
    cell colour so a section's row tint still shows through. */

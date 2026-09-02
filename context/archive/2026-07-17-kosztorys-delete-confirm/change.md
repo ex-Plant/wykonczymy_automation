@@ -23,14 +23,20 @@ deletes can cascade child data (`stage_progress`, a section's items), each destr
 an **auto snapshot right before deleting** so it is recoverable via S-06 restore. The two invariants
 that remain:
 
-- **Empty-sheet floor** — a kosztorys keeps **≥1 item**; deleting the last remaining item is still
-  hard-blocked (`REMOVE_BLOCK_LAST_ITEM`). This is the only hard block left.
+- ~~**Empty-sheet floor** — a kosztorys keeps **≥1 item**; deleting the last remaining item is still
+  hard-blocked (`REMOVE_BLOCK_LAST_ITEM`). This is the only hard block left.~~
+  **Superseded 2026-08-31** (owner, EX-751 canceled): a kosztorys may be emptied to zero, so the
+  floor and `REMOVE_BLOCK_LAST_ITEM` are gone — no hard block remains on any delete.
 - **Recoverability is server-side** — the snapshot is captured **inside the server action, before**
   the cascade delete. A client-only snapshot would race autosave and miss the pre-delete state.
 
 "Populated" narrowed to its only load-bearing meaning: the row/subtree holds recorded
 `stage_progress`. That is the only work a delete destroys, so it is the only case that pops the
 confirm dialog — a plan-only row (przedmiar / cena / rabat, no progress) deletes without a prompt.
+
+> **Superseded 2026-08-31.** That last sentence is no longer true for items: a delete is irreversible
+> whatever the row holds (undo never captures it), so **every** item delete confirms and `isRowPopulated`
+> is gone. The rest of this document still describes the shipped design.
 
 This closes **EX-507** (unblock section delete) as a subset — the same confirm-and-snapshot flow
 covers item, section, and stage.

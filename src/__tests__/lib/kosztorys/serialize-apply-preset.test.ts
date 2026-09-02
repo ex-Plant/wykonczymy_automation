@@ -8,7 +8,7 @@ import { serializeKosztorysAsPreset } from '@/lib/kosztorys/serialize-preset'
 import { applyPreset } from '@/lib/kosztorys/apply-preset'
 import { seedInvestmentFromPreset } from '@/lib/kosztorys/seed-from-preset'
 import { getPreset, insertPreset, upsertPresetByName } from '@/lib/db/presets'
-import type { SnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
+import type { StoredSnapshotPayloadT } from '@/lib/kosztorys/snapshot-format'
 import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 import { createKosztorysTree } from '@/__tests__/helpers/kosztorys-db-tree'
 
@@ -36,21 +36,23 @@ const PRESET_PREFIX = 'preset-spec-'
 // Id-free, order-keyed view of a tree WITHOUT settings — a preset's apply intentionally leaves the
 // target's settings alone, so settings must be compared separately, never folded into structural
 // equality (cf. canonical() in serialize-restore-roundtrip, which keeps settings).
-function canonicalTree(snap: SnapshotPayloadT) {
+function canonicalTree(snap: StoredSnapshotPayloadT) {
   const sectionById = new Map(snap.sections.map((s) => [s.id, s]))
   const itemById = new Map(snap.items.map((i) => [i.id, i]))
   const stageById = new Map(snap.stages.map((s) => [s.id, s]))
 
   const sections = [...snap.sections]
-    .sort((a, b) => a.displayOrder - b.displayOrder)
+    .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
     .map(({ id: _id, ...rest }) => rest)
 
   const items = snap.items
     .map(({ id: _id, sectionId, ...rest }) => ({
-      sectionOrder: sectionById.get(sectionId)!.displayOrder,
+      sectionOrder: sectionById.get(sectionId)!.displayOrder ?? 0,
       ...rest,
     }))
-    .sort((a, b) => a.sectionOrder - b.sectionOrder || a.displayOrder - b.displayOrder)
+    .sort(
+      (a, b) => a.sectionOrder - b.sectionOrder || (a.displayOrder ?? 0) - (b.displayOrder ?? 0),
+    )
 
   const stages = [...snap.stages]
     .sort((a, b) => a.ordinal - b.ordinal)
@@ -60,8 +62,8 @@ function canonicalTree(snap: SnapshotPayloadT) {
     .map((entry) => {
       const item = itemById.get(entry.itemId)!
       return {
-        sectionOrder: sectionById.get(item.sectionId)!.displayOrder,
-        itemOrder: item.displayOrder,
+        sectionOrder: sectionById.get(item.sectionId)!.displayOrder ?? 0,
+        itemOrder: item.displayOrder ?? 0,
         stageOrdinal: stageById.get(entry.stageId)!.ordinal,
         qtyDone: entry.qtyDone,
       }
@@ -131,7 +133,7 @@ describe.skipIf(!ENV_READY)('serialize → apply preset (DB)', () => {
     })
   }
 
-  async function applyPresetTx(investmentId: number, preset: SnapshotPayloadT) {
+  async function applyPresetTx(investmentId: number, preset: StoredSnapshotPayloadT) {
     await withPayloadTransaction(
       payload,
       (req) => applyPreset(payload, req, investmentId, preset),
