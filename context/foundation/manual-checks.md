@@ -3734,20 +3734,9 @@ Faza 4 — wsad lokalny (755 pozycji dołożonych; katalog ~940 po przeglądzie 
 
 ## Kolumny stawek wykonawcy obu planów w widoku Inwestora (2026-09-01, `kosztorys-contractor-price-columns-in-client-view`)
 
-- [x] Świeża przeglądarka (wyczyszczony localStorage): w żadnym widoku nie widać kolumn stawek,
-      dopóki nie odznaczy się ich w pikerze
-- [x] Widok Inwestora → picker → dwie nowe pozycje z nazwą planu w etykiecie; wpisana stawka
-      w planie „bez narzędzi" pokazuje się identycznie po przełączeniu na widok „Bez narzędzi"
-- [x] Kliknięcie nagłówka „Cena j.m. netto — z narzędziami" przestawia kolejność wierszy, drugie
-      kliknięcie ją odwraca, a sortowanie po kolumnie drugiego planu daje inną kolejność na tych
-      samych danych
-- [x] Tryb „Brutto" w widoku Inwestora: „Cena j.m. netto — z narzędziami" zostaje na ekranie
-- [x] Filtr „Problemy" ze stawką zawyżoną w planie „bez narzędzi" odsłania kolumny tego planu,
-      a nie planu „z narzędziami"
-- [x] Podgląd inwestora (owner odznaczył obie): żadna się nie pokazuje, slim header nie ma pickera
-
-> Lista przycięta 2026-09-01 wraz z cięciem trybu „własny mnożnik": kolumny „Mnożnik" już nie ma,
-> a źródło ceny wykonawcy nie składa się w widoku Inwestora.
+> Lista przycięta 2026-09-01 wraz z cięciem trybu „własny mnożnik" (kolumny „Mnożnik" już nie ma,
+> a źródło ceny wykonawcy nie składa się w widoku Inwestora), a odhaczone pozycje zdjęte przy
+> archiwizacji 2026-09-02.
 
 ### Findings — 2026-09-01
 

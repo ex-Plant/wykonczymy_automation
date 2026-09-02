@@ -1,15 +1,19 @@
 ---
 change_id: kosztorys-contractor-price-columns-in-client-view
 title: Kolumny ceny wykonawcy (obu planów) w widoku Inwestora
-status: implemented
+status: archived
 created: 2026-09-01
-updated: 2026-09-01
-archived_at: null
+updated: 2026-09-02
+archived_at: 2026-09-02T07:55:29Z
 branch: kosztorys-contractor-price-columns-in-client-view
 worktree: null
 ---
 
 ## Notes
+
+Record bramki review: `context/archive/2026-09-01-kosztorys-dwie-opcje-zrodla-ceny-wykonawcy/review-gate.md` —
+bramka objęła oba change'y z gałęzi `kosztorys-contractor-price-columns-in-client-view` jako jedną
+całość, więc ten folder nie ma własnego `reviews/impl-review*.md`.
 
 > **Superseded by `context/changes/2026-09-01-kosztorys-dwie-opcje-zrodla-ceny-wykonawcy/`.** Ten
 > dokument opisuje sześć kolumn i tryb „własny mnożnik". Późniejszy change ściął źródło ceny wykonawcy
