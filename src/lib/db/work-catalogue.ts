@@ -1,7 +1,7 @@
 // No `server-only` here: the katalog seed script runs these helpers under tsx, where it throws
 // (same reason as kosztorys-descriptions.ts).
 import { sql } from '@payloadcms/db-vercel-postgres'
-import type { SubcontractorOverrideTypeT } from '@/lib/kosztorys/types'
+import { subcontractorOverrideType } from '@/lib/kosztorys/calc'
 import type {
   CatalogueSeedItemT,
   CatalogueSourceItemT,
@@ -118,19 +118,14 @@ export async function getCatalogueSourceItem(
   const row = result.rows[0]
   if (!row) return undefined
 
-  // Anything else — including a legacy coefficient type left by a database that predates the two-źródła cut — reads
-  // as „auto", which is what the row now prices at.
-  const overrideType = (value: unknown): SubcontractorOverrideTypeT | null =>
-    value === 'amount' ? value : null
-
   return {
     description: (row.description as string | null) ?? '',
     unit: (row.unit as string | null) ?? '',
     sectionName: (row.section_name as string | null) ?? '',
     clientPrice: Number(row.client_price),
-    wToolsOverrideType: overrideType(row.w_tools_override_type),
+    wToolsOverrideType: subcontractorOverrideType(row.w_tools_override_type),
     wToolsOverrideValue: Number(row.w_tools_override_value),
-    ownToolsOverrideType: overrideType(row.own_tools_override_type),
+    ownToolsOverrideType: subcontractorOverrideType(row.own_tools_override_type),
     ownToolsOverrideValue: Number(row.own_tools_override_value),
   }
 }

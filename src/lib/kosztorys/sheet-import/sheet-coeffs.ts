@@ -31,7 +31,7 @@ function mode(ratios: readonly number[]): number | null {
  * whatever the owner happened to type most often.
  *
  * Why it matters beyond bookkeeping: this is what lets a formula row import as „auto" instead of a
- * per-row „własny mnożnik". Handing a row to the global coefficient is only safe while the global
+ * a frozen kwota stała. Handing a row to the global coefficient is only safe while the global
  * coefficient IS the sheet's — otherwise the import would quietly reprice the row at whatever the
  * investment happened to be set to.
  */

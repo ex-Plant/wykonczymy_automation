@@ -307,6 +307,16 @@
   margin-bottom: 6px;
 }
 
+/* A span that only exists to be a tooltip trigger around a cell's input. The rule above is written
+   for read-only TEXT — it wraps, clips and pulls the box 5px/6px off the cell's edges — and an input
+   put through it renders its figure a couple of pixels above the identical figure in a plain cell.
+   Neutralised to nothing, the input fills the cell exactly as it does without a tooltip. */
+.kosztorys-grid .dsg-cell:not(.dsg-cell-gutter) > span.kosztorys-cell-input-body {
+  display: block;
+  margin: 0;
+  overflow: visible;
+}
+
 /* The Akcje column is `disabled` only to keep the cell cursor out of it, so dsg's grey
    "unavailable input" fill is wrong there — the cell holds a button. Transparent rather than the
    cell colour so a section's row tint still shows through. */

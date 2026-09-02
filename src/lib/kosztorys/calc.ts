@@ -67,7 +67,7 @@ function applyDiscount(gross: number, item: ViewPricingT): number {
 // --- Price views (one dataset → three views: client / subcontractor with/without tools) ---
 export type PriceViewT = 'client' | ToolPlaneT
 
-export function effectiveCoeff(row: ViewPricingT, view: ToolPlaneT): number {
+function effectiveCoeff(row: ViewPricingT, view: ToolPlaneT): number {
   return view === 'w_tools' ? row.globalWToolsCoeff : row.globalOwnToolsCoeff
 }
 
@@ -80,13 +80,25 @@ export function overrideTypeFor(
   row: Pick<ViewPricingT, 'wToolsOverrideType' | 'ownToolsOverrideType'>,
   view: ToolPlaneT,
 ): SubcontractorOverrideTypeT | null {
-  return view === 'w_tools' ? row.wToolsOverrideType : row.ownToolsOverrideType
+  return subcontractorOverrideType(
+    view === 'w_tools' ? row.wToolsOverrideType : row.ownToolsOverrideType,
+  )
+}
+
+/**
+ * The one fold from „whatever the column holds" to the two źródła that exist. A snapshot or szablon
+ * written before the cut can still carry a coefficient type, and the value slot beside it then holds
+ * a RATIO, not a price — read as anything but „auto" it would be priced as a kwota (0 zł on the
+ * cennik path) or drag the row onto the investment's global współczynnik with a ratio it never meant.
+ */
+export function subcontractorOverrideType(value: unknown): SubcontractorOverrideTypeT | null {
+  return value === 'amount' ? 'amount' : null
 }
 
 /**
  * A `KosztorysItemT` seen as a priceable row. The globals default to 0 for callers that price only
- * planes carrying their OWN nadpisanie — neither a kwota nor a mnożnik reads a global, so there the
- * zeros are inert rather than a stand-in for a real współczynnik.
+ * planes carrying their OWN nadpisanie — a kwota stała reads no global, so there the zeros are inert
+ * rather than a stand-in for a real współczynnik.
  */
 export function asViewPricing(
   item: KosztorysItemT,

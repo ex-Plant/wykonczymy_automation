@@ -282,6 +282,37 @@ describe('the conditions, each on its boundary', () => {
 // material, so the detector fires on the combination it CAN see — the investment has material folded
 // into robocizna, the pozycja has executed work, and the stawka for the plane that work was done at is
 // a percentage of a client price that contains the material.
+// The pair splits „ktoś to wpisał ręcznie" from „wyliczyło się", so a wiersz carrying a pre-cut
+// współczynnik source has to land on the „auto" side: its value is a ratio, and calling it a decision
+// somebody made would offer a 0,65 zł stawka as a kwota stała to fix.
+describe('the rate-source pair, against a wiersz written before the cut', () => {
+  const legacy = row({
+    wToolsOverrideType: 'coeff' as unknown as null,
+    wToolsOverrideValue: 0.65,
+  })
+
+  it('reads a kwota stała as hand-typed', () => {
+    const fixed = row({ wToolsOverrideType: 'amount', wToolsOverrideValue: 42 })
+    expect(matches('manual-rate-w-tools', fixed)).toBe(true)
+    expect(matches('formula-rate-w-tools', fixed)).toBe(false)
+  })
+
+  it('reads a legacy współczynnik as „auto", not as a decision', () => {
+    expect(matches('manual-rate-w-tools', legacy)).toBe(false)
+    expect(matches('formula-rate-w-tools', legacy)).toBe(true)
+  })
+
+  // Complementary by construction: every wiersz falls on exactly one side, or the pair could not
+  // express „pokaż mi tylko te drugie".
+  it('never claims a wiersz twice, and never drops one', () => {
+    for (const subject of [legacy, row(), row({ wToolsOverrideType: 'amount' })]) {
+      expect(matches('manual-rate-w-tools', subject)).toBe(
+        !matches('formula-rate-w-tools', subject),
+      )
+    }
+  })
+})
+
 describe('„ze stawką wykonawcy od ceny z materiałem" — the overpaid-crew guard', () => {
   const STAGES_BOTH_PLANES: KosztorysStageT[] = [
     { id: 1, ordinal: 1, label: null, plane: 'w_tools', workerId: null },
@@ -496,8 +527,8 @@ describe('columnsRevealedBy', () => {
     expect([...columnsRevealedBy([])]).toEqual([])
   })
 
-  // The price is the symptom; „Źródło ceny wykonawcy" and „Mnożnik" are the only way to change it, so
-  // revealing the first alone would show a number nobody can act on.
+  // The price is the symptom; „Cena j.m." and „Źródło ceny wykonawcy" are the only way to change it,
+  // so revealing the symptom alone would show a number nobody can act on.
   it('brings the two cells that compute a stawka along with the stawka', () => {
     expect(columnsRevealedBy(['overpriced-w-tools'])).toEqual(new Set(priceCells('w_tools')))
   })
@@ -529,6 +560,18 @@ describe('columnsRevealedBy', () => {
     expect(columnsRevealedBy(['no-client-price-with-work'])).toEqual(
       new Set([...priceCells('w_tools', 'own_tools'), 'stageQtySum']),
     )
+  })
+
+  // The four „skąd wzięła się ta stawka" filters narrow on a figure that starts hidden, so each one
+  // has to bring its own crew's stawka along — otherwise unticking one leaves the right pozycje on
+  // screen with the thing they were selected by invisible.
+  it('brings its own crew’s stawka along when narrowing by the source of the rate', () => {
+    for (const id of ['manual-rate-w-tools', 'formula-rate-w-tools']) {
+      expect(columnsRevealedBy([id])).toEqual(new Set(priceCells('w_tools')))
+    }
+    for (const id of ['manual-rate-own-tools', 'formula-rate-own-tools']) {
+      expect(columnsRevealedBy([id])).toEqual(new Set(priceCells('own_tools')))
+    }
   })
 
   // Same rule as the rest of the registry: an id persisted under a condition since removed must be

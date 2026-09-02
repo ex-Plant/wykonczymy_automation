@@ -3,11 +3,9 @@ import { Column, type CellProps } from 'react-datasheet-grid'
 import { CellSelectMenu } from '@/components/ui/datasheet-grid/cell-select-menu'
 import { EditableCellInput } from '@/components/ui/datasheet-grid/editable-cell-input'
 import { SimpleTooltip } from '@/components/ui/tooltip'
-import { AlertIcon } from '@/components/ui/alert-icon'
-import { cn } from '@/lib/utils/cn'
 import { decimalText } from '@/lib/utils/decimal-text'
 import { roundToCents } from '@/lib/utils/round-to-cents'
-import { viewPrice } from '@/lib/kosztorys/calc'
+import { overrideTypeFor, viewPrice } from '@/lib/kosztorys/calc'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
 import { OVERRIDE_FIELDS } from '@/lib/kosztorys/constants'
 import { planePriceKey } from '@/lib/kosztorys/plane-price-keys'
@@ -33,20 +31,17 @@ const SUB_MODE_OPTIONS: { value: string; label: string }[] = [
 // must be a STABLE reference").
 type SubcontractorCellDataT = {
   view: ToolPlaneT
-  typeField: keyof KosztorysV2RowT
 }
 
-const cellData = (view: ToolPlaneT): SubcontractorCellDataT => ({
-  view,
-  typeField: OVERRIDE_FIELDS[view].type,
-})
+const cellData = (view: ToolPlaneT): SubcontractorCellDataT => ({ view })
 
 // The guard has one verdict — refused — which is the alarm the rest of the app spells „destructive".
 const REFUSED_TONE = 'text-destructive font-medium'
 
-// Reproduces the flex centring .dsg-cell applies to its direct children, which a plain wrapper span
-// would otherwise take away from the cell body.
-const CELL_WRAPPER = 'flex size-full items-center'
+// `kosztorys-cell-input-body` (globals.css) keeps this wrapper geometrically invisible: the grid
+// shapes a cell's direct span into the wrapping, clipping, margined box that read-only TEXT needs,
+// and an input pushed through that box sits a few pixels off the same figure in the cell next door.
+const CELL_WRAPPER = 'kosztorys-cell-input-body size-full'
 
 // A derived price carries the float tail of client × coeff; the cell edits grosze, not the tail.
 const priceText = (value: number): string => decimalText(roundToCents(value))
@@ -63,21 +58,17 @@ const priceText = (value: number): string => decimalText(roundToCents(value))
 function CellTooltip({
   message,
   forceOpen,
-  trailing,
   children,
 }: {
   message: string | null
   forceOpen: boolean
-  trailing?: ReactNode
   children: ReactNode
 }) {
   const [reveal, setReveal] = useState(false)
   return (
     <SimpleTooltip content={message ?? ''} open={message != null && (forceOpen || reveal)}>
       <span
-        // The gutter is owed only to a trailing glyph — without one it would just shave 8px off the
-        // input's clickable width.
-        className={cn(CELL_WRAPPER, 'min-w-0', trailing && 'pr-2')}
+        className={CELL_WRAPPER}
         onPointerEnter={() => setReveal(true)}
         onPointerLeave={() => setReveal(false)}
         // Taking `open` over from Radix took its focus handling with it, and a keyboard user tabbing
@@ -86,7 +77,6 @@ function CellTooltip({
         onBlurCapture={() => setReveal(false)}
       >
         {children}
-        {trailing}
       </span>
     </SimpleTooltip>
   )
@@ -106,7 +96,7 @@ function SubcontractorPriceCell({
   focus,
   stopEditing,
 }: CellProps<KosztorysV2RowT, SubcontractorCellDataT>) {
-  const { view, typeField } = columnData
+  const { view } = columnData
   const edit = useCellDraft(
     rowData,
     setRowData,
@@ -114,7 +104,7 @@ function SubcontractorPriceCell({
     stopEditing,
   )
 
-  const inherited = rowData[typeField] == null
+  const inherited = overrideTypeFor(rowData, view) === null
   // A live rejection outranks the standing verdict: it describes the value on screen, which the row
   // has not accepted.
   const message = edit.blockReason ?? checkSubcontractorPrice(rowData, view)
@@ -122,24 +112,18 @@ function SubcontractorPriceCell({
   const body = (
     <EditableCellInput
       {...edit.inputProps}
-      // Italic muted: the row carries no price of its own, it is showing the one the investment
-      // default derives.
+      // The row carries no price of its own, it is showing the one the investment default derives.
       className={message ? REFUSED_TONE : inherited ? 'text-muted-foreground italic' : undefined}
       value={edit.draft ?? priceText(viewPrice(rowData, view))}
       focus={focus}
     />
   )
 
-  // Colour alone can't carry the verdict — a red number is invisible to a colour-blind reader, and
-  // across a thousand rows a tinted figure reads as a formatting quirk rather than an alarm.
-  // The icon is a SIBLING after the body, never a wrapper around it — appearing at a fixed position
-  // it leaves the body's own subtree untouched, where wrapping would remount it mid-keystroke.
+  // Red figure plus the sentence on hover, and nothing else in the box: a glyph beside the number
+  // took width from the input and put the figure on a different height than its neighbours (owner,
+  // 2026-09-01).
   return (
-    <CellTooltip
-      message={message}
-      forceOpen={edit.blockReason != null}
-      trailing={message != null && <AlertIcon className="size-3.5" />}
-    >
+    <CellTooltip message={message} forceOpen={edit.blockReason != null}>
       {body}
     </CellTooltip>
   )
@@ -152,7 +136,7 @@ function SubcontractorModeCell({
   focus,
   stopEditing,
 }: CellProps<KosztorysV2RowT, SubcontractorCellDataT>) {
-  const { view, typeField } = columnData
+  const { view } = columnData
   // Two ways in, one way out. The grid opens the menu through `focus` (Enter, or typing over the
   // cell); a click opens it through Radix's own trigger, which the grid never sees — hence the local
   // flag, without which wiring `focus` alone would have cost mouse users the single click they have
@@ -161,7 +145,7 @@ function SubcontractorModeCell({
   const [openedByClick, setOpenedByClick] = useState(false)
   return (
     <CellSelectMenu
-      value={(rowData[typeField] as string | null) ?? ''}
+      value={overrideTypeFor(rowData, view) ?? ''}
       options={SUB_MODE_OPTIONS}
       open={focus || openedByClick}
       onOpenChange={(open) => {
@@ -197,7 +181,6 @@ export function subcontractorModeColumn(
   view: ToolPlaneT,
   titleNode: ReactNode,
 ): Column<KosztorysV2RowT> {
-  const { type: typeField } = OVERRIDE_FIELDS[view]
   const { clear } = subcontractorPolicy<KosztorysV2RowT>(view)
   return {
     id: planePriceKey('priceMode', view),
@@ -212,7 +195,7 @@ export function subcontractorModeColumn(
     disableKeys: true,
     columnData: cellData(view),
     component: SubcontractorModeCell,
-    copyValue: ({ rowData }) => (rowData[typeField] as string | null) ?? '',
+    copyValue: ({ rowData }) => overrideTypeFor(rowData, view) ?? '',
     deleteValue: ({ rowData }) => clear(rowData),
   }
 }

@@ -235,8 +235,8 @@ describe('columnSortValue — the columns that used to opt out of sorting', () =
   })
 
   // The whole point of assembling both planes: the two crews' rates readable side by side in the
-  // widok Inwestora. The active view no longer decides which plane a rate column speaks for — the id
-  // does, so each column sorts identically whichever view it is read from.
+  // widok Inwestora. The id decides which plane a rate column speaks for, not the active view, so
+  // each column sorts identically whichever view it is read from.
   it("sorts a crew's rate columns the same in every view, because the plane is in the id", () => {
     for (const plane of ['w_tools', 'own_tools'] as const) {
       for (const base of ['price', 'priceMode'] as const) {

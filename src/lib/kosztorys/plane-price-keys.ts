@@ -1,15 +1,15 @@
 import { TOOL_PLANES } from '@/lib/kosztorys/constants'
 import type { ToolPlaneT } from '@/lib/kosztorys/types'
 
-// One home for the subcontractor-price column key namespace, so the builder, its inverse and the
-// base-key resolver are decided together. Every view assembles BOTH planes' price columns, so the
-// plane can no longer be inferred from the active view — it has to travel in the column id, which is
-// the one thing the factories in grid/cells/subcontractor-columns.tsx did not parameterise.
+// One home for the subcontractor-price column key namespace, so the builder, its inverse, the
+// base-key resolver and the enumerations over it are decided together. Every view assembles BOTH
+// planes' price columns, so the plane cannot be inferred from the active view — it travels in the
+// column id.
 
-// The two column families that exist per plane, in assembly order.
+// The column families that exist per plane, in assembly order.
 export const PLANE_PRICE_BASE_KEYS = ['priceMode', 'price'] as const
 
-export type PlanePriceBaseKeyT = (typeof PLANE_PRICE_BASE_KEYS)[number]
+type PlanePriceBaseKeyT = (typeof PLANE_PRICE_BASE_KEYS)[number]
 
 // Disjoint from STAGE_QTY_PREFIX and from every existing column id: a single `_` would make
 // `stageValueNet_7` and a plane key the same shape, and diffRow classifies row keys by prefix.
@@ -40,6 +40,14 @@ export function planePriceKeyParts(
 export function planeOfPriceKey(key: string): ToolPlaneT | null {
   return planePriceKeyParts(key)?.plane ?? null
 }
+
+// Enumerations live here rather than at each call site: a caller that needs a SUBSET would otherwise
+// hand-assemble the same flatMap and drift the day a third base key lands.
+export function planePriceKeysFor(plane: ToolPlaneT): readonly string[] {
+  return PLANE_PRICE_BASE_KEYS.map((base) => planePriceKey(base, plane))
+}
+
+export const ALL_PLANE_PRICE_KEYS: readonly string[] = TOOL_PLANES.flatMap(planePriceKeysFor)
 
 // The key configuration maps are keyed by — label, tooltip, money axis, layer. Resolving to the base
 // is what keeps one concept at one entry per map: an entry per plane would be a chance for the two

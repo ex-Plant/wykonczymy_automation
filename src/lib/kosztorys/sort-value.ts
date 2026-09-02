@@ -1,4 +1,5 @@
 import {
+  overrideTypeFor,
   rowDiscountForView,
   rowDoneFraction,
   rowPlannedNetForView,
@@ -20,7 +21,6 @@ import {
   stageIdFromValueNetKey,
   stageKey,
 } from '@/lib/kosztorys/stage-keys'
-import { overrideSnapshot } from '@/lib/kosztorys/subcontractor-price-edit'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
 // The wartość of one etap, as its cell computes it. The denominator is Σ etapów of the whole VIEW,
@@ -77,7 +77,7 @@ export function columnSortValue(
     if (base === 'price') return viewPrice(row, plane)
     // „Źródło ceny wykonawcy" ascending runs inherited → hand-overridden, which is the only question
     // asked of that column. Alphabetical would put „auto" after „kwota stała".
-    return overrideSnapshot(row, plane).type === null ? 0 : 1
+    return overrideTypeFor(row, plane) === null ? 0 : 1
   }
 
   switch (field) {

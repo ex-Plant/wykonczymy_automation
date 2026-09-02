@@ -1,5 +1,6 @@
 import 'server-only'
 import { sql } from '@payloadcms/db-vercel-postgres'
+import { subcontractorOverrideType } from '@/lib/kosztorys/calc'
 import { isSectionColorKey } from '@/lib/kosztorys/section-colors'
 import type { SettlementModeT } from '@/lib/kosztorys/settlement-mode'
 import type {
@@ -8,7 +9,6 @@ import type {
   KosztorysSectionT,
   KosztorysStageT,
   StageProgressT,
-  SubcontractorOverrideTypeT,
   ToolPlaneT,
 } from '@/lib/kosztorys/types'
 import type { DbExecutorT } from './get-db'
@@ -145,9 +145,11 @@ const mapItem = (row: RowT): KosztorysItemT & { sectionId: number } => ({
   discountType: str(row.discount_type) as DiscountTypeT | null,
   discountValue: num(row.discount_value),
   clientPrice: num(row.client_price),
-  wToolsOverrideType: str(row.w_tools_override_type) as SubcontractorOverrideTypeT | null,
+  // Folded, not cast: a row written before the two-źródła cut can still hold a coefficient type,
+  // whose value slot is a ratio rather than a price.
+  wToolsOverrideType: subcontractorOverrideType(row.w_tools_override_type),
   wToolsOverrideValue: num(row.w_tools_override_value),
-  ownToolsOverrideType: str(row.own_tools_override_type) as SubcontractorOverrideTypeT | null,
+  ownToolsOverrideType: subcontractorOverrideType(row.own_tools_override_type),
   ownToolsOverrideValue: num(row.own_tools_override_value),
   note: str(row.note),
 })

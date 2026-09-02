@@ -1,6 +1,6 @@
-import { subcontractorPrice } from '@/lib/kosztorys/calc'
-import { PLANE_LABELS, TOOL_PLANES } from '@/lib/kosztorys/constants'
-import { PLANE_PRICE_BASE_KEYS, planePriceKey } from '@/lib/kosztorys/plane-price-keys'
+import { overrideTypeFor, subcontractorPrice } from '@/lib/kosztorys/calc'
+import { PLANE_LABELS } from '@/lib/kosztorys/constants'
+import { ALL_PLANE_PRICE_KEYS, planePriceKeysFor } from '@/lib/kosztorys/plane-price-keys'
 import { measureDiscrepancy, rowTotalQtyDone } from '@/lib/kosztorys/settlement-rows'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
@@ -65,26 +65,19 @@ const hasItemDiscount = (row: KosztorysV2RowT) => row.discountType !== null && r
 
 // Both the symptom and the cells that set it: the price is what is wrong, „Źródło ceny wykonawcy" and
 // „Cena j.m." are where it is made right, so revealing the figure alone shows a number nobody can act
-// on (owner, explicit). The client's cena j.m. rides along in every case — every stawka wykonawcy
-// derives from it, so it is where half of these problems are actually fixed.
+// on (owner, explicit). The client's own cena j.m. rides along because every stawka wykonawcy derives
+// from it — it is assembled only in „Inwestor", so from a crew view that half of the reveal is inert.
 //
-// A condition that names a plane reveals THAT plane's pair. Both planes assemble in every view now,
-// so revealing both would answer a question about one crew by putting four columns on screen — and
-// the old „naming them from the client view is a harmless no-op" no longer holds: from the client
-// view those ids are real columns.
+// A condition that names a plane reveals THAT plane's pair, never both: answering a question about
+// one crew by putting four columns on screen is how a reveal stops being readable.
 const priceColumnsFor = (plane: ToolPlaneT): readonly string[] => [
   'price',
-  ...PLANE_PRICE_BASE_KEYS.map((base) => planePriceKey(base, plane)),
+  ...planePriceKeysFor(plane),
 ]
 
 // A missing cena j.m. is missing from BOTH stawki at once — there is no plane to narrow to, so „bez
 // ceny j.m." reveals everything the fix could be typed into.
-const ALL_PRICE_COLUMNS: readonly string[] = [
-  'price',
-  ...TOOL_PLANES.flatMap((plane) =>
-    PLANE_PRICE_BASE_KEYS.map((base) => planePriceKey(base, plane)),
-  ),
-]
+const ALL_PRICE_COLUMNS: readonly string[] = ['price', ...ALL_PLANE_PRICE_KEYS]
 
 // Named because the grid reads it too: the „Rozjazd między arkuszem Google a apką" column exists only while this
 // diagnostic is pressed, so the id is shared between the registry and the column assembly.
@@ -117,8 +110,7 @@ function settledAtPercentRate(
   plane: ToolPlaneT,
 ): boolean {
   if (!ctx.hasSettledMaterial) return false
-  const overrideType = plane === 'w_tools' ? row.wToolsOverrideType : row.ownToolsOverrideType
-  if (overrideType === 'amount') return false
+  if (overrideTypeFor(row, plane) === 'amount') return false
   return ctx.stages.some(
     (stage) =>
       (stage.plane === plane || stage.plane === null) && (row[stageKey(stage.id)] ?? 0) > 0,
@@ -200,35 +192,39 @@ export const ROW_CONDITIONS: RowConditionT[] = [
   // pricing, which is exactly the mistake „Zwiń puste sekcje" made with unpriced sections.
   {
     id: 'manual-rate-w-tools',
-    label: `ze stawką wykonawcy wpisaną ręcznie w widoku ${PLANE_LABELS.w_tools.toLowerCase()}`,
+    label: `ze stawką wykonawcy z kwoty stałej w widoku ${PLANE_LABELS.w_tools.toLowerCase()}`,
     sectionLabel: null,
     kind: 'filter',
     plane: 'w_tools',
-    matches: (row) => row.wToolsOverrideType !== null,
+    revealsColumns: priceColumnsFor('w_tools'),
+    matches: (row) => overrideTypeFor(row, 'w_tools') !== null,
   },
   {
     id: 'formula-rate-w-tools',
-    label: `ze stawką wykonawcy z formuły w widoku ${PLANE_LABELS.w_tools.toLowerCase()}`,
+    label: `ze stawką wykonawcy „auto" w widoku ${PLANE_LABELS.w_tools.toLowerCase()}`,
     sectionLabel: null,
     kind: 'filter',
     plane: 'w_tools',
-    matches: (row) => row.wToolsOverrideType === null,
+    revealsColumns: priceColumnsFor('w_tools'),
+    matches: (row) => overrideTypeFor(row, 'w_tools') === null,
   },
   {
     id: 'manual-rate-own-tools',
-    label: `ze stawką wykonawcy wpisaną ręcznie w widoku ${PLANE_LABELS.own_tools.toLowerCase()}`,
+    label: `ze stawką wykonawcy z kwoty stałej w widoku ${PLANE_LABELS.own_tools.toLowerCase()}`,
     sectionLabel: null,
     kind: 'filter',
     plane: 'own_tools',
-    matches: (row) => row.ownToolsOverrideType !== null,
+    revealsColumns: priceColumnsFor('own_tools'),
+    matches: (row) => overrideTypeFor(row, 'own_tools') !== null,
   },
   {
     id: 'formula-rate-own-tools',
-    label: `ze stawką wykonawcy z formuły w widoku ${PLANE_LABELS.own_tools.toLowerCase()}`,
+    label: `ze stawką wykonawcy „auto" w widoku ${PLANE_LABELS.own_tools.toLowerCase()}`,
     sectionLabel: null,
     kind: 'filter',
     plane: 'own_tools',
-    matches: (row) => row.ownToolsOverrideType === null,
+    revealsColumns: priceColumnsFor('own_tools'),
+    matches: (row) => overrideTypeFor(row, 'own_tools') === null,
   },
   // Trimmed before testing: the grid writes '' into a cleared cell on some paths and null on others,
   // and a komentarz of three spaces is not one. `sectionLabel: null` — „every pozycja in this section

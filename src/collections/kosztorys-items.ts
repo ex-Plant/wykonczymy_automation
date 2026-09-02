@@ -3,8 +3,10 @@ import { isAdminOrOwnerOrManager } from '@/access'
 import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
 
 // A sheet item. Client price = a snapshot. Subcontractor prices are derived from the
-// markup coefficient (investment), with a two-state per-item override:
-// *OverrideType ∈ {coeff, amount} | null (null = derive), *OverrideValue. „Pomiar z natury"
+// markup coefficient (investment), with a per-item override of one kind:
+// *OverrideType = 'amount' | null (null = derive from the coefficient), *OverrideValue. The column is
+// plain text, so a row written before that cut can still hold 'coeff' — `subcontractorOverrideType`
+// (lib/kosztorys/calc.ts) folds it back to null on read. „Pomiar z natury"
 // (the executed quantity) is not stored — it is the stage sum (Σ D:M in the sheet), computed
 // live in the settlement layer. `sheetMeasuredQty` is not a second answer to that: it records what
 // the imported sheet CLAIMED, prices nothing, and exists only to be compared against the stage sum.

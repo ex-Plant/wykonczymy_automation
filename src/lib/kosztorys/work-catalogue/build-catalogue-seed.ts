@@ -78,8 +78,8 @@ type GroupT = { description: string; unit: string; occurrences: SeedOccurrenceT[
  * and that has to be assertable without a database. The script that writes the rows does the I/O.
  *
  * The szablon investment's global współczynniki take no part: only a plane carrying its OWN
- * nadpisanie is priced at all, and neither a kwota nor a mnożnik reads a global. A plane without
- * one (137 of 373 prac on the current szablon) seeds as „auto" instead.
+ * nadpisanie is priced at all, and a kwota stała reads no global. A plane without one (137 of 373
+ * prac on the current szablon) seeds as „auto" instead.
  */
 export function buildCatalogueSeed(payload: SnapshotPayloadT): {
   items: CatalogueSeedItemT[]

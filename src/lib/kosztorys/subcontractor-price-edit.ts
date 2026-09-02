@@ -1,4 +1,4 @@
-import { subcontractorPrice } from '@/lib/kosztorys/calc'
+import { overrideTypeFor, subcontractorPrice } from '@/lib/kosztorys/calc'
 import { type CellEditPolicyT } from '@/lib/kosztorys/cell-edit'
 import { OVERRIDE_FIELDS } from '@/lib/kosztorys/constants'
 import { formatPLN } from '@/lib/utils/format-currency'
@@ -12,11 +12,10 @@ export type OverrideSnapshotT = {
 }
 
 export function overrideSnapshot(rowData: ViewPricingT, view: ToolPlaneT): OverrideSnapshotT {
-  const { type, value } = OVERRIDE_FIELDS[view]
-  return {
-    type: rowData[type] as SubcontractorOverrideTypeT | null,
-    value: rowData[value] as number,
-  }
+  const { value } = OVERRIDE_FIELDS[view]
+  // Folded, not cast: a wiersz written before the two-źródła cut can still hold a coefficient type,
+  // and a rejected edit must roll back to a źródło the picker actually offers.
+  return { type: overrideTypeFor(rowData, view), value: rowData[value] as number }
 }
 
 /** The row with one plane's override replaced — the write every transition below resolves to. */

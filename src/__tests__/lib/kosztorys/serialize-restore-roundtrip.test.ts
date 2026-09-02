@@ -226,7 +226,6 @@ describe.skipIf(!ENV_READY)('serialize → restore round-trip (DB)', () => {
     // New ids everywhere — proves a real wipe-and-reinsert, not an in-place no-op.
     const ids = (snap: SnapshotPayloadT) => snap.sections.map((s) => s.id).sort((a, b) => a - b)
     expect(ids(after)).not.toEqual(ids(before))
-    // ...but content + order is identical.
     expect(canonical(after)).toEqual(canonical(before))
   })
 

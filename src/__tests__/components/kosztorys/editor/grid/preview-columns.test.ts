@@ -75,8 +75,8 @@ describe('preview columns', () => {
   // What the sheet measured against what the etapy carry is the company's own bookkeeping, and the
   // payload DOES carry the reference figure (preview-kosztorys.ts ships the whole tree by decision),
   // so the render is the gate. „Pomiar (razem etapy)" is the one client-visible column derived from
-  // the same rows, and it used to hang the sheet figure off a hover tip — the leak channel is now
-  // closed by construction, and this holds it closed: the client still needs the column itself.
+  // the same rows, and the client still needs that column itself — so the render gate is what keeps
+  // the sheet figure off it.
   it('never surfaces the sheet pomiar to the client', () => {
     const columnData = (opts: Partial<BuildV2ColumnsOptsT>) =>
       buildV2Columns({ view: 'client', stages: STAGES, ...opts }).find(

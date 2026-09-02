@@ -5,6 +5,7 @@ import {
 } from '@/components/kosztorys/editor/grid/kosztorys-v2-columns'
 import type { BuildV2ColumnsOptsT } from '@/components/kosztorys/editor/grid/kosztorys-v2-column-opts'
 import { DEFAULT_HIDDEN_COLUMNS } from '@/lib/kosztorys/column-config'
+import { layerAllows } from '@/lib/kosztorys/layer'
 import { axisAllows } from '@/lib/kosztorys/money-axis'
 import { planePriceKey } from '@/lib/kosztorys/plane-price-keys'
 import type { KosztorysStageT, ToolPlaneT } from '@/lib/kosztorys/types'
@@ -94,11 +95,39 @@ describe('subcontractor rate columns, both planes', () => {
   })
 
   // A crew is paid without VAT, so its rate has no brutto twin — the brutto reading must not take it
-  // away. This exemption did nothing for these columns until they reached the client plane, where the
-  // axis is live.
+  // away. It bites in „Inwestor", the one view where the axis is live.
   it('survives the brutto reading, like the client price it derives from', () => {
     for (const plane of PLANES) {
       expect(axisAllows(planePriceKey('price', plane), 'gross')).toBe(true)
+    }
+  })
+
+  // „Cena j.m." is one concept tagged once, and both axes resolve a plane id back to it — so the two
+  // rate columns read on the work side exactly like the client price they derive from. Were the layer
+  // to resolve differently from the money axis, one concept would sit on two sides of Praca/Postęp.
+  it('reads on the same layer as the client price it derives from', () => {
+    for (const layer of ['work', 'progress', 'both', 'none'] as const) {
+      for (const plane of PLANES) {
+        expect(layerAllows(planePriceKey('price', plane), layer)).toBe(layerAllows('price', layer))
+        expect(layerAllows(planePriceKey('priceMode', plane), layer)).toBe(
+          layerAllows('price', layer),
+        )
+      }
+    }
+  })
+
+  // The owner edits crew rates from the view he keeps open — the client price list — so the rate is
+  // editable in EVERY view, „Źródło" beside it or not. Typing a number IS „kwota stała" and Delete is
+  // the way back to „auto", which is what makes the column self-sufficient without the source picker.
+  it('stays editable in every view, source column or not', () => {
+    for (const view of ['client', 'w_tools', 'own_tools'] as const) {
+      const columns = buildV2Columns({ view, stages: STAGES })
+      for (const id of PRICE_IDS) {
+        const column = columns.find((entry) => entry.id === id)
+        expect(column?.disabled).toBeFalsy()
+        expect(column?.deleteValue).toBeTypeOf('function')
+        expect(column?.pasteValue).toBeTypeOf('function')
+      }
     }
   })
 

@@ -7,8 +7,8 @@ import { useState } from 'react'
  *
  * A condition stops matching the moment its problem is fixed, and the fix happens INSIDE the narrowed
  * grid: typing the first digit of a cena makes „bez ceny j.m." false, so without a latch the row
- * leaves the grid one keystroke in — taking with it the „Mnożnik" that same filter revealed for the
- * repair. The same applies to every other condition; the price is only where it bites soonest.
+ * leaves the grid one keystroke in — taking with it the „Cena j.m." that same filter revealed for
+ * the repair. The same applies to every other condition; the price is only where it bites soonest.
  *
  * So the latch is add-only: while one set of conditions stays engaged, a pozycja that has been shown
  * once stays shown, and pozycje that newly start matching still arrive. Changing which conditions are

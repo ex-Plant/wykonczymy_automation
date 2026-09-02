@@ -56,9 +56,9 @@ import {
   UNPICKABLE_COLUMNS,
   columnLabelForView,
 } from '@/lib/kosztorys/column-config'
-import { HEADER_TIPS } from '@/lib/kosztorys/header-tips'
+import { headerTipFor } from '@/lib/kosztorys/header-tips'
 import { TOOL_PLANES } from '@/lib/kosztorys/constants'
-import { basePriceKey, planePriceKey } from '@/lib/kosztorys/plane-price-keys'
+import { planePriceKey } from '@/lib/kosztorys/plane-price-keys'
 import { LAYER_DEFAULT, layerAllows } from '@/lib/kosztorys/layer'
 import { MONEY_AXIS_DEFAULT, axisAllows } from '@/lib/kosztorys/money-axis'
 import { formatPercent, formatQty } from '@/lib/kosztorys/format'
@@ -155,9 +155,9 @@ function title(
   return sortableHeader(
     columnLabelForView(field, opts.view),
     field,
-    // Base key: „Mnożnik z narzędziami" and „Mnożnik bez narzędzi" explain the same figure, so the
-    // tip is written once and both planes read it.
-    HEADER_TIPS[basePriceKey(field)],
+    // Base key: a plane's „Cena j.m. netto" and „Źródło ceny wykonawcy" explain the same figure on
+    // both planes, so the tip is written once and every plane reads it.
+    headerTipFor(field),
     opts,
   )
 }
@@ -170,7 +170,7 @@ function title(
 function stageValueHeader(
   stage: KosztorysStageT,
   suffix: string,
-  tip: string,
+  tip: string | undefined,
   field: string,
   opts: Pick<BuildV2ColumnsOptsT, 'sort' | 'onSetSort' | 'onPersistKosztorysOrder'>,
 ): ReactNode {
@@ -287,12 +287,15 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   //
   // „Źródło ceny wykonawcy" is the exception: it is an EDIT control, not a figure to compare, and the
   // client view is where the offer is read, so it assembles only on the subcontractor planes. The
-  // rates themselves are hidden by default (DEFAULT_HIDDEN_COLUMNS) and barred from the client
-  // preview by the allowlist.
+  // rate itself stays editable in EVERY view — typing a number IS „kwota stała", and Delete is the
+  // way back to „auto", so the column needs no source picker beside it to be fully operable. The
+  // rates are hidden by default (DEFAULT_HIDDEN_COLUMNS) and barred from the client preview by the
+  // allowlist.
+  const withMode = view !== 'client'
   const subcontractorPriceCols: Column<KosztorysV2RowT>[] = TOOL_PLANES.flatMap((plane) => [
-    ...(view === 'client'
-      ? []
-      : [subcontractorModeColumn(plane, title(planePriceKey('priceMode', plane), opts))]),
+    ...(withMode
+      ? [subcontractorModeColumn(plane, title(planePriceKey('priceMode', plane), opts))]
+      : []),
     subcontractorPriceColumn(plane, title(planePriceKey('price', plane), opts)),
   ])
   // The client's own „Cena j.m. netto" is a different figure — the offer price, editable only where
@@ -360,8 +363,8 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
   }
 
   // Σ etapów for the row — the denominator every stage-value cell divides by. There are 2×|etapy| of
-  // those cells per row (netto + brutto) and each used to re-run the O(|etapy|) reduce to arrive at
-  // the SAME number, making a row O(|etapy|²).
+  // those cells per row (netto + brutto) and each would otherwise re-run the O(|etapy|) reduce to
+  // arrive at the SAME number, making a row O(|etapy|²).
   const totalQtyDone = memoisedByRow((row: KosztorysV2RowT) =>
     rowTotalQtyDone(row, viewStages, view),
   )
@@ -497,7 +500,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     const header = stageValueHeader(
       st,
       'netto',
-      HEADER_TIPS[STAGE_VALUE_NET_COLUMN_GROUP],
+      headerTipFor(STAGE_VALUE_NET_COLUMN_GROUP),
       field,
       opts,
     )
@@ -512,7 +515,7 @@ function assembleV2Columns(opts: BuildV2ColumnsOptsT): Column<KosztorysV2RowT>[]
     const header = stageValueHeader(
       st,
       'brutto',
-      HEADER_TIPS[STAGE_VALUE_GROSS_COLUMN_GROUP],
+      headerTipFor(STAGE_VALUE_GROSS_COLUMN_GROUP),
       field,
       opts,
     )
@@ -621,7 +624,7 @@ function toggleKey(columnId: string): string {
 // opts: a caller that got this wrong has a bug worth seeing, and silently overriding its `view` would
 // hide it.
 //
-// What this pin no longer covers: the six per-plane rate columns. They carry their plane in the id
+// What this pin does not cover: the four per-plane rate columns. They carry their plane in the id
 // and assemble in EVERY view, so pinning `view` to 'client' does nothing for them — the allowlist is
 // their only barrier, and it is the half to check before touching either.
 function assertDisclosurePair(opts: BuildV2ColumnsOptsT): void {
@@ -668,8 +671,8 @@ function selectV2Columns(
 }
 
 // A trailing empty spacer column pinned to the far right of the grid. Resizable (min ≠ max) so its
-// width is the user's call; 48 is only the default basis. The Praca/Postęp divider is now „Komentarz"
-// itself (which carries the border and sits at the seam) — this is just the end-of-grid gap.
+// width is the user's call; 48 is only the default basis. The Praca/Postęp divider is „Komentarz"
+// itself, at the seam — this column is only the end-of-grid gap.
 const layerGapColumn: Column<KosztorysV2RowT> = {
   id: 'layerGap',
   title: <span />,
@@ -686,8 +689,7 @@ const layerGapColumn: Column<KosztorysV2RowT> = {
 
 // Append the empty spacer to the far right of the visible grid. Inserted here, post-filter, so it
 // never appears in the column picker and always shows. Wrapped in withResize (not in the assembly
-// map, which runs before this append) so it gets a drag handle. The Praca/Postęp divider itself is
-// „Komentarz" at the seam — see assembleV2Columns.
+// map, which runs before this append) so it gets a drag handle.
 function appendTrailingGap(
   columns: Column<KosztorysV2RowT>[],
   opts: Pick<BuildV2ColumnsOptsT, 'onGuide' | 'onCommitColumn' | 'widths'>,

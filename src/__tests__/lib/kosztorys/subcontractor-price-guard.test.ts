@@ -43,8 +43,7 @@ describe('maxSubcontractorPrice', () => {
 })
 
 describe('checkSubcontractorPrice — sufit 80% ceny klienta', () => {
-  // 80 sits ABOVE the coefficient price (65), so this null is also what stops the retired amber tier
-  // from growing back: any verdict re-introduced below the ceiling fails right here.
+  // 80 sits ABOVE the coefficient price (65): any verdict introduced below the ceiling fails here.
   it('dokładnie na suficie przechodzi', () => {
     expect(checkSubcontractorPrice(amount(80), 'w_tools')).toBeNull()
   })

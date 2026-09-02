@@ -1,11 +1,6 @@
 import type { PriceViewT } from '@/lib/kosztorys/calc'
-import { PLANE_LABELS, TOOL_PLANES } from '@/lib/kosztorys/constants'
-import {
-  PLANE_PRICE_BASE_KEYS,
-  basePriceKey,
-  planeOfPriceKey,
-  planePriceKey,
-} from '@/lib/kosztorys/plane-price-keys'
+import { PLANE_LABELS } from '@/lib/kosztorys/constants'
+import { ALL_PLANE_PRICE_KEYS, planePriceKeyParts } from '@/lib/kosztorys/plane-price-keys'
 import {
   STAGES_COLUMN_GROUP,
   STAGE_VALUE_GROSS_COLUMN_GROUP,
@@ -58,9 +53,10 @@ export function columnLabelForView(id: string, view: PriceViewT): string {
   // A subcontractor rate names its plane in the label, because both planes are on screen at once and
   // the picker is a flat list — „Cena j.m. netto" twice would be unreadable. Same „— <wariant>" shape as
   // „Razem netto — po rabacie" below, and built from the base entry so one rename moves both planes.
-  const plane = planeOfPriceKey(id)
-  if (plane !== null) {
-    return `${COLUMN_LABELS[basePriceKey(id)] ?? id} — ${PLANE_LABELS[plane].toLowerCase()}`
+  const planePrice = planePriceKeyParts(id)
+  if (planePrice !== null) {
+    const { base, plane } = planePrice
+    return `${COLUMN_LABELS[base] ?? id} — ${PLANE_LABELS[plane].toLowerCase()}`
   }
   const label = COLUMN_LABELS[id] ?? id
   if (id === 'net' || id === 'gross') {
@@ -153,8 +149,7 @@ export const UNPICKABLE_COLUMNS: ReadonlySet<string> = new Set(['divergence'])
 // must never take it away. It stays tagged `net` above because it IS a netto figure; the exemption is
 // policy layered on the tag.
 // Read through basePriceKey, so both planes' „Cena j.m. netto" inherit the exemption from the one
-// entry. It only starts doing work for them here: before this change the axis was pinned to netto
-// across a subcontractor view (money-axis.ts), so nothing of theirs ever met a brutto mode.
+// entry.
 export const AXIS_EXEMPT_COLUMNS: ReadonlySet<string> = new Set(['price'])
 
 // What a client may see on the share view — an ALLOWLIST, keyed by toggleKey like the maps above.
@@ -218,13 +213,11 @@ export const PREVIEW_VISIBLE_COLUMNS: ReadonlySet<string> = new Set(
 // copy/paste and sorting. Declared here rather than seeded into the stored map; useHiddenColumns
 // owns that argument.
 //
-// Every subcontractor rate column starts hidden — in the subcontractor views too, where its own plane
-// used to show unasked. Six rate columns unfurling on first load would bury the offer they qualify;
-// switching them on is one tick in the picker, and the tick is what makes the reading deliberate.
+// Every subcontractor rate column starts hidden, in the subcontractor views too. Four rate columns
+// unfurling on first load would bury the offer they qualify; switching them on is one tick in the
+// picker, and the tick is what makes the reading deliberate.
 export const DEFAULT_HIDDEN_COLUMNS: ReadonlySet<string> = new Set([
   STAGE_VALUE_GROSS_COLUMN_GROUP,
   'sectionName',
-  ...TOOL_PLANES.flatMap((plane) =>
-    PLANE_PRICE_BASE_KEYS.map((base) => planePriceKey(base, plane)),
-  ),
+  ...ALL_PLANE_PRICE_KEYS,
 ])
