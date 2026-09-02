@@ -335,16 +335,16 @@ naciśnięciu klawisza. Osobna zmiana, patrz „What We're NOT Doing".
 
 #### Automated
 
-- [x] 1.1 Spec modułu przechodzi
-- [x] 1.2 Pięć speców zależnych przechodzi
-- [x] 1.3 Stara ścieżka importu ma zero konsumentów
-- [x] 1.4 `src/lib/kosztorys/row-conditions.ts` nie istnieje
-- [x] 1.5 `queries.ts` importuje wyłącznie `./registry` i `./types`
+- [x] 1.1 Spec modułu przechodzi — e00ba41a
+- [x] 1.2 Pięć speców zależnych przechodzi — e00ba41a
+- [x] 1.3 Stara ścieżka importu ma zero konsumentów — e00ba41a
+- [x] 1.4 `src/lib/kosztorys/row-conditions.ts` nie istnieje — e00ba41a
+- [x] 1.5 `queries.ts` importuje wyłącznie `./registry` i `./types` — e00ba41a
 
 ### Phase 2: Rozcięcie speca pod regułę lustrzaną
 
 #### Automated
 
-- [ ] 2.1 Oba nowe spece przechodzą
-- [ ] 2.2 Bilans 66 testów się zgadza
-- [ ] 2.3 Stary spec nie istnieje
+- [x] 2.1 Oba nowe spece przechodzą
+- [x] 2.2 Bilans 66 testów się zgadza
+- [x] 2.3 Stary spec nie istnieje
