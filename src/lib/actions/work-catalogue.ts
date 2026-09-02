@@ -12,7 +12,6 @@ import {
 import { toCatalogueCandidate } from '@/lib/kosztorys/work-catalogue/item-to-catalogue'
 import { buildCatalogueComparison } from '@/lib/kosztorys/work-catalogue/build-catalogue-comparison'
 import { catalogueKey } from '@/lib/kosztorys/work-catalogue/catalogue-key'
-import { stripLegacyMarker } from '@/lib/kosztorys/work-catalogue/legacy-marker'
 import { appendCatalogueItems } from '@/lib/kosztorys/work-catalogue/append-catalogue-items'
 import { getKosztorysTree } from '@/lib/queries/kosztorys'
 import { getWorkCatalogue } from '@/lib/queries/work-catalogue'
@@ -41,7 +40,7 @@ const toRow = (data: WorkCatalogueItemDataT) => ({
   clientPrice: data.clientPrice,
   wToolsRate: data.wToolsRate,
   ownToolsRate: data.ownToolsRate,
-  matchKey: catalogueKey(stripLegacyMarker(data.description), data.unit),
+  matchKey: catalogueKey(data.description, data.unit),
 })
 
 export async function createCatalogueItemAction(data: WorkCatalogueItemDataT) {

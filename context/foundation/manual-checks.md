@@ -3598,23 +3598,42 @@ została usunięta.
 
 Faza 1 — normalizacja j.m. w kluczu katalogu:
 
-- [ ] Picker „Dodaj z katalogu" nadal pokazuje komplet pozycji i poprawnie oznacza te już wstawione
-      do kosztorysu
-- [ ] „Porównaj z cennikiem" na inwestycji z pozycjami w `m²` przestaje raportować je jako brak
-      w cenniku
+> Odhaczone 2026-09-02 na stagingu (baza Preview, 940 pozycji w katalogu).
+
+- [x] Picker „Dodaj z katalogu" nadal pokazuje komplet pozycji i poprawnie oznacza te już wstawione
+      do kosztorysu — na inwestycji 85 „Ukryj już dodane (205)" + „Zaznacz widoczne (735)" = 940
+- [x] „Porównaj z cennikiem" na inwestycji z pozycjami w `m²` przestaje raportować je jako brak
+      w cenniku — 231 zgodne / 152 różnią się / 6 brak, i wśród tych 6 nie ma ani jednej pozycji
+      w `m²` (jedna literówka w nazwie, cztery w j.m. `klp`, jedna bez j.m.)
 
 Faza 3 — raport (`dumps/legacy-sheets/raport.md`):
 
-- [ ] Prace na liście „do dołożenia" wyglądają na realne prace, nie na wiersze nagłówkowe ani stopkę
-- [ ] Rozrzut cen przy pozycjach z wieloma wystąpieniami jest wiarygodny (nie: 12 zł do 12 000 zł)
+- [x] Prace na liście „do dołożenia" wyglądają na realne prace, nie na wiersze nagłówkowe ani stopkę
+      — na 754 pozycje tylko 5 śmieci (4 zaczynające się od „- " i bez j.m. oraz `"15,34" [m2]`)
+- [x] Rozrzut cen przy pozycjach z wieloma wystąpieniami jest wiarygodny (nie: 12 zł do 12 000 zł)
+      — 43 pozycje z rozrzutem, najszerszy realny x8,3 (300 → 2500 zł), plus 4 z dolną granicą 0,00 zł
 
 Faza 4 — wsad lokalny (755 pozycji dołożonych; katalog ~940 po przeglądzie właściciela):
 
-- [ ] Katalog w aplikacji daje się przejrzeć: dopisane pozycje kleją się w grupę, dopisek widać
-- [ ] Skasowanie dopisku przez edycję pozycji działa i nie psuje dopasowania w „Porównaj z cennikiem"
-- [ ] Picker „Dodaj z katalogu" wstawia dołożoną pracę do kosztorysu z poprawną ceną i stawkami
-- [ ] 56 pozycji weszło ze stawką 0 zł z cennika arkusza (nie z konfliktu) — do sprawdzenia przy
-      przeglądzie, czy to realna wycena podwykonawcy
+- [x] Katalog w aplikacji daje się przejrzeć: dopisane pozycje kleją się w grupę, dopisek widać —
+      dopisek widoczny w każdym wierszu, a szukajka „stary arkusz" zawęża listę do dokładnie 750
+      pozycji, więc przegląd robi się grupą. Lista jest sortowana po opisie, nie po kategorii
+- [x] Skasowanie dopisku przez edycję pozycji działa i nie psuje dopasowania w „Porównaj z cennikiem"
+      — zwykła edycja pozycji, `match_key` bez zmian (był i jest zapisany bez dopisku)
+- [x] Picker „Dodaj z katalogu" wstawia dołożoną pracę do kosztorysu z poprawną ceną i stawkami —
+      cena 300 zł i stawki 195 / 165,75 zł co do grosza z katalogu
+- [x] 56 pozycji weszło ze stawką 0 zł z cennika arkusza (nie z konfliktu) — w bazie 50 z arkuszy + 12 z wzoru; różnica to 6 pozycji zjedzonych przez dedup klucza na wzorze. Czy to realna
+      wycena podwykonawcy, rozstrzyga właściciel przy przeglądzie katalogu
+
+### Finding — dopisek „[stary arkusz]" wchodził do tożsamości pracy (naprawione 2026-09-02)
+
+Praca wstawiona z katalogu niosła dopisek w opisie, a `match_key` w katalogu jest zapisany bez
+niego — więc `catalogueKey` liczony po surowym opisie nie trafiał we własny wiersz katalogu.
+Efekt na stagingu: świeżo wstawiona praca raportowała się w „Porównaj z katalogiem" jako **brak
+w katalogu**, podpowiadając samą siebie („może chodzi o …"). Ten sam rozjazd dotykał pickera
+(„już dodane" nie rozpoznawało takiej pracy) i wykrywania rozjazdu cen. Naprawa: `catalogueKey`
+sam zdejmuje dopisek, więc tożsamość jest ślepa na niego po obu stronach; guard w
+`src/__tests__/lib/kosztorys/work-catalogue/catalogue-key.test.ts`.
 
 ## Kolumny stawek wykonawcy obu planów w widoku Inwestora (2026-09-01, `kosztorys-contractor-price-columns-in-client-view`)
 
