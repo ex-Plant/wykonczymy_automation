@@ -19,10 +19,8 @@ const row: ViewPricingT = {
   discountType: null,
   discountValue: 0,
   clientPrice: 100,
-  wToolsOverrideType: null,
-  wToolsOverrideValue: 0,
-  ownToolsOverrideType: null,
-  ownToolsOverrideValue: 0,
+  wToolsOverrideValue: null,
+  ownToolsOverrideValue: null,
   note: null,
   globalDiscountActive: false,
   globalWToolsCoeff: 0.65,
@@ -31,7 +29,6 @@ const row: ViewPricingT = {
 
 const amount = (value: number): ViewPricingT => ({
   ...row,
-  wToolsOverrideType: 'amount',
   wToolsOverrideValue: value,
 })
 
@@ -75,7 +72,6 @@ describe('checkSubcontractorPrice — tryb auto', () => {
 describe('checkSubcontractorPrice — druga płaszczyzna narzędziowa', () => {
   const ownAmount = (value: number): ViewPricingT => ({
     ...row,
-    ownToolsOverrideType: 'amount',
     ownToolsOverrideValue: value,
   })
 
@@ -87,7 +83,6 @@ describe('checkSubcontractorPrice — druga płaszczyzna narzędziowa', () => {
   it('mierzy cenę TEJ płaszczyzny, nie sąsiedniej', () => {
     const overOnW = {
       ...ownAmount(50),
-      wToolsOverrideType: 'amount' as const,
       wToolsOverrideValue: 90,
     }
     expect(checkSubcontractorPrice(overOnW, 'own_tools')).toBeNull()

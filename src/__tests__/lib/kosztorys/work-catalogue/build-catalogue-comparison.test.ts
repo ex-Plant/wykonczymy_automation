@@ -22,10 +22,8 @@ const item = (overrides: Partial<KosztorysItemT> = {}): KosztorysItemT => ({
   discountType: null,
   discountValue: 0,
   clientPrice: 100,
-  wToolsOverrideType: null,
-  wToolsOverrideValue: 0,
-  ownToolsOverrideType: null,
-  ownToolsOverrideValue: 0,
+  wToolsOverrideValue: null,
+  ownToolsOverrideValue: null,
   note: null,
   ...overrides,
 })
@@ -66,7 +64,7 @@ describe('buildCatalogueComparison', () => {
 
   it('porównuje stawkę nadpisaną kwotowo, nie wyliczoną z współczynnika', () => {
     const result = buildCatalogueComparison(
-      [item({ wToolsOverrideType: 'amount', wToolsOverrideValue: 65 })],
+      [item({ wToolsOverrideValue: 65 })],
       [entry()],
       SETTINGS,
     )

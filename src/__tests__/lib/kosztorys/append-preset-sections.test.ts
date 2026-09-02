@@ -58,7 +58,6 @@ describe.skipIf(!ENV_READY)('appendPresetSections (DB)', () => {
               clientPrice: 150,
               discountType: 'percent',
               discountValue: 10,
-              wToolsOverrideType: 'amount',
               wToolsOverrideValue: 97.5,
               note: 'uwaga',
             },
@@ -121,7 +120,6 @@ describe.skipIf(!ENV_READY)('appendPresetSections (DB)', () => {
     expect(item.description).toBe('Praca w Malowanie')
     expect(item.unit).toBe('m2')
     expect(item.clientPrice).toBe(150)
-    expect(item.wToolsOverrideType).toBe('amount')
     expect(item.wToolsOverrideValue).toBe(97.5)
     // Job fields zeroed at serialize time — the append inserts the cleaned values verbatim.
     expect(item.plannedQty).toBe(0)

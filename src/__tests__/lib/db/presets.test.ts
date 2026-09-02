@@ -37,10 +37,8 @@ describe.skipIf(!ENV_READY)('listPresetSections (DB)', () => {
       discountType: null,
       discountValue: 0,
       clientPrice: 100,
-      wToolsOverrideType: null,
-      wToolsOverrideValue: 0,
-      ownToolsOverrideType: null,
-      ownToolsOverrideValue: 0,
+      wToolsOverrideValue: null,
+      ownToolsOverrideValue: null,
       note: null,
     }
   }

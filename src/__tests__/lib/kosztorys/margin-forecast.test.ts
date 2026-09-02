@@ -15,9 +15,7 @@ const item: ViewPricingT = {
   discountType: null,
   discountValue: 0,
   clientPrice: 20,
-  wToolsOverrideType: 'amount',
   wToolsOverrideValue: 12,
-  ownToolsOverrideType: 'amount',
   ownToolsOverrideValue: 10,
   note: null,
   globalDiscountActive: false,
@@ -44,8 +42,8 @@ describe('marginForecastByPlane', () => {
   it('stawka ze współczynnika idzie za scenariuszem tak samo jak wpisana ręcznie', () => {
     const derived: ViewPricingT = {
       ...item,
-      wToolsOverrideType: null,
-      ownToolsOverrideType: null,
+      wToolsOverrideValue: null,
+      ownToolsOverrideValue: null,
     }
     expect(marginForecastByPlane([derived]).w_tools.subcontractorNet).toBe(130) // 10 × 20 × 0.65
     expect(marginForecastByPlane([derived]).own_tools.subcontractorNet).toBe(110) // 10 × 20 × 0.55

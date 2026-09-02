@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { cellKeystroke, cellSettle } from '@/lib/kosztorys/cell-edit'
 import { formatPLN } from '@/lib/utils/format-currency'
-import {
-  modeChange,
-  overrideSnapshot,
-  subcontractorPolicy,
-  type OverrideSnapshotT,
-} from '@/lib/kosztorys/subcontractor-price-edit'
+import { modeChange, subcontractorPolicy } from '@/lib/kosztorys/subcontractor-price-edit'
 import type { ToolPlaneT, ViewPricingT } from '@/lib/kosztorys/types'
 
 // The grid's own call shape: the cell hands `useCellDraft` a policy and the machine does the rest,
@@ -14,7 +9,7 @@ import type { ToolPlaneT, ViewPricingT } from '@/lib/kosztorys/types'
 const keystroke = (raw: string, rowData: ViewPricingT, view: ToolPlaneT) =>
   cellKeystroke(raw, rowData, subcontractorPolicy<ViewPricingT>(view))
 
-const settle = (draft: string, rowData: ViewPricingT, view: ToolPlaneT, entry: OverrideSnapshotT) =>
+const settle = (draft: string, rowData: ViewPricingT, view: ToolPlaneT, entry: number | null) =>
   cellSettle(draft, rowData, subcontractorPolicy<ViewPricingT>(view), entry)
 
 // Client price 100 makes every threshold readable at a glance: ceiling 80, w_tools coefficient
@@ -30,10 +25,8 @@ const row: ViewPricingT = {
   discountType: null,
   discountValue: 0,
   clientPrice: 100,
-  wToolsOverrideType: null,
-  wToolsOverrideValue: 0,
-  ownToolsOverrideType: null,
-  ownToolsOverrideValue: 0,
+  wToolsOverrideValue: null,
+  ownToolsOverrideValue: null,
   note: null,
   globalDiscountActive: false,
   globalWToolsCoeff: 0.65,
@@ -42,7 +35,6 @@ const row: ViewPricingT = {
 
 const flat = (value: number): ViewPricingT => ({
   ...row,
-  wToolsOverrideType: 'amount',
   wToolsOverrideValue: value,
 })
 
@@ -60,14 +52,14 @@ describe('cellKeystroke pod polityką podwykonawcy', () => {
   it('wpisana cena przestawia „auto" na kwotę stałą', () => {
     expect(keystroke('50', row, 'w_tools')).toMatchObject({
       kind: 'commit',
-      row: { wToolsOverrideType: 'amount', wToolsOverrideValue: 50 },
+      row: { wToolsOverrideValue: 50 },
     })
   })
 
   it('wpisana cena zastępuje poprzednią kwotę stałą', () => {
     expect(keystroke('75', flat(60), 'w_tools')).toMatchObject({
       kind: 'commit',
-      row: { wToolsOverrideType: 'amount', wToolsOverrideValue: 75 },
+      row: { wToolsOverrideValue: 75 },
     })
   })
 
@@ -93,18 +85,19 @@ describe('cellKeystroke pod polityką podwykonawcy', () => {
   it('pisze do pól planu, w którym edytujemy', () => {
     expect(keystroke('30', flat(70), 'own_tools')).toMatchObject({
       kind: 'commit',
-      row: { ownToolsOverrideType: 'amount', ownToolsOverrideValue: 30, wToolsOverrideValue: 70 },
+      row: { ownToolsOverrideValue: 30, wToolsOverrideValue: 70 },
     })
   })
 })
 
 describe('cellSettle pod polityką podwykonawcy', () => {
-  const entry = overrideSnapshot(flat(70), 'w_tools')
+  // What the cell held on entry: a kwota stała of 70.
+  const entry = 70
 
   it('puste pole wraca do „auto" dopiero po wyjściu z komórki', () => {
     expect(settle('', flat(70), 'w_tools', entry)).toMatchObject({
       kind: 'clear',
-      row: { wToolsOverrideType: null, wToolsOverrideValue: 0 },
+      row: { wToolsOverrideValue: null },
     })
   })
 
@@ -118,7 +111,7 @@ describe('cellSettle pod polityką podwykonawcy', () => {
     expect(settle('2344000', flat(234), 'w_tools', entry)).toMatchObject({
       kind: 'rollback',
       reason: 'blocked',
-      row: { wToolsOverrideType: 'amount', wToolsOverrideValue: 70 },
+      row: { wToolsOverrideValue: 70 },
     })
   })
 
@@ -143,41 +136,38 @@ describe('cellSettle pod polityką podwykonawcy', () => {
       kind: 'rollback',
       reason: 'blocked',
       row: null,
-      restored: { wToolsOverrideType: 'amount', wToolsOverrideValue: 70 },
+      restored: { wToolsOverrideValue: 70 },
     })
   })
 
   it('odrzucona cena nie zostawia wiersza na prefiksie „9"', () => {
     // The prefix trap from the „auto" side: typing 90 commits the leading „9" first, so a refusal on
     // the last keystroke used to strand the row at 9 zł — a price nobody chose.
-    const autoEntry = overrideSnapshot(row, 'w_tools')
+    const autoEntry = null
     expect(settle('90', flat(9), 'w_tools', autoEntry)).toMatchObject({
       kind: 'rollback',
       reason: 'blocked',
-      row: { wToolsOverrideType: null, wToolsOverrideValue: 0 },
+      row: { wToolsOverrideValue: null },
     })
   })
 })
 
 describe('modeChange', () => {
   it('„auto" → „kwota stała" zamraża cenę, którą wiersz już pokazuje', () => {
-    expect(modeChange(row, 'amount', 'w_tools')).toMatchObject({
-      wToolsOverrideType: 'amount',
+    expect(modeChange(row, true, 'w_tools')).toMatchObject({
       wToolsOverrideValue: 65,
     })
   })
 
   it('zamraża cenę planu, w którym przełączamy źródło', () => {
-    const switched = modeChange(row, 'amount', 'own_tools')
-    expect(switched.ownToolsOverrideType).toBe('amount')
+    const switched = modeChange(row, true, 'own_tools')
     expect(switched.ownToolsOverrideValue).toBeCloseTo(55, 6)
-    expect(switched.wToolsOverrideType).toBeNull()
+    expect(switched.wToolsOverrideValue).toBeNull()
   })
 
   it('powrót do „auto" oddaje wiersz mnożnikowi inwestycji', () => {
-    expect(modeChange(flat(60), null, 'w_tools')).toMatchObject({
-      wToolsOverrideType: null,
-      wToolsOverrideValue: 0,
+    expect(modeChange(flat(60), false, 'w_tools')).toMatchObject({
+      wToolsOverrideValue: null,
     })
   })
 })

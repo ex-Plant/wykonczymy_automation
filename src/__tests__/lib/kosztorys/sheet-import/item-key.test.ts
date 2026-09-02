@@ -16,10 +16,8 @@ const item = (id: number, description: string): KosztorysItemT => ({
   discountType: null,
   discountValue: 0,
   clientPrice: 0,
-  wToolsOverrideType: null,
-  wToolsOverrideValue: 0,
-  ownToolsOverrideType: null,
-  ownToolsOverrideValue: 0,
+  wToolsOverrideValue: null,
+  ownToolsOverrideValue: null,
   note: null,
 })
 

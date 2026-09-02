@@ -182,10 +182,14 @@ async function readInputHashes(payload: Payload) {
         coalesce(inv.global_discount_value::text, '') AS global_discount,
       md5(
         string_agg(
-          coalesce(ki.w_tools_override_type::text, '') || ':' ||
-            coalesce(ki.w_tools_override_value::text, '') || ':' ||
-            coalesce(ki.own_tools_override_type::text, '') || ':' ||
-            coalesce(ki.own_tools_override_value::text, ''),
+          -- The legacy bytes, reproduced as literals. EX-766 collapsed the stawka pair into one
+          -- nullable column, and hashing the new shape directly would move every kosztorys
+          -- fingerprint on a change that moved no money — the twelve comparable investments would
+          -- fall out of comparison exactly when they are needed to prove that.
+          CASE WHEN ki.w_tools_override_value IS NOT NULL
+            THEN 'amount:' || ki.w_tools_override_value::text ELSE ':0' END || ':' ||
+          CASE WHEN ki.own_tools_override_value IS NOT NULL
+            THEN 'amount:' || ki.own_tools_override_value::text ELSE ':0' END,
           -- NOT ORDER BY ki.id: the seeds insert items with Promise.all, so a re-seed hands the
           -- same rows different serial ids in a different order and this hash moves while nothing
           -- about the data did — the kosztorys axis then goes dark on a fixture nobody can keep

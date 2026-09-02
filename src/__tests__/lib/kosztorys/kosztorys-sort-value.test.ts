@@ -32,10 +32,8 @@ const tree: KosztorysTreeT = makeTree({
           discountType: 'percent',
           discountValue: 10,
           clientPrice: 100,
-          wToolsOverrideType: null,
-          wToolsOverrideValue: 0,
-          ownToolsOverrideType: null,
-          ownToolsOverrideValue: 0,
+          wToolsOverrideValue: null,
+          ownToolsOverrideValue: null,
           note: null,
         },
         {
@@ -49,10 +47,8 @@ const tree: KosztorysTreeT = makeTree({
           discountType: null,
           discountValue: 0,
           clientPrice: 50,
-          wToolsOverrideType: null,
-          wToolsOverrideValue: 0,
-          ownToolsOverrideType: null,
-          ownToolsOverrideValue: 0,
+          wToolsOverrideValue: null,
+          ownToolsOverrideValue: null,
           note: null,
         },
       ],
@@ -132,9 +128,7 @@ const planeTree: KosztorysTreeT = makeTree({
           clientPrice: 100,
           discountType: 'amount',
           discountValue: 100,
-          wToolsOverrideType: null, // auto → 0.65
-          wToolsOverrideValue: 0,
-          ownToolsOverrideType: 'amount',
+          wToolsOverrideValue: null, // auto → 0.65
           ownToolsOverrideValue: 200,
           note: 'zzz',
         },
@@ -146,10 +140,8 @@ const planeTree: KosztorysTreeT = makeTree({
           // type still calls a number.
           plannedQty: null as unknown as number,
           clientPrice: 50,
-          wToolsOverrideType: 'amount',
           wToolsOverrideValue: 150,
-          ownToolsOverrideType: null, // auto → 0.55
-          ownToolsOverrideValue: 0,
+          ownToolsOverrideValue: null, // auto → 0.55
         },
         {
           ...baseItem,
@@ -157,9 +149,7 @@ const planeTree: KosztorysTreeT = makeTree({
           description: 'C',
           plannedQty: 9,
           clientPrice: 10,
-          wToolsOverrideType: 'amount',
           wToolsOverrideValue: 500,
-          ownToolsOverrideType: 'amount',
           ownToolsOverrideValue: 400,
           note: 'aaa',
         },

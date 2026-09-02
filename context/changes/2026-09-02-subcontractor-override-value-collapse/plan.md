@@ -606,18 +606,18 @@ Run **once**, after Phase 3 — not per phase.
 
 #### Automated
 
-- [x] 1.1 The new row-condition spec fails (does not compile) before Phase 2
+- [x] 1.1 The new row-condition spec fails (does not compile) before Phase 2 — 0ecb242c
 
 ### Phase 2: The collapse
 
 #### Automated
 
-- [ ] 2.1 Migration applies to `db-test`: `pnpm db:migrate:test`
-- [ ] 2.2 Phase 1's red spec is green
-- [ ] 2.3 `insert-schema-drift` passes
-- [ ] 2.4 `kosztorys-tree-sql-drift` passes
-- [ ] 2.5 `pnpm typecheck` reports no reference to the removed type symbols
-- [ ] 2.6 `serialize-restore-roundtrip` proves an auto pozycja restores as auto, not 0 zł
+- [x] 2.1 Migration applies to `db-test`: `pnpm db:migrate:test` — 562ddbe1
+- [x] 2.2 Phase 1's red spec is green — 562ddbe1
+- [x] 2.3 `insert-schema-drift` passes — 562ddbe1
+- [x] 2.4 `kosztorys-tree-sql-drift` passes — 562ddbe1
+- [x] 2.5 `pnpm typecheck` reports no reference to the removed type symbols — 562ddbe1
+- [x] 2.6 `serialize-restore-roundtrip` proves an auto pozycja restores as auto, not 0 zł — 562ddbe1
 
 ### Phase 3: Test sweep
 

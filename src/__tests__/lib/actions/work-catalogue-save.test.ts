@@ -110,9 +110,7 @@ describe.skipIf(!ENV_READY)('saveItemToCatalogueAction (DB)', () => {
     displayOrder?: number
     unit?: string
     clientPrice?: number
-    wToolsOverrideType?: string
     wToolsOverrideValue?: number
-    ownToolsOverrideType?: string
     ownToolsOverrideValue?: number
   }
 
@@ -163,9 +161,7 @@ describe.skipIf(!ENV_READY)('saveItemToCatalogueAction (DB)', () => {
   it('zapisuje własne nadpisanie kwotowe pozycji zamiast wyliczenia', async () => {
     const description = `Malowanie z nadpisaniem ${suffix}`
     const itemId = await createItem(description, {
-      wToolsOverrideType: 'amount',
       wToolsOverrideValue: 42,
-      ownToolsOverrideType: 'amount',
       ownToolsOverrideValue: 30,
     })
 
@@ -202,7 +198,6 @@ describe.skipIf(!ENV_READY)('saveItemToCatalogueAction (DB)', () => {
     const second = await createItem(description.toUpperCase(), {
       displayOrder: 1,
       clientPrice: 250,
-      wToolsOverrideType: 'amount',
       wToolsOverrideValue: 111,
     })
     const result = await saveItemToCatalogueAction(second, 'overwrite')

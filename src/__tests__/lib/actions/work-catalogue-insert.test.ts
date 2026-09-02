@@ -106,8 +106,7 @@ describe.skipIf(!ENV_READY)('insertCatalogueItemsAction (DB)', () => {
   async function itemsOf(sectionId: number) {
     const result = await db.execute(sql`
       SELECT description, display_order, client_price,
-             w_tools_override_type, w_tools_override_value,
-             own_tools_override_type, own_tools_override_value, planned_qty
+             w_tools_override_value, own_tools_override_value, planned_qty
       FROM kosztorys_items WHERE section_id = ${sectionId} ORDER BY display_order
     `)
     return result.rows
@@ -146,9 +145,7 @@ describe.skipIf(!ENV_READY)('insertCatalogueItemsAction (DB)', () => {
     await insertCatalogueItemsAction(sectionId, [id])
 
     const [row] = await itemsOf(sectionId)
-    expect(row.w_tools_override_type).toBe('amount')
     expect(Number(row.w_tools_override_value)).toBe(50)
-    expect(row.own_tools_override_type).toBe('amount')
     expect(Number(row.own_tools_override_value)).toBe(40)
     expect(Number(row.planned_qty)).toBe(0)
   })
@@ -166,8 +163,7 @@ describe.skipIf(!ENV_READY)('insertCatalogueItemsAction (DB)', () => {
     expect(result.success && result.data.warnings).toEqual([])
 
     const [row] = await itemsOf(sectionId)
-    expect(row.w_tools_override_type).toBeNull()
-    expect(row.own_tools_override_type).toBe('amount')
+    expect(row.w_tools_override_value).toBeNull()
     expect(Number(row.own_tools_override_value)).toBe(40)
   })
 

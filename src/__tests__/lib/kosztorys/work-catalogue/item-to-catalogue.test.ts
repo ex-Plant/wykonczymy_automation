@@ -7,18 +7,14 @@ const source = (overrides: Partial<CatalogueSourceItemT> = {}): CatalogueSourceI
   unit: 'm2',
   sectionName: 'Łazienka 1',
   clientPrice: 200,
-  wToolsOverrideType: null,
-  wToolsOverrideValue: 0,
-  ownToolsOverrideType: null,
-  ownToolsOverrideValue: 0,
+  wToolsOverrideValue: null,
+  ownToolsOverrideValue: null,
   ...overrides,
 })
 
 describe('toCatalogueCandidate', () => {
   it('zamraża kwotę, gdy pozycja ma własne nadpisanie kwotowe', () => {
-    const candidate = toCatalogueCandidate(
-      source({ wToolsOverrideType: 'amount', wToolsOverrideValue: 90 }),
-    )
+    const candidate = toCatalogueCandidate(source({ wToolsOverrideValue: 90 }))
 
     expect(candidate.wToolsRate).toBe(90)
   })
@@ -31,9 +27,7 @@ describe('toCatalogueCandidate', () => {
   })
 
   it('decyduje o każdym planie osobno', () => {
-    const candidate = toCatalogueCandidate(
-      source({ ownToolsOverrideType: 'amount', ownToolsOverrideValue: 80 }),
-    )
+    const candidate = toCatalogueCandidate(source({ ownToolsOverrideValue: 80 }))
 
     expect(candidate.wToolsRate).toBeNull()
     expect(candidate.ownToolsRate).toBe(80)

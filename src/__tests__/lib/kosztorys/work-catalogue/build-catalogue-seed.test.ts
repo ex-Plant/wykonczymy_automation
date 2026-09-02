@@ -31,10 +31,8 @@ const item = (
   discountType: null,
   discountValue: 0,
   clientPrice,
-  wToolsOverrideType: null,
-  wToolsOverrideValue: 0,
-  ownToolsOverrideType: null,
-  ownToolsOverrideValue: 0,
+  wToolsOverrideValue: null,
+  ownToolsOverrideValue: null,
   note: null,
   ...overrides,
 })
@@ -122,7 +120,6 @@ describe('buildCatalogueSeed', () => {
       [
         item(1, 'Ułożenie płytek', 200),
         item(2, 'Ułożenie płytek', 200, {
-          wToolsOverrideType: 'amount',
           wToolsOverrideValue: 90,
         }),
       ],
@@ -176,11 +173,9 @@ describe('buildCatalogueSeed', () => {
       [
         item(1, 'Ułożenie płytek', 200),
         item(2, 'Ułożenie płytek', 200, {
-          wToolsOverrideType: 'amount',
           wToolsOverrideValue: 90,
         }),
         item(3, 'Ułożenie płytek', 200, {
-          wToolsOverrideType: 'amount',
           wToolsOverrideValue: 90,
         }),
       ],
@@ -196,7 +191,6 @@ describe('buildCatalogueSeed', () => {
       [
         item(1, 'Ułożenie płytek', 200),
         item(2, 'Ułożenie płytek', 200, {
-          wToolsOverrideType: 'amount',
           wToolsOverrideValue: 90,
         }),
       ],
@@ -210,7 +204,6 @@ describe('buildCatalogueSeed', () => {
       [section(1, 'WC')],
       [
         item(1, 'Ułożenie płytek', 200, {
-          wToolsOverrideType: 'amount',
           wToolsOverrideValue: 90,
         }),
       ],

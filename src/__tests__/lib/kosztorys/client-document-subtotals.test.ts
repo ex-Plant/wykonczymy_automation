@@ -17,10 +17,8 @@ function item(id: number, sectionId: number, overrides: Partial<KosztorysItemT> 
     discountType: null,
     discountValue: 0,
     clientPrice: 100,
-    wToolsOverrideType: null,
-    wToolsOverrideValue: 0,
-    ownToolsOverrideType: null,
-    ownToolsOverrideValue: 0,
+    wToolsOverrideValue: null,
+    ownToolsOverrideValue: null,
     note: null,
     ...overrides,
   } satisfies KosztorysItemT

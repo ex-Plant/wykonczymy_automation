@@ -42,9 +42,7 @@ describe.skipIf(!ENV_READY)('selectKosztorysSubcontractorDue (DB)', () => {
       description: 'kwota',
       plannedQty: 10,
       clientPrice: 100,
-      wToolsOverrideType: 'amount' as const,
       wToolsOverrideValue: 62,
-      ownToolsOverrideType: 'amount' as const,
       ownToolsOverrideValue: 48,
     },
     // A second flat pair on a different client price — a copy that folded the rate into the client
@@ -53,9 +51,7 @@ describe.skipIf(!ENV_READY)('selectKosztorysSubcontractorDue (DB)', () => {
       description: 'kwota druga',
       plannedQty: 10,
       clientPrice: 250,
-      wToolsOverrideType: 'amount' as const,
       wToolsOverrideValue: 175,
-      ownToolsOverrideType: 'amount' as const,
       ownToolsOverrideValue: 150,
     },
     // Nothing set: the price derives from the investment's own coefficients.

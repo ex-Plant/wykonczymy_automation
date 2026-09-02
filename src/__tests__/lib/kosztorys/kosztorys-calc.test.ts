@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   globalDiscountAmount,
-  overrideTypeFor,
-  subcontractorOverrideType,
   subcontractorPrice,
   globalDiscountForMode,
   isGlobalDiscountActive,
@@ -29,9 +27,7 @@ const item: ViewPricingT = {
   discountType: null,
   discountValue: 0,
   clientPrice: 20,
-  wToolsOverrideType: 'amount',
   wToolsOverrideValue: 12,
-  ownToolsOverrideType: 'amount',
   ownToolsOverrideValue: 10,
   note: null,
   globalDiscountActive: false,
@@ -381,38 +377,5 @@ describe('globalDiscountForMode', () => {
   it('„Wyłączony" i „%" czyszczą rabat globalny — obie są drogą powrotną do rabatów per pozycja', () => {
     expect(globalDiscountForMode('off', 340)).toEqual({ type: null, value: 0 })
     expect(globalDiscountForMode('percent', 340)).toEqual({ type: null, value: 0 })
-  })
-})
-
-// Źródło ceny wykonawcy has two options — „auto" i kwota stała — but a wiersz written before that cut
-// can still carry a współczynnik type in the same column, and the value beside it is then a RATIO.
-// The fold is what stops 0,65 from being read as 0,65 zł za m².
-describe('the legacy współczynnik source folds to „auto"', () => {
-  it('keeps a kwota stała and reads everything else as „auto"', () => {
-    expect(subcontractorOverrideType('amount')).toBe('amount')
-    for (const stored of ['coeff', 'percent', '', null, undefined, 0, 1]) {
-      expect(subcontractorOverrideType(stored)).toBeNull()
-    }
-  })
-
-  it('folds per plane, so one crew’s legacy value cannot decide the other’s', () => {
-    const legacy = {
-      ...item,
-      wToolsOverrideType: 'coeff' as unknown as null,
-      wToolsOverrideValue: 0.65,
-    }
-    expect(overrideTypeFor(legacy, 'w_tools')).toBeNull()
-    expect(overrideTypeFor(legacy, 'own_tools')).toBe('amount')
-  })
-
-  // The consequence the fold exists for: priced as a kwota the crew rate would be 0,65 zł; as „auto"
-  // it is cena j.m. × the investment’s współczynnik, which is what the wiersz always meant.
-  it('prices a legacy wiersz from the global współczynnik, not from the stored ratio', () => {
-    const legacy = {
-      ...item,
-      wToolsOverrideType: 'coeff' as unknown as null,
-      wToolsOverrideValue: 0.65,
-    }
-    expect(subcontractorPrice(legacy, 'w_tools')).toBe(13) // 20 × 0,65
   })
 })

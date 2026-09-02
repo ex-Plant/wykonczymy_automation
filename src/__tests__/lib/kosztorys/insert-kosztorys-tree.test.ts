@@ -9,9 +9,10 @@ import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)
 
 // A snapshot kept for a year is only as good as the oldest payload the current code can reinsert.
-// The columns added since a payload was captured are simply absent from its JSON, which binds an
-// explicit NULL — and Postgres does not substitute a DEFAULT for an explicit NULL, so the whole
-// restore dies on 23502 and the user is told „nic nie zostało zapisane". These cases fabricate that
+// The columns added since a payload was captured are simply absent from its JSON, and an absent key
+// binds nothing at all — the INSERT loses a placeholder and dies on a syntax error, as it dies on
+// 23502 where a NOT NULL column would have been handed an explicit NULL. Either way the whole restore
+// fails and the user is told „nic nie zostało zapisane". These cases fabricate that
 // payload (the real ones with the gap don't exist yet, which is the point of guarding it now) and
 // assert the PERSISTED rows, never the return value — a successful-looking result can sit on top of
 // a write that never happened.
@@ -68,8 +69,10 @@ describe.skipIf(!ENV_READY)('insertKosztorysTree tolerates an older payload (DB)
       planned_qty: '0',
       discount_value: '0',
       client_price: '0',
-      w_tools_override_value: '0',
-      own_tools_override_value: '0',
+      // NULL, not '0': „auto" is what a praca carrying no stawka means, and 0 zł is a kwota someone
+      // chose (EX-766).
+      w_tools_override_value: null,
+      own_tools_override_value: null,
     })
   })
 
