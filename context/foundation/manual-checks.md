@@ -3681,6 +3681,10 @@ preview. Zalogowany jako OWNER.
       — to jest cała treść tej zmiany: brak wartości i zero to od teraz dwa różne stany
 - [ ] W kolumnie „Źródło ceny wykonawcy" przełączenie „kwota stała" → „auto" i z powrotem działa, a
       wyjście z pustej komórki wraca do „auto" (nie zapisuje 0 zł)
+- [ ] Pozycja zaimportowana z arkusza właściciela z pustą stawką pokazuje „kwota stała" i 0 zł, a nie
+      „auto" — arkusz nie zna trzeciego stanu, więc pusta komórka jest tam decyzją, nie brakiem
+- [ ] Jedno Ctrl+Z po zmianie źródła cofa cały gest, nie połowę
+- [ ] `/admin` → pozycja kosztorysu: zapis niepowiązanego pola nie zamienia pozycji „auto" na 0 zł
 - [ ] Po migracji produkcyjnej: „należne wykonawcy" na inwestycji 14 (największa ekspozycja „auto",
       ~10 739 zł) zgadza się z wartością sprzed wdrożenia
 - [ ] Właściciel zapisuje ponownie szablon „kosztorys wzór" **po** wdrożeniu — migracja czyści

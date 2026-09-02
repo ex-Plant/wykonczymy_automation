@@ -11,10 +11,8 @@ import type {
   WorkCatalogueItemT,
 } from '@/lib/kosztorys/work-catalogue/types'
 
-// A katalog „auto" (`null`) passes straight through as „auto": the cennik named no stawka, so
-// `subcontractorPrice` derives it from this investment's global współczynnik, exactly as a
-// hand-typed pozycja would. Both sides already model the stawka the same way, so this is a copy,
-// not a conversion.
+// Both sides model the stawka the same way, so this is a copy, not a conversion — a katalog „auto"
+// (`null`) stays „auto", derived from this investment's global współczynnik.
 const asItem = (
   catalogueItem: WorkCatalogueItemT,
   sectionId: number,

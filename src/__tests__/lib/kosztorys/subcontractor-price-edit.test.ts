@@ -91,7 +91,6 @@ describe('cellKeystroke pod polityką podwykonawcy', () => {
 })
 
 describe('cellSettle pod polityką podwykonawcy', () => {
-  // What the cell held on entry: a kwota stała of 70.
   const entry = 70
 
   it('puste pole wraca do „auto" dopiero po wyjściu z komórki', () => {

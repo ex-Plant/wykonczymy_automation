@@ -11,6 +11,7 @@ import type {
   ToolPlaneT,
 } from '@/lib/kosztorys/types'
 import type { DbExecutorT } from './get-db'
+import { numOrNull } from './row-coerce'
 
 // Everything behind the editor tree in ONE round trip.
 //
@@ -25,9 +26,6 @@ import type { DbExecutorT } from './get-db'
 // because a null column must read as 0, not NaN.
 
 const num = (v: unknown): number => Number(v ?? 0)
-// Distinct from `num`: these columns are nullable in the domain sense — an unset coefficient means
-// „inherit the default", which 0 would silently answer as „free".
-const numOrNull = (v: unknown): number | null => (v == null ? null : Number(v))
 const str = (v: unknown): string | null => (v == null ? null : String(v))
 
 export type KosztorysTreeDataT = {

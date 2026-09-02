@@ -19,7 +19,8 @@ import type {
 // A BUMP IS NOT DONE UNTIL THE EXISTING ROWS ARE DEALT WITH. Three exits, pick one:
 //   - don't bump — additive, or a key the mapper never reads (five column drops have taken this
 //     exit with no failure);
-//   - migrate the stored payloads — presets: a hand-curated library, deleting it destroys real work;
+//   - migrate the stored payloads — presets: a hand-curated library, so deleting it destroys real
+//     work UNLESS the owner declares the library disposable and re-saves it by hand (EX-766 did);
 //   - delete the stored rows — snapshots: ambient history, cheap to re-accumulate.
 // Forbidden: bump and leave. Bumping is asymmetric — the list queries (snapshots.ts, presets.ts)
 // don't assert, so every stranded version and preset keeps being offered in the UI and throws the
@@ -91,9 +92,8 @@ export type StoredSnapshotPayloadT = {
   settings?: Partial<SnapshotSettingsT>
 }
 
-// A payload captured before a column existed simply has no key, and an absent key is NOT the same as a
-// stored null: the `sql` tag emits NOTHING for `undefined`, so the tuple loses a placeholder and the
-// INSERT dies on a syntax error — and where the column is NOT NULL DEFAULT 0, binding an explicit NULL
+// An absent key is NOT the same as a stored null: the `sql` tag emits NOTHING for `undefined`, so the
+// tuple loses a placeholder and the INSERT dies on a syntax error — and where the column is NOT NULL DEFAULT 0, binding an explicit NULL
 // would not draw the default either (23502). With a year of retention that stops being theoretical.
 // The tolerance is declared in the TYPE (StoredSnapshotPayloadT above marks exactly these fields
 // optional) so tsc rejects a future edit that drops a fallback, and the return type is the strict

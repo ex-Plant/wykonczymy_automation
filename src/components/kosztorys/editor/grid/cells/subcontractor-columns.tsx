@@ -24,9 +24,8 @@ const SUB_MODE_OPTIONS: { value: string; label: string }[] = [
   { value: FIXED_MODE, label: 'kwota stała' },
 ]
 
-// „Źródło" is a view over the single stawka field: a row carrying one is „kwota stała", a row
-// carrying nothing is „auto". The menu still needs a string per option, so it gets one here rather
-// than the column keeping a second stored field to name the source (EX-766).
+// The menu needs a string per option, so it gets one here rather than the column keeping a second
+// stored field to name the source (EX-766).
 const modeOf = (rowData: KosztorysV2RowT, view: ToolPlaneT): string =>
   overrideValueFor(rowData, view) === null ? '' : FIXED_MODE
 

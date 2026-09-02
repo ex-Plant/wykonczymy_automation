@@ -5,13 +5,13 @@ import { formatPLN } from '@/lib/utils/format-currency'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
 import type { ToolPlaneT, ViewPricingT } from '@/lib/kosztorys/types'
 
-/** The row with one plane's stawka replaced. `null` IS the write that means „auto" (EX-766). */
+/** `null` IS the write that means „auto" (EX-766). */
 function withOverride<RowT extends ViewPricingT>(
   rowData: RowT,
   view: ToolPlaneT,
   value: number | null,
 ): RowT {
-  return { ...rowData, [OVERRIDE_FIELDS[view]]: value } as RowT
+  return { ...rowData, [OVERRIDE_FIELDS[view]]: value }
 }
 
 /**

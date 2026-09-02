@@ -13,14 +13,20 @@ import { type MigrateUpArgs, type MigrateDownArgs, sql } from '@payloadcms/db-ve
 // prace at zero złotych. `IS DISTINCT FROM` rather than `<> 'amount'` because the type column is
 // itself nullable and NULL is exactly the auto case.
 //
-// Destructive (it drops columns the OLD code reads), so the order is push-then-migrate: this runs
-// only once the deploy that no longer names the type columns is live (AGENTS.md, Migrations).
+// The two halves owe OPPOSITE orders — the backfill is additive (the new code needs NULL to exist
+// before it can read it), the `DROP COLUMN` is destructive (the old code still names those columns)
+// — and they ship fused anyway. That is a deliberate call, not an oversight: no kosztorys has been
+// issued to a client yet, so the window between the deploy and the apply has nobody in it, and the
+// owner runs both within the same sitting. Fusing them stops being safe the day a client holds a
+// share link; split it then (backfill before the push, `DROP COLUMN` after).
 //
 // The serialized payloads are DELETED, not rewritten — owner-approved, they are disposable test
 // data. A stored payload carries the pair inside JSON, where {type: NULL, value: 0} restores as an
 // explicit 0 zł instead of auto; the szablon is re-saved by hand after the deploy and the periodic
-// `auto` snapshots re-accumulate on their own. The 11 empty `manual` snapshots hold zero pozycje, so
-// they are immune and stay — they are the only ones anyone created on purpose.
+// `auto` snapshots re-accumulate on their own. The `manual` snapshots are spared only while they
+// hold no pozycje — the audit found all of them empty, but `replaceTreeWithSnapshot` writes one of
+// the CURRENT tree before every preset load and sheet import, so a non-empty row can appear between
+// that audit and the apply. The predicate, not the audit, is what makes that safe.
 export async function up({ db }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
     ALTER TABLE "kosztorys_items"
@@ -42,13 +48,16 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       DROP COLUMN "own_tools_override_type";
 
     DELETE FROM "kosztorys_presets";
-    DELETE FROM "kosztorys_snapshots" WHERE "kind" = 'auto';
+    DELETE FROM "kosztorys_snapshots"
+      WHERE "kind" = 'auto'
+         OR jsonb_array_length(coalesce("payload" -> 'items', '[]'::jsonb)) > 0;
   `)
 }
 
-// LOSSY, deliberately. The shape comes back and every row that exists today comes back to the exact
-// value it held before `up` (every discarded value was 0), but the deleted szablon and snapshoty do
-// not — they have no source to be restored from.
+// LOSSY, deliberately. Every value discarded by the backfill was 0, which is what the coalesce
+// restores — but the TYPE is not restored, only re-derived: a legacy 'coeff' row comes back as
+// {type: NULL, value: 0}, which is what the old fold read it as anyway. The deleted szablon and
+// snapshoty do not come back at all — they have no source.
 export async function down({ db }: MigrateDownArgs): Promise<void> {
   await db.execute(sql`
     ALTER TABLE "kosztorys_items"

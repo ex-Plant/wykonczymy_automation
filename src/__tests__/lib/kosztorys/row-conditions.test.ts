@@ -286,7 +286,7 @@ describe('the conditions, each on its boundary', () => {
 // material, so the detector fires on the combination it CAN see — the investment has material folded
 // into robocizna, the pozycja has executed work, and the stawka for the plane that work was done at is
 // a percentage of a client price that contains the material.
-// The pair splits „ktoś to wpisał ręcznie" from „wyliczyło się", which is now exactly the question the
+// The two conditions split „ktoś to wpisał ręcznie" from „wyliczyło się" — exactly the question the
 // single stawka field answers: a number is a decision, `null` is the global mnożnik.
 describe('the rate-source pair', () => {
   it('reads a kwota stała as hand-typed', () => {

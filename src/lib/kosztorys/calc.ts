@@ -1,3 +1,4 @@
+import { OVERRIDE_FIELDS } from '@/lib/kosztorys/constants'
 import type {
   GlobalDiscountT,
   KosztorysGlobalCoeffsT,
@@ -79,7 +80,7 @@ export function overrideValueFor(
   row: Pick<ViewPricingT, 'wToolsOverrideValue' | 'ownToolsOverrideValue'>,
   view: ToolPlaneT,
 ): number | null {
-  return view === 'w_tools' ? row.wToolsOverrideValue : row.ownToolsOverrideValue
+  return row[OVERRIDE_FIELDS[view]]
 }
 
 /**
@@ -99,7 +100,6 @@ export function asViewPricing(
   }
 }
 
-/** Subcontractor price by view: a kwota stała when the plane carries one, else client × coeff. */
 export function subcontractorPrice(row: ViewPricingT, view: ToolPlaneT): number {
   const override = overrideValueFor(row, view)
   if (override !== null) return override

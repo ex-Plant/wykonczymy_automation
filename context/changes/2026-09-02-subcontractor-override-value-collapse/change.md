@@ -51,8 +51,11 @@ reintroduces 42703 on `/k/[token]`.
 - **Kolumna „Źródło" ZOSTAJE** — rozstrzygnięte 2026-09-01, nie otwieramy trzeci raz. Rationale
   przeniesione do `context/reference/kosztorys-editor-domain-notes.md`, bo archiwum okazało się
   nieosiągalne dla dwóch przebiegów researchu.
-- **Bloby kasujemy, nie przepisujemy** — szablon (1) + snapshoty `auto` (5). Jedenaście pustych
-  `manual` zostaje nietkniętych: mają zero pozycji, więc są odporne na zmianę, i to akurat one mają
+- **Bloby kasujemy, nie przepisujemy** — szablon (1) + snapshoty `auto` (5). Puste `manual` zostają
+  nietknięte, ale decyduje o tym PREDYKAT, nie audyt: `replaceTreeWithSnapshot` zapisuje `manual`
+  z bieżącego drzewa przed każdym wczytaniem szablonu i importem z arkusza, więc niepusty wiersz
+  może się pojawić między audytem a migracją (kasujemy `kind='auto' OR items > 0`). Mają zero pozycji,
+  więc są odporne na zmianę, i to akurat one mają
   prawdziwą intencję odtworzenia. Właściciel wczyta szablon ponownie **po** deployu, więc nowy
   zserializuje się już zwiniętym kształtem.
 - **Golden master regenerowany osobnym commitem PRZED zmianą** — bez tego jedenaście inwestycji

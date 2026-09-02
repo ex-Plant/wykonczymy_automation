@@ -7,6 +7,7 @@ import type {
   WorkCatalogueItemT,
 } from '@/lib/kosztorys/work-catalogue/types'
 import type { DbExecutorT } from './get-db'
+import { numOrNull } from './row-coerce'
 
 // Every read of the cennik selects the same seven columns, and `toCatalogueItem` maps exactly them.
 const CATALOGUE_COLUMNS = sql`id, description, category, unit, client_price, w_tools_rate, own_tools_rate, match_key`
@@ -121,10 +122,8 @@ export async function getCatalogueSourceItem(
     unit: (row.unit as string | null) ?? '',
     sectionName: (row.section_name as string | null) ?? '',
     clientPrice: Number(row.client_price),
-    wToolsOverrideValue:
-      row.w_tools_override_value === null ? null : Number(row.w_tools_override_value),
-    ownToolsOverrideValue:
-      row.own_tools_override_value === null ? null : Number(row.own_tools_override_value),
+    wToolsOverrideValue: numOrNull(row.w_tools_override_value),
+    ownToolsOverrideValue: numOrNull(row.own_tools_override_value),
   }
 }
 
