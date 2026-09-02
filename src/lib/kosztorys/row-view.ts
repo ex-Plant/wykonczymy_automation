@@ -94,6 +94,9 @@ export function buildViewRows(input: {
   stages: KosztorysStageT[]
   hasSettledMaterial: boolean
   divergentPriceRowIds: ReadonlySet<number>
+  // Precomputed pomiar per pozycja — see `RowConditionCtxT.qtyDoneByRowId`. Threaded through rather
+  // than rebuilt here: the host already holds one keyed on the same `rows`.
+  qtyDoneByRowId?: ReadonlyMap<number, number>
   latchedRowIds?: ReadonlySet<number>
 }): KosztorysV2RowT[] {
   const {
@@ -105,6 +108,7 @@ export function buildViewRows(input: {
     stages,
     hasSettledMaterial,
     divergentPriceRowIds,
+    qtyDoneByRowId,
     latchedRowIds,
   } = input
   // The latch bypasses the conditions only — a pozycja held open for editing still leaves the grid
@@ -112,7 +116,7 @@ export function buildViewRows(input: {
   const filtered = applyRowConditions(
     filterRows(rows, search),
     engagedConditionIds,
-    { stages, hasSettledMaterial, divergentPriceRowIds },
+    { stages, hasSettledMaterial, divergentPriceRowIds, qtyDoneByRowId },
     latchedRowIds,
   )
   if (!sort) return filtered

@@ -7,6 +7,12 @@ import { stageKey } from '@/lib/kosztorys/stage-keys'
 import { checkSubcontractorPrice } from '@/lib/kosztorys/subcontractor-price-guard'
 import type { KosztorysV2RowT, ToolPlaneT } from '@/lib/kosztorys/types'
 
+// The pomiar, from the host's precomputed map when there is one and the long way when there is not.
+// Six entries below ask this question, so reading it through one accessor is also what keeps them
+// from drifting onto different planes.
+const qtyDone = (row: KosztorysV2RowT, ctx: RowConditionCtxT) =>
+  ctx.qtyDoneByRowId?.get(row.id) ?? rowTotalQtyDone(row, ctx.stages, 'client')
+
 // Named once so the pair below cannot be edited apart — „bez rabatu" is „ma rabat" negated, and two
 // hand-written copies of a three-term test are two chances to change only one of them.
 const hasItemDiscount = (row: KosztorysV2RowT) => row.discountType !== null && row.discountValue > 0
@@ -100,14 +106,14 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     sectionLabel: 'Sekcje bez wykonanej pracy',
     kind: 'filter',
     // The pomiar IS Σ etapów (EX-494), at the client plane like every other whole-row reading.
-    matches: (row, ctx) => !(rowTotalQtyDone(row, ctx.stages, 'client') > 0),
+    matches: (row, ctx) => !(qtyDone(row, ctx) > 0),
   },
   {
     id: 'has-measured-qty',
     label: 'z wykonaną pracą',
     sectionLabel: 'Sekcje z wykonaną pracą',
     kind: 'filter',
-    matches: (row, ctx) => rowTotalQtyDone(row, ctx.stages, 'client') > 0,
+    matches: (row, ctx) => qtyDone(row, ctx) > 0,
   },
   // Read through `discountType`, not `discountValue` alone: under a null type the value is stored but
   // inert (`applyDiscount` walks past it), so a leftover „5" in a row whose type was cleared is not a
@@ -204,8 +210,7 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     // przedmiar total still counts it, and hiding no-przedmiar rows drops a pozycja carrying etap work
     // while the executed total still counts it. A row empty on BOTH axes adds zero to both totals, so
     // hiding it moves no figure and needs no warning.
-    matches: (row, ctx) =>
-      !(row.plannedQty > 0) && !(rowTotalQtyDone(row, ctx.stages, 'client') > 0),
+    matches: (row, ctx) => !(row.plannedQty > 0) && !(qtyDone(row, ctx) > 0),
   },
   // A missing cena j.m. is two different problems, so it is two entries, split on whether any work has
   // been executed — and split rather than added beside a broad one, so the counts stay disjoint and no
@@ -222,7 +227,7 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     // The executed quantity alongside the price cells: engaging a problem that says „praca wykonana"
     // and showing no column carrying that work leaves the claim unverifiable on screen.
     revealsColumns: [...ALL_PRICE_COLUMNS, 'stageQtySum'],
-    matches: (row, ctx) => !(row.clientPrice > 0) && rowTotalQtyDone(row, ctx.stages, 'client') > 0,
+    matches: (row, ctx) => !(row.clientPrice > 0) && qtyDone(row, ctx) > 0,
   },
   {
     id: 'no-client-price',
@@ -234,8 +239,7 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     tone: 'defect',
     revealsColumns: ALL_PRICE_COLUMNS,
     // The only hand-typed price; the subcontractor planes derive from it through the coefficients.
-    matches: (row, ctx) =>
-      !(row.clientPrice > 0) && !(rowTotalQtyDone(row, ctx.stages, 'client') > 0),
+    matches: (row, ctx) => !(row.clientPrice > 0) && !(qtyDone(row, ctx) > 0),
   },
   // The third cena j.m. problem, and the only one that cannot be seen from inside a single pozycja:
   // the price is there and plausible, it just disagrees with what the same praca costs in another
@@ -280,7 +284,7 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     tone: 'defect',
     // The przedmiar alone: it is the missing cell, and it is where the fix is typed.
     revealsColumns: ['plannedQty'],
-    matches: (row, ctx) => !(row.plannedQty > 0) && rowTotalQtyDone(row, ctx.stages, 'client') > 0,
+    matches: (row, ctx) => !(row.plannedQty > 0) && qtyDone(row, ctx) > 0,
   },
   // One entry per plane rather than one asking about the active view: a price exists on both planes for
   // every row, so a problem on the plane you are not looking at is still a problem, and one entry

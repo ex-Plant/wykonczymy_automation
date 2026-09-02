@@ -56,6 +56,7 @@ import { clientTotalsFromSubtotals } from '@/lib/kosztorys/settlement-client-tot
 import { subcontractorDueByPlane } from '@/lib/kosztorys/subcontractor-due'
 import { marginForecastByPlane as forecastByPlane } from '@/lib/kosztorys/margin-forecast'
 import { divergentPriceRowIds } from '@/lib/kosztorys/price-divergence'
+import { qtyDoneByRow } from '@/lib/kosztorys/row-conditions/ctx'
 import { buildViewRows } from '@/lib/kosztorys/row-view'
 import {
   applyRowConditions,
@@ -396,6 +397,12 @@ export function useKosztorysEditor({
     [preview, rows],
   )
 
+  // The pomiar of every pozycja, once per dataset. Six conditions ask for it and a full set of
+  // counters asks ~2.6× per pozycja, each time re-summing the same ten stage columns — measured at
+  // ~2 ms of the ~5 ms these memos spend on 1000 pozycji, and they run on every committed keystroke
+  // (the grid commits per character, `useCellDraft`). Keyed on [rows, stages] like every reader of it.
+  const qtyDoneByRowId = useMemo(() => qtyDoneByRow(rows, stages), [rows, stages])
+
   // Counted over the whole dataset, not over `viewRows`: once a filter is on, a count of what
   // survives it is a count of itself, and the number stops being able to reach zero to say the
   // problem is gone. Zero under the preview, like the filters themselves — the client's document
@@ -406,11 +413,16 @@ export function useKosztorysEditor({
   // switching the plane — which picking a problem now does on its own — re-ran all of them to reach
   // the same numbers.
   const rowConditionCounts = useMemo(() => {
-    const ctx = { stages, hasSettledMaterial, divergentPriceRowIds: divergentPriceIds }
+    const ctx = {
+      stages,
+      hasSettledMaterial,
+      divergentPriceRowIds: divergentPriceIds,
+      qtyDoneByRowId,
+    }
     return ROW_CONDITIONS.map(
       (condition) => [condition.id, preview ? 0 : countMatching(rows, condition.id, ctx)] as const,
     )
-  }, [preview, rows, stages, hasSettledMaterial, divergentPriceIds])
+  }, [preview, rows, stages, hasSettledMaterial, divergentPriceIds, qtyDoneByRowId])
   // Stage counts run over the view's own etapy, not the raw list: a subcontractor view already drops
   // plane-less etapy, so counting them there would offer a filter that can only ever empty the stage
   // block. Deliberately asymmetric with the price conditions above — a price exists on both planes
@@ -514,9 +526,18 @@ export function useKosztorysEditor({
             stages,
             hasSettledMaterial,
             divergentPriceRowIds: divergentPriceIds,
+            qtyDoneByRowId,
           })
         : rows,
-    [preview, rows, engagedConditionIds, stages, hasSettledMaterial, divergentPriceIds],
+    [
+      preview,
+      rows,
+      engagedConditionIds,
+      stages,
+      hasSettledMaterial,
+      divergentPriceIds,
+      qtyDoneByRowId,
+    ],
   )
 
   // Per-section subtotals: the whole document (not viewRows) — a stable breakdown independent of the
@@ -536,7 +557,12 @@ export function useKosztorysEditor({
   // the owner's toolbar, so on a client's share there is nothing to tick.
   const foldableSectionIds = useMemo(() => {
     if (preview) return new Map<string, Set<number>>()
-    const ctx = { stages, hasSettledMaterial, divergentPriceRowIds: divergentPriceIds }
+    const ctx = {
+      stages,
+      hasSettledMaterial,
+      divergentPriceRowIds: divergentPriceIds,
+      qtyDoneByRowId,
+    }
     return new Map(
       // Skipping a condition that does not lift saves a full pass over every row for a `Map` entry the
       // menu would never read — and this memo recomputes on `rows`, i.e. on every edit. The menu
@@ -546,7 +572,7 @@ export function useKosztorysEditor({
         sectionIdsWhereAllMatch(rows, condition.id, ctx),
       ]),
     )
-  }, [preview, rows, stages, hasSettledMaterial, divergentPriceIds])
+  }, [preview, rows, stages, hasSettledMaterial, divergentPriceIds, qtyDoneByRowId])
 
   // Problems only, and never under the preview. The latch is half of a two-part gesture whose other
   // half — „Odśwież — ukryj poprawione" — lives in the „Problemy" menu and is rendered only while a
@@ -573,6 +599,7 @@ export function useKosztorysEditor({
       stages,
       hasSettledMaterial,
       divergentPriceRowIds: divergentPriceIds,
+      qtyDoneByRowId,
       latchedRowIds: latch?.ids,
     })
     if (latch) for (const row of next) latch.ids.add(row.id)
@@ -586,6 +613,7 @@ export function useKosztorysEditor({
     stages,
     hasSettledMaterial,
     divergentPriceIds,
+    qtyDoneByRowId,
     latch,
   ])
   const ordinalByRowId = useMemo(() => baseOrdinals(documentRows), [documentRows])

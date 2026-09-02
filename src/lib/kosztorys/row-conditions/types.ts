@@ -13,6 +13,15 @@ export type RowConditionCtxT = {
   // `matches` here sees exactly one. Required for the same reason as the field above, plus a second:
   // grouping is O(rows), and a host that computed it inside `matches` would pay it once per pozycja.
   divergentPriceRowIds: ReadonlySet<number>
+  // Pomiar (Σ etapów na planie klienta) policzony raz na pozycję, keyed by row id — the six conditions
+  // below that ask it would otherwise each recompute the same ten-column sum for the same pozycja, and
+  // a full set of counters asks it ~2.6× per pozycja (EX-768, zmierzone na 1000 pozycjach).
+  //
+  // Optional where `divergentPriceRowIds` is required, and the difference is what a missing value
+  // COSTS: there it would be a money guard silently answering „no", here it is the same number
+  // computed the slow way. So a host that skips it stays correct and only pays what it paid before —
+  // which is why the spec fixtures and single-shot callers do not carry one.
+  qtyDoneByRowId?: ReadonlyMap<number, number>
 }
 
 // 'client' is a third kind, not a third mechanism: it hides like a filter, but it is engaged by the
