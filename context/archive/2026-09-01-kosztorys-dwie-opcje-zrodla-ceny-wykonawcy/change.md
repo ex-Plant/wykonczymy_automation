@@ -1,10 +1,10 @@
 ---
 change_id: kosztorys-dwie-opcje-zrodla-ceny-wykonawcy
 title: Źródło ceny wykonawcy tylko z dwiema opcjami — cięcie trybu „własny mnożnik"
-status: implemented
+status: archived
 created: 2026-09-01
-updated: 2026-09-01
-archived_at: null
+updated: 2026-09-02
+archived_at: 2026-09-02T07:57:38Z
 branch: kosztorys-contractor-price-columns-in-client-view
 worktree: null
 ---
@@ -42,6 +42,10 @@ Ustalenia z rozmowy kształtującej (2026-09-01, właściciel):
   plan) i do dwóch w widoku inwestora. **W widoku inwestora źródło nie składa się wcale**
   (właściciel, 2026-09-01): to sterownik edycji, nie figura do porównania, a tam czyta się ofertę.
   Zostają „Cena j.m. netto" obu planów.
+- **Sama stawka wykonawcy zostaje edytowalna w KAŻDYM widoku, cennik klienta włącznie** (właściciel,
+  2026-09-01, przy bramce review — doprecyzowanie punktu wyżej). Brak „Źródła" obok nie czyni
+  kolumny tylko-do-odczytu: wpisanie liczby JEST kwotą stałą, a Delete wraca na auto, więc kolumna
+  jest samowystarczalna. To widok, w którym właściciel pracuje.
 - Efekt uboczny: znika przejście przeliczające wspólne pole wartości (dziś 200 zł po zmianie
   źródła musi być przeliczone, żeby nie stało się mnożnikiem 200). Przy dwóch trybach wartość ma
   jedno znaczenie — auto to jej brak.

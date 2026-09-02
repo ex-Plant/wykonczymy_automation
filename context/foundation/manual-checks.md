@@ -3746,25 +3746,7 @@ otwartych znalezisk.
 
 ## Dwie opcje źródła ceny wykonawcy (2026-09-01, `kosztorys-dwie-opcje-zrodla-ceny-wykonawcy`)
 
-- [x] Lista „Źródło ceny wykonawcy" ma dokładnie dwie pozycje w obu widokach wykonawcy
-- [x] Kolumny „Mnożnik" nie ma ani w siatce, ani na liście kolumn do pokazania/ukrycia
-- [x] W widoku inwestora są tylko „Cena j.m. netto — z narzędziami" i „— bez narzędzi"; kolumny
-      „Źródło ceny wykonawcy" nie ma tam ani w siatce, ani na liście kolumn
-- [x] Wiersz z zawyżoną stawką wykonawcy: liczba jest czerwona i leży DOKŁADNIE na tej samej
-      wysokości co liczby w sąsiednich kolumnach; żadnej ikony w komórce nie ma, a najechanie myszą
-      (i wejście z klawiatury) pokazuje dymek z powodem
-- [x] Obie stawki wykonawcy są edytowalne w KAŻDYM widoku, także w cenniku klienta: wpisanie liczby
-      przestawia wiersz na kwotę stałą, Delete wraca na „auto" (cena kursywą, wyszarzona), a wartość
-      jest ta sama po przełączeniu na „Z narzędziami" / „Bez narzędzi"
-- [x] Wyczyszczenie „Cena j.m." wykonawcy wraca na auto, a cena renderuje się kursywą i wyszarzona
-- [x] Filtr „ze stawką wykonawcy z kwoty stałej w widoku z narzędziami" (menu „Filtry") odsłania
-      „Cena j.m." inwestora oraz „Źródło" i „Cena j.m." TEGO planu — kolumn drugiego planu nie rusza;
-      to samo dla bliźniaczego filtra „ze stawką wykonawcy „auto""
-- [x] Import wypełnionego arkusza testowego kończy się bez pozycji na własnym mnożniku, a stawki
-      wykonawcy zgadzają się co do grosza z arkuszem
-- [x] Należność wykonawcy w podsumowaniu zgadza się z sumą kolumny „Cena j.m." wykonawcy razy ilości,
-      na obu planach (dwie wyceny, TypeScript i SQL, muszą dawać tę samą liczbę)
-- [x] Zapis pozycji do katalogu prac: pozycja na auto ląduje jako „auto", pozycja z kwotą jako kwota
+> 11 pozycji odhaczonych w przebiegu 2026-09-01/02; lista zdjęta przy archiwizacji 2026-09-02.
 
 ### Findings — 2026-09-01
 
