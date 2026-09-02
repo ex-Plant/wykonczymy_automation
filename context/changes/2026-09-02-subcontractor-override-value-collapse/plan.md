@@ -599,14 +599,14 @@ Run **once**, after Phase 3 — not per phase.
 
 #### Automated
 
-- [x] 0.1 `pnpm test:parity` passes on a freshly imported + seeded `db-test`
-- [x] 0.2 Regenerated fixture reports 12 comparable kosztorys investments, not 1
+- [x] 0.1 `pnpm test:parity` passes on a freshly imported + seeded `db-test` — b5760821
+- [x] 0.2 Regenerated fixture reports 12 comparable kosztorys investments, not 1 — b5760821
 
 ### Phase 1: The red test — `NULL` is not `0`
 
 #### Automated
 
-- [ ] 1.1 The new row-condition spec fails (does not compile) before Phase 2
+- [x] 1.1 The new row-condition spec fails (does not compile) before Phase 2
 
 ### Phase 2: The collapse
 

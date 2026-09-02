@@ -192,6 +192,20 @@ describe('the conditions, each on its boundary', () => {
     expect(matches('no-w-tools-price', row({ clientPrice: 0 }))).toBe(false)
   })
 
+  // The whole point of collapsing the override pair into one nullable number: `null` and `0` are two
+  // different answers, and every reader has to keep them apart. `null` = auto, the pozycja takes the
+  // investment's mnożnik. `0` = a stawka someone set to zero on purpose. A `coalesce`/`??` that folds
+  // one into the other reads as „darmowa robocizna" on every auto pozycja and this is the guard.
+  it('holds auto and an explicit 0 zł apart on both planes', () => {
+    const auto = row({ wToolsOverrideValue: null, ownToolsOverrideValue: null })
+    expect(matches('no-w-tools-price', auto)).toBe(false)
+    expect(matches('no-own-tools-price', auto)).toBe(false)
+
+    const freeOfCharge = row({ wToolsOverrideValue: 0, ownToolsOverrideValue: 0 })
+    expect(matches('no-w-tools-price', freeOfCharge)).toBe(true)
+    expect(matches('no-own-tools-price', freeOfCharge)).toBe(true)
+  })
+
   // One direction only: the „Sekcje" list is built from filters, so nothing else may carry a label.
   // The converse does NOT hold — a filter opts OUT of lifting by declaring `sectionLabel: null`, which
   // is what „ze stawką … z formuły" and „bez komentarza" do: folding a whole section away by either
