@@ -768,6 +768,20 @@ w którym „200" znaczyło raz 200 zł, a raz mnożnik ×200 — i sześć kolu
 zamiast czterech. Dane były jednorazowe, więc cięcie poszło bez migracji: gdyby taki wiersz gdzieś
 został, policzy się z mnożnika inwestycji.
 
+**Sama kolumna „Źródło ceny wykonawcy" ZOSTAJE — wycięcie rozważano i odrzucono dwa razy**
+(właściciel, 2026-09-01 przy cięciu trzeciego trybu, i ponownie 2026-09-02 przy EX-766). Argument za
+wycięciem jest za każdym razem ten sam i za każdym razem przegrywa: skoro wpisanie liczby ustawia
+kwotę stałą, a Delete wraca na auto, kolumna „tylko duplikuje Delete". Przegrywa, bo **„auto" nie
+jest stanem, który widać — to brak wartości**, więc pusta komórka, która magicznie znaczy „idzie za
+mnożnikiem", jest nieodkrywalna dla kogoś, kto tej reguły nie zna. Nazwana opcja bije podpowiedź
+w nagłówku.
+
+Nie mylić tego z **cennikiem klienta, gdzie „Źródła" nie ma celowo** i Delete faktycznie jest jedyną
+drogą powrotu (właściciel, 2026-09-01, bramka review). To świadomy kompromis dla **jednego** widoku,
+w którym właściciel pracuje i regułę zna — nie precedens do rozciągnięcia. Skasowanie kolumny
+awansowałoby ten lokalny wyjątek do jedynego mechanizmu wszędzie, czyli odwróciłoby decyzję, a nie
+rozszerzyło ją.
+
 ### Pozycja z materiałem w cenie j.m. dostaje stawkę podwykonawcy kwotą stałą (EX-649, 2026-08-17)
 
 Konwencja właściciela, nie reguła w kodzie: gdy materiał jest wliczony w cenę jednostkową pozycji,
