@@ -599,8 +599,8 @@ Run **once**, after Phase 3 — not per phase.
 
 #### Automated
 
-- [ ] 0.1 `pnpm test:parity` passes on a freshly imported + seeded `db-test`
-- [ ] 0.2 Regenerated fixture reports 12 comparable kosztorys investments, not 1
+- [x] 0.1 `pnpm test:parity` passes on a freshly imported + seeded `db-test`
+- [x] 0.2 Regenerated fixture reports 12 comparable kosztorys investments, not 1
 
 ### Phase 1: The red test — `NULL` is not `0`
 
