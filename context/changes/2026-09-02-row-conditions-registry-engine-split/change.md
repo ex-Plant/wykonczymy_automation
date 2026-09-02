@@ -1,7 +1,7 @@
 ---
 change_id: row-conditions-registry-engine-split
 title: Rozbicie row-conditions.ts na rejestr (dane) i mechanizmy (zapytania)
-status: implementing
+status: implemented
 created: 2026-09-02
 updated: 2026-09-02
 archived_at: null

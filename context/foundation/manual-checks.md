@@ -3747,3 +3747,18 @@ the DB directly (`GROUP BY description, unit HAVING count(distinct client_price)
   than „this one row is hidden": no diagnostic can ever reach the client view.
 
 No bugs found; no fixes applied. All four checks pass as implemented.
+
+## EX-765 — rozbicie `row-conditions.ts` na rejestr i zapytania (2026-09-02, `row-conditions-registry-engine-split`)
+
+Refaktor bez zmiany zachowania — cztery ścieżki, którymi wcześniej przeciekła cicha regresja przy
+podobnych przenosinach.
+
+### Phase 1: Przeniesienie kodu i przepięcie importów
+
+- [ ] Menu „Filtry" listuje te same wiersze co przed zmianą, z sekcjami („Sekcje bez przedmiaru" itd.)
+      i z parą rabatową znikającą pod globalnym rabatem
+- [ ] „Problemy" pokazuje te same liczniki, a kliknięcie diagnostyki nadal odsłania jej kolumny
+      i przełącza widok na właściwy plan
+- [ ] Podgląd klienta z zaznaczonym „ukryj puste wiersze" nadal chudnie dokument (to jest dokładnie ta
+      ścieżka, którą poprzedni refaktor zgubił po cichu — commit `6a7c8f17`)
+- [ ] Zwinięte sekcje nadal stają się nieaktywne przy wyszukiwaniu i przy zaangażowanym filtrze

@@ -345,6 +345,6 @@ naciśnięciu klawisza. Osobna zmiana, patrz „What We're NOT Doing".
 
 #### Automated
 
-- [x] 2.1 Oba nowe spece przechodzą
-- [x] 2.2 Bilans 66 testów się zgadza
-- [x] 2.3 Stary spec nie istnieje
+- [x] 2.1 Oba nowe spece przechodzą — 16b84b99
+- [x] 2.2 Bilans 66 testów się zgadza — 16b84b99
+- [x] 2.3 Stary spec nie istnieje — 16b84b99
