@@ -3676,16 +3676,33 @@ Setup: baza testowa 5435 z rozpisanym kosztorysem (`pnpm seed:kosztorys:test`). 
 Setup: staging po wdrożeniu, migracja `20260902_0_collapse_kosztorys_tool_overrides` nałożona na bazę
 preview. Zalogowany jako OWNER.
 
-- [ ] Link inwestorski `/k/<token>` renderuje kosztorys z poprawnymi cenami wykonawcy
-- [ ] Pozycja „auto" nadal chodzi za mnożnikiem inwestycji, a pozycja z jawnym 0 zł nadal pokazuje 0 zł
+Odhaczone 2026-09-02 na `staging` (baza preview), inwestycja 66 „Altowa 12" — 154 pozycje „auto",
+30 z jawnym 0 zł. Dwa punkty sprawdzone inaczej niż gestem w przeglądarce, bo tamta droga była
+zamknięta: **import z arkusza** — konto z sesji nie ma wstępu na `/admin`, a przepisanie 372 pozycji
+cudzej inwestycji to za duża cena za jeden odczyt, więc stronę zapisu pokrywają dwa testy
+`build-import-plan.test.ts` (pusta stawka wchodzi jako `0`, nigdy `null`), a stronę renderu wiersz 1
+w siatce („kwota stała", 0 zł); **zapis niepowiązanego pola** — przez Local API Payloada tą samą
+ścieżką `update`, co panel: po zapisaniu „Komentarza" obydwa nadpisania zostały `NULL`.
+
+- [x] Link inwestorski `/k/<token>` renderuje kosztorys z poprawnymi cenami wykonawcy
+- [x] Pozycja „auto" nadal chodzi za mnożnikiem inwestycji, a pozycja z jawnym 0 zł nadal pokazuje 0 zł
       — to jest cała treść tej zmiany: brak wartości i zero to od teraz dwa różne stany
-- [ ] W kolumnie „Źródło ceny wykonawcy" przełączenie „kwota stała" → „auto" i z powrotem działa, a
+- [x] W kolumnie „Źródło ceny wykonawcy" przełączenie „kwota stała" → „auto" i z powrotem działa, a
       wyjście z pustej komórki wraca do „auto" (nie zapisuje 0 zł)
-- [ ] Pozycja zaimportowana z arkusza właściciela z pustą stawką pokazuje „kwota stała" i 0 zł, a nie
+- [x] Pozycja zaimportowana z arkusza właściciela z pustą stawką pokazuje „kwota stała" i 0 zł, a nie
       „auto" — arkusz nie zna trzeciego stanu, więc pusta komórka jest tam decyzją, nie brakiem
-- [ ] Jedno Ctrl+Z po zmianie źródła cofa cały gest, nie połowę
-- [ ] `/admin` → pozycja kosztorysu: zapis niepowiązanego pola nie zamienia pozycji „auto" na 0 zł
+- [x] Jedno Ctrl+Z po zmianie źródła cofa cały gest, nie połowę
+- [x] `/admin` → pozycja kosztorysu: zapis niepowiązanego pola nie zamienia pozycji „auto" na 0 zł
 - [ ] Po migracji produkcyjnej: „należne wykonawcy" na inwestycji 14 (największa ekspozycja „auto",
       ~10 739 zł) zgadza się z wartością sprzed wdrożenia
 - [ ] Właściciel zapisuje ponownie szablon „kosztorys wzór" **po** wdrożeniu — migracja czyści
       `kosztorys_presets`, bo ich JSON nosi starą parę kolumn
+
+## EX-761 — divergent-price-for-same-work (2026-09-02)
+
+### Phase 2: Wpięcie do „Problemy"
+
+- [ ] Na wzorze (inwestycja 90) „Problemy" pokazuje wiersz „Pozycje z inną ceną j.m. niż ta sama praca gdzie indziej" z licznikiem, a kliknięcie zawęża grid do pozycji „Dwukrotne gruntowanie…" ze wszystkich sekcji naraz
+- [ ] Kolumna „Cena j.m." pokazuje się po kliknięciu problemu nawet przy odklikanej w pickerze kolumn, i wraca do stanu użytkownika po odkliknięciu problemu
+- [ ] Na kosztorysie bez rozjazdów wiersz w ogóle się nie renderuje
+- [ ] Pod podglądem klienta wiersz nie występuje

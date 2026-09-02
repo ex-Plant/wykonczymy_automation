@@ -1,7 +1,7 @@
 ---
 change_id: divergent-price-for-same-work
 title: „Problemy" pokazuje pozycje, gdzie ta sama praca ma różną cenę j.m.
-status: implementing
+status: implemented
 created: 2026-09-02
 updated: 2026-09-02
 archived_at: null

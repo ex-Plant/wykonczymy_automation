@@ -241,5 +241,5 @@ Brak — reguła czyta pola, które już są w gridzie.
 
 #### Automated
 
-- [x] 2.1 Spec rejestru przechodzi
-- [x] 2.2 Spec widoku przechodzi
+- [x] 2.1 Spec rejestru przechodzi — 844e2ccc
+- [x] 2.2 Spec widoku przechodzi — 844e2ccc
