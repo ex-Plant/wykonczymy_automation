@@ -58,14 +58,16 @@ import { marginForecastByPlane as forecastByPlane } from '@/lib/kosztorys/margin
 import { divergentPriceRowIds } from '@/lib/kosztorys/price-divergence'
 import { buildViewRows } from '@/lib/kosztorys/row-view'
 import {
-  MEASURE_DIVERGED_CONDITION_ID,
-  ROW_CONDITIONS,
   applyRowConditions,
   columnsRevealedBy,
   countMatching,
   liftsToSections,
   sectionIdsWhereAllMatch,
-} from '@/lib/kosztorys/row-conditions'
+} from '@/lib/kosztorys/row-conditions/queries'
+import {
+  MEASURE_DIVERGED_CONDITION_ID,
+  ROW_CONDITIONS,
+} from '@/lib/kosztorys/row-conditions/registry'
 import { STAGE_CONDITIONS, countMatchingStages } from '@/lib/kosztorys/stage-conditions'
 import { stagesForView } from '@/lib/kosztorys/settlement-view'
 import { baseOrdinals, sectionRepresentatives } from '@/lib/kosztorys/section-band-rows'

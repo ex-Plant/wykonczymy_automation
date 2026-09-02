@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countMatching, sectionIdsWhereAllMatch } from '@/lib/kosztorys/row-conditions'
+import { countMatching, sectionIdsWhereAllMatch } from '@/lib/kosztorys/row-conditions/queries'
 import { sectionSubtotalsForView } from '@/lib/kosztorys/settlement-aggregates'
 import { treeToRows } from '@/lib/kosztorys/v2-rows'
 import type { KosztorysItemT, KosztorysTreeT } from '@/lib/kosztorys/types'

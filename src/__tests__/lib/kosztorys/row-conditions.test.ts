@@ -1,15 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
-  ROW_CONDITIONS,
   countMatching,
   applyRowConditions,
-  clientConditionIds,
   columnsRevealedBy,
   engagedPlane,
   engagedConditionsOfKind,
   isFoldSuppressed,
   sectionIdsWhereAllMatch,
-} from '@/lib/kosztorys/row-conditions'
+} from '@/lib/kosztorys/row-conditions/queries'
+import { ROW_CONDITIONS, clientConditionIds } from '@/lib/kosztorys/row-conditions/registry'
 import { planePriceKey } from '@/lib/kosztorys/plane-price-keys'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'

@@ -30,7 +30,11 @@ import {
   type RowResizeApiT,
 } from '@/components/kosztorys/editor/grid/ordinal-gutter-column'
 import { buildSectionBandRows } from '@/lib/kosztorys/section-band-rows'
-import { engagedConditionsOfKind, engagedHiders, listLabels } from '@/lib/kosztorys/row-conditions'
+import {
+  engagedConditionsOfKind,
+  engagedHiders,
+  listLabels,
+} from '@/lib/kosztorys/row-conditions/queries'
 import {
   isSectionFooterRow,
   isSectionHeaderRow,

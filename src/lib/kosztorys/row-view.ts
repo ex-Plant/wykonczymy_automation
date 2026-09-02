@@ -1,6 +1,6 @@
 import type { PriceViewT } from '@/lib/kosztorys/calc'
 import { groupBySection } from '@/lib/kosztorys/row-ops'
-import { applyRowConditions } from '@/lib/kosztorys/row-conditions'
+import { applyRowConditions } from '@/lib/kosztorys/row-conditions/queries'
 import { columnSortValue } from '@/lib/kosztorys/sort-value'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyRowConditions } from '@/lib/kosztorys/row-conditions'
+import { applyRowConditions } from '@/lib/kosztorys/row-conditions/queries'
 import { measureDiscrepancy } from '@/lib/kosztorys/settlement-rows'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
