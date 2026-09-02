@@ -623,9 +623,9 @@ Run **once**, after Phase 3 — not per phase.
 
 #### Automated
 
-- [ ] 3.1 `pnpm test:parity` passes with no fixture regeneration
-- [ ] 3.2 `pnpm test:integration` passes
-- [ ] 3.3 No spec references `SubcontractorOverrideTypeT` or the type fields
+- [x] 3.1 `pnpm test:parity` passes with no fixture regeneration — c2cbeba8
+- [x] 3.2 `pnpm test:integration` passes — c2cbeba8
+- [x] 3.3 No spec references `SubcontractorOverrideTypeT` or the type fields — c2cbeba8
 
 ### Phase 4: Preview rehearsal, then production
 

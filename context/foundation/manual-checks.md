@@ -3670,3 +3670,18 @@ Setup: baza testowa 5435 z rozpisanym kosztorysem (`pnpm seed:kosztorys:test`). 
 - [ ] Przywrócenie zwykłej, bieżącej wersji nadal działa end-to-end, a kwoty się nie zmieniają
 - [ ] Potwierdzenie przywracania pokazuje nowe zdanie („Wraca sama rozpiska — rabat globalny, sposób
       rozliczenia i stawka materiałów zostają dzisiejsze.") i brzmi naturalnie po polsku
+
+## Zwinięcie nadpisania stawki podwykonawcy (2026-09-02, `subcontractor-override-value-collapse`, EX-766)
+
+Setup: staging po wdrożeniu, migracja `20260902_0_collapse_kosztorys_tool_overrides` nałożona na bazę
+preview. Zalogowany jako OWNER.
+
+- [ ] Link inwestorski `/k/<token>` renderuje kosztorys z poprawnymi cenami wykonawcy
+- [ ] Pozycja „auto" nadal chodzi za mnożnikiem inwestycji, a pozycja z jawnym 0 zł nadal pokazuje 0 zł
+      — to jest cała treść tej zmiany: brak wartości i zero to od teraz dwa różne stany
+- [ ] W kolumnie „Źródło ceny wykonawcy" przełączenie „kwota stała" → „auto" i z powrotem działa, a
+      wyjście z pustej komórki wraca do „auto" (nie zapisuje 0 zł)
+- [ ] Po migracji produkcyjnej: „należne wykonawcy" na inwestycji 14 (największa ekspozycja „auto",
+      ~10 739 zł) zgadza się z wartością sprzed wdrożenia
+- [ ] Właściciel zapisuje ponownie szablon „kosztorys wzór" **po** wdrożeniu — migracja czyści
+      `kosztorys_presets`, bo ich JSON nosi starą parę kolumn

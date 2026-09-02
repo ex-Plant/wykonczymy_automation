@@ -1,7 +1,7 @@
 ---
 change_id: subcontractor-override-value-collapse
 title: Collapse the subcontractor price override pair into `overrideValue: number | null`
-status: implementing
+status: implemented
 created: 2026-09-02
 updated: 2026-09-02
 archived_at: null
