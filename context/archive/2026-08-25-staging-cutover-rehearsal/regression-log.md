@@ -232,3 +232,17 @@ w historii gita. Zostaje to, czego nie mogę zrobić sam:
       dla inwestora `kosztorys_shares` #1, ustawienia podglądu `kosztorys_client_view` dla
       inwestycji 31 (tryb `OFFER`), rozliczenia etapów na inwestycji 31 (interfejs nie pozwala
       cofnąć etapu do „nieustawiony")
+
+---
+
+## Zamknięcie (2026-09-02, archiwizacja)
+
+Cztery otwarte boxy powyżej są **martwe, nie zaległe** — gałąź Neona `cutover_rehearsal` została
+skasowana przez retencję Vercela po ~23 h (patrz `context/changes/staging-to-main-gate/ledger.md`,
+sekcja „Środowisko"), a razem z nią zniknęły wszystkie artefakty testowe, które ten spis miał
+pozwolić odróżnić od danych właściciela. `DB_POSTGRES_URL` na Preview wrócił wtedy na
+`ep-still-term-agp9aqfa-pooler` tym samym ruchem.
+
+Jedyna pozycja, która przeżyła — migracja na produkcji — nie należy już do tego dokumentu: żyje
+w bramce `staging-to-main-gate/ledger.md` jako „27 migracji `main..staging` do proda", razem
+z kolejnością deploya. Ten plik jest od tej chwili **zapisem przebiegu próby**, nie listą zadań.
