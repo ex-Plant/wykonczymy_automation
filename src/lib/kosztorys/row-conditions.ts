@@ -14,6 +14,11 @@ export type RowConditionCtxT = {
   // optional on purpose: a money guard that silently never fires because a host forgot to pass it is
   // worth less than no guard at all.
   hasSettledMaterial: boolean
+  // Ids of the pozycje whose praca is priced differently elsewhere in the kosztorys — computed by
+  // `divergentPriceRowIds` one floor up, because it is a question about a GROUP of rows and every
+  // `matches` here sees exactly one. Required for the same reason as the field above, plus a second:
+  // grouping is O(rows), and a host that computed it inside `matches` would pay it once per pozycja.
+  divergentPriceRowIds: ReadonlySet<number>
 }
 
 // 'client' is a third kind, not a third mechanism: it hides like a filter, but it is engaged by the
@@ -288,6 +293,22 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     // The only hand-typed price; the subcontractor planes derive from it through the coefficients.
     matches: (row, ctx) =>
       !(row.clientPrice > 0) && !(rowTotalQtyDone(row, ctx.stages, 'client') > 0),
+  },
+  // The third cena j.m. problem, and the only one that cannot be seen from inside a single pozycja:
+  // the price is there and plausible, it just disagrees with what the same praca costs in another
+  // sekcja. „worklist", not „defect" (owner, 2026-09-02) — another łazienka may be deliberately
+  // dearer, so this row names something to look through, not something broken. The katalog import
+  // settles the same disagreement silently by majority; this is where it becomes visible first.
+  {
+    id: 'divergent-client-price',
+    label: 'z inną ceną j.m. niż ta sama praca gdzie indziej',
+    // Folding a whole sekcja because its prices diverge would hide the very wycena being questioned.
+    sectionLabel: null,
+    kind: 'diagnostic',
+    tone: 'worklist',
+    // „Cena j.m." alone: the stawki wykonawcy derive from it, so the disagreement is settled here.
+    revealsColumns: ['price'],
+    matches: (row, ctx) => ctx.divergentPriceRowIds.has(row.id),
   },
   {
     id: MEASURE_DIVERGED_CONDITION_ID,

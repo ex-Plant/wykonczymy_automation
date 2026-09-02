@@ -53,6 +53,7 @@ const rows = treeToRows(tree)
 const documentRows = applyRowConditions(rows, clientConditionIds(true), {
   stages: tree.stages,
   hasSettledMaterial: false,
+  divergentPriceRowIds: new Set<number>(),
 })
 
 const ownerSubtotals = sectionSubtotalsForView(rows, tree.stages, 'client')

@@ -235,11 +235,11 @@ Brak — reguła czyta pola, które już są w gridzie.
 
 #### Automated
 
-- [x] 1.1 Spec grupowania przechodzi
+- [x] 1.1 Spec grupowania przechodzi — 5f08a608
 
 ### Phase 2: Wpięcie do „Problemy"
 
 #### Automated
 
-- [ ] 2.1 Spec rejestru przechodzi
-- [ ] 2.2 Spec widoku przechodzi
+- [x] 2.1 Spec rejestru przechodzi
+- [x] 2.2 Spec widoku przechodzi

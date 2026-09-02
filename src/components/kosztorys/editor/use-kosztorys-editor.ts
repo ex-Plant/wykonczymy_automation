@@ -55,6 +55,7 @@ import { sectionSubtotalsForView, stageAxisForView } from '@/lib/kosztorys/settl
 import { clientTotalsFromSubtotals } from '@/lib/kosztorys/settlement-client-totals'
 import { subcontractorDueByPlane } from '@/lib/kosztorys/subcontractor-due'
 import { marginForecastByPlane as forecastByPlane } from '@/lib/kosztorys/margin-forecast'
+import { divergentPriceRowIds } from '@/lib/kosztorys/price-divergence'
 import { buildViewRows } from '@/lib/kosztorys/row-view'
 import {
   MEASURE_DIVERGED_CONDITION_ID,
@@ -393,12 +394,15 @@ export function useKosztorysEditor({
   // half is the expensive one: one pass over every pozycja per registry entry. Counted together,
   // switching the plane — which picking a problem now does on its own — re-ran all of them to reach
   // the same numbers.
+  // Grouped once per `rows` change, never inside `matches`: a counter calls `matches` once per
+  // pozycja, so grouping there would rebuild every group ~1000 times on a large kosztorys.
+  const divergingPriceIds = useMemo(() => divergentPriceRowIds(rows), [rows])
   const rowConditionCounts = useMemo(() => {
-    const ctx = { stages, hasSettledMaterial }
+    const ctx = { stages, hasSettledMaterial, divergentPriceRowIds: divergingPriceIds }
     return ROW_CONDITIONS.map(
       (condition) => [condition.id, preview ? 0 : countMatching(rows, condition.id, ctx)] as const,
     )
-  }, [preview, rows, stages, hasSettledMaterial])
+  }, [preview, rows, stages, hasSettledMaterial, divergingPriceIds])
   // Stage counts run over the view's own etapy, not the raw list: a subcontractor view already drops
   // plane-less etapy, so counting them there would offer a filter that can only ever empty the stage
   // block. Deliberately asymmetric with the price conditions above — a price exists on both planes
@@ -498,9 +502,13 @@ export function useKosztorysEditor({
   const documentRows = useMemo(
     () =>
       preview
-        ? applyRowConditions(rows, engagedConditionIds, { stages, hasSettledMaterial })
+        ? applyRowConditions(rows, engagedConditionIds, {
+            stages,
+            hasSettledMaterial,
+            divergentPriceRowIds: divergingPriceIds,
+          })
         : rows,
-    [preview, rows, engagedConditionIds, stages, hasSettledMaterial],
+    [preview, rows, engagedConditionIds, stages, hasSettledMaterial, divergingPriceIds],
   )
 
   // Per-section subtotals: the whole document (not viewRows) — a stable breakdown independent of the
@@ -520,7 +528,7 @@ export function useKosztorysEditor({
   // the owner's toolbar, so on a client's share there is nothing to tick.
   const foldableSectionIds = useMemo(() => {
     if (preview) return new Map<string, Set<number>>()
-    const ctx = { stages, hasSettledMaterial }
+    const ctx = { stages, hasSettledMaterial, divergentPriceRowIds: divergingPriceIds }
     return new Map(
       // Skipping a condition that does not lift saves a full pass over every row for a `Map` entry the
       // menu would never read — and this memo recomputes on `rows`, i.e. on every edit. The menu
@@ -530,7 +538,7 @@ export function useKosztorysEditor({
         sectionIdsWhereAllMatch(rows, condition.id, ctx),
       ]),
     )
-  }, [preview, rows, stages, hasSettledMaterial])
+  }, [preview, rows, stages, hasSettledMaterial, divergingPriceIds])
 
   // Problems only, and never under the preview. The latch is half of a two-part gesture whose other
   // half — „Odśwież — ukryj poprawione" — lives in the „Problemy" menu and is rendered only while a
@@ -556,11 +564,22 @@ export function useKosztorysEditor({
       view,
       stages,
       hasSettledMaterial,
+      divergentPriceRowIds: divergingPriceIds,
       latchedRowIds: latch?.ids,
     })
     if (latch) for (const row of next) latch.ids.add(row.id)
     return next
-  }, [rows, search, engagedConditionIds, sort, view, stages, hasSettledMaterial, latch])
+  }, [
+    rows,
+    search,
+    engagedConditionIds,
+    sort,
+    view,
+    stages,
+    hasSettledMaterial,
+    divergingPriceIds,
+    latch,
+  ])
   const ordinalByRowId = useMemo(() => baseOrdinals(documentRows), [documentRows])
   // Sections keep their original order however the filter thinned them.
   const sectionRows = useMemo(() => sectionRepresentatives(rows), [rows])

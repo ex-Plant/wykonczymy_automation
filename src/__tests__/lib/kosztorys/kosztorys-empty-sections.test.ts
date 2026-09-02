@@ -48,7 +48,11 @@ const tree: KosztorysTreeT = makeTree({
 })
 
 const rows = treeToRows(tree)
-const ctx = { stages: tree.stages, hasSettledMaterial: false }
+const ctx = {
+  stages: tree.stages,
+  hasSettledMaterial: false,
+  divergentPriceRowIds: new Set<number>(),
+}
 
 describe('a section fully executed but unpriced', () => {
   it('sums to zero — which is why the old net-is-zero rule folded it away', () => {

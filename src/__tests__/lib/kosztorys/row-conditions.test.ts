@@ -18,7 +18,7 @@ const STAGES: KosztorysStageT[] = [
   { id: 1, ordinal: 1, label: null, plane: null, workerId: null },
   { id: 2, ordinal: 2, label: null, plane: 'w_tools', workerId: 5 },
 ]
-const CTX = { stages: STAGES, hasSettledMaterial: false }
+const CTX = { stages: STAGES, hasSettledMaterial: false, divergentPriceRowIds: new Set<number>() }
 
 // The client's cena j.m. plus one crew's rate pair — what a price problem on that plane is repaired
 // in. Both planes' columns exist in every view now, so a reveal that named both would answer a
@@ -111,6 +111,19 @@ describe('the conditions, each on its boundary', () => {
           Number(matches('no-client-price-with-work', subject)),
       ).toBe(1)
     }
+  })
+
+  it('„z inną ceną j.m." reads the set it was handed, and nothing on the wiersz itself', () => {
+    const ctx = { ...CTX, divergentPriceRowIds: new Set([7]) }
+    expect(countMatching([row({ id: 7 })], 'divergent-client-price', ctx)).toBe(1)
+    expect(countMatching([row({ id: 8 })], 'divergent-client-price', ctx)).toBe(0)
+  })
+
+  it('„z inną ceną j.m." counts pozycje, not grupy, and stays at zero on an empty set', () => {
+    const diverging = [row({ id: 1 }), row({ id: 2, sectionId: 11 }), row({ id: 3, sectionId: 12 })]
+    const ctx = { ...CTX, divergentPriceRowIds: new Set([1, 2, 3]) }
+    expect(countMatching(diverging, 'divergent-client-price', ctx)).toBe(3)
+    expect(countMatching(diverging, 'divergent-client-price', CTX)).toBe(0)
   })
 
   it('„rozjazd" is the sheet’s pomiar against Σ etapów, silent when the sheet said nothing', () => {
@@ -317,8 +330,16 @@ describe('„ze stawką wykonawcy od ceny z materiałem" — the overpaid-crew g
     { id: 2, ordinal: 2, label: null, plane: 'own_tools', workerId: null },
     { id: 3, ordinal: 3, label: null, plane: null, workerId: null },
   ]
-  const settled = { stages: STAGES_BOTH_PLANES, hasSettledMaterial: true }
-  const noSettled = { stages: STAGES_BOTH_PLANES, hasSettledMaterial: false }
+  const settled = {
+    stages: STAGES_BOTH_PLANES,
+    hasSettledMaterial: true,
+    divergentPriceRowIds: new Set<number>(),
+  }
+  const noSettled = {
+    stages: STAGES_BOTH_PLANES,
+    hasSettledMaterial: false,
+    divergentPriceRowIds: new Set<number>(),
+  }
   const fires = (conditionId: string, subject: KosztorysV2RowT, ctx = settled) =>
     countMatching([subject], conditionId, ctx) === 1
 

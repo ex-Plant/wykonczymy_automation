@@ -93,6 +93,7 @@ export function buildViewRows(input: {
   view: PriceViewT
   stages: KosztorysStageT[]
   hasSettledMaterial: boolean
+  divergentPriceRowIds: ReadonlySet<number>
   latchedRowIds?: ReadonlySet<number>
 }): KosztorysV2RowT[] {
   const {
@@ -103,6 +104,7 @@ export function buildViewRows(input: {
     view,
     stages,
     hasSettledMaterial,
+    divergentPriceRowIds,
     latchedRowIds,
   } = input
   // The latch bypasses the conditions only — a pozycja held open for editing still leaves the grid
@@ -110,7 +112,7 @@ export function buildViewRows(input: {
   const filtered = applyRowConditions(
     filterRows(rows, search),
     engagedConditionIds,
-    { stages, hasSettledMaterial },
+    { stages, hasSettledMaterial, divergentPriceRowIds },
     latchedRowIds,
   )
   if (!sort) return filtered
