@@ -3721,13 +3721,6 @@ w siatce („kwota stała", 0 zł); **zapis niepowiązanego pola** — przez Loc
 
 ## EX-761 — divergent-price-for-same-work (2026-09-02)
 
-### Phase 2: Wpięcie do „Problemy"
-
-- [x] Na wzorze (inwestycja 90) „Problemy" pokazuje wiersz „Te same prace z różnymi stawkami" z licznikiem, a kliknięcie zawęża grid do pozycji „Dwukrotne gruntowanie…" ze wszystkich sekcji naraz
-- [x] Kolumna „Cena j.m." pokazuje się po kliknięciu problemu nawet przy odklikanej w pickerze kolumn, i wraca do stanu użytkownika po odkliknięciu problemu
-- [x] Na kosztorysie bez rozjazdów wiersz w ogóle się nie renderuje
-- [x] Pod podglądem klienta wiersz nie występuje
-
 ### Findings — 2026-09-02
 
 Test DB: `wykonczymy-test:5435`, app on `:3010` (`NEXT_DIST_DIR=.next-e2e`). Investment 90 already

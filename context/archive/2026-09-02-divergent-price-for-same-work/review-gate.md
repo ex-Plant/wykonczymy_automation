@@ -13,19 +13,12 @@ Bramki pominięte i dlaczego:
 
 ## Findings
 
-- [x] 🔵 OBSERVATION · fixed · `code-review` · `src/lib/kosztorys/row-conditions.ts:310` · `revealsColumns: ['price']` było martwe poza widokiem „Inwestor" — kolumna „Cena j.m." powstaje tylko tam, więc gest na widoku wykonawcy nie odsłaniał niczego. Teraz `ALL_PRICE_COLUMNS`, jak obie siostrzane diagnostyki ceny.
-      test: TDD · unit — `columnsRevealedBy(['divergent-client-price'])` w `row-conditions.test.ts`
-- [x] 🔵 OBSERVATION · fixed · `code-review` + `impl-review` (F4) · `src/components/kosztorys/editor/use-kosztorys-editor.ts:388` · jedyne przejście po całym zbiorze bez skrótu pod podglądem klienta; teraz `preview ? new Set() : …`, jak `marginForecastByPlane` i `foldableSectionIds`.
-      test: no automated test — ścieżka wydajnościowa, wynik identyczny (regułę czytającą zbiór podgląd i tak wycina)
-- [x] ⚠️ WARNING · fixed · `impl-review` (F3) · `plan.md:46` · „rejestr trzyma rozłączne liczniki" to nadinterpretacja — rejestr nigdy jej nie trzymał (np. `no-client-price-with-work` i `work-without-planned-qty` zapalają się razem). Uzasadnienie przepisane na węższe: trzecia diagnostyka na tym samym szwie „Cena j.m." zgłaszałaby tę samą pozycję za to samo. Sama decyzja bez zmian.
-- [x] 🔵 OBSERVATION · fixed · `impl-review` (F5) · `use-kosztorys-editor.ts:388` · memo `divergingPriceIds` vs pole ctx `divergentPriceRowIds` — jedno pojęcie, dwie nazwy. Memo przemianowane na `divergentPriceIds`.
-- [x] fixed · `comment-noise` · `src/lib/kosztorys/price-divergence.ts:10` · ogon JSDoc powtarzał `catalogue-key.ts` niemal dosłownie (składanie j.m., ta sama j.m. = inna praca). Ucięty; został nośny powód wyboru klucza — rozjazd biegnie Łazienka ↔ Kuchnia.
-- [x] fixed · `comment-noise` · `use-kosztorys-editor.ts:388` · nowe zdania doklejone pod blok komentarza `rowConditionCounts` czytały się jak jego czwarty akapit. Memo przeniesione **nad** ten blok, komentarz wrócił do swojego `useMemo`.
 - [x] ⚠️ WARNING · dismissed · `impl-review` (F1) · `context/foundation/manual-checks.md:3679` · commit epilogowy `0cbb0240` niesie pięć odhaczeń EX-766. To cudza, prawdziwa robota weryfikacyjna, która leżała brudna w tym samym pliku, a plik był w zestawie EX-761 (dopisywał sekcję). Treść poprawna, kod nietknięty — nie warto przepisywać historii `staging`.
-- [x] ⚠️ WARNING · fixed · `impl-review` (F2) · `review-gate.md` · pusty i nieśledzony — ten plik.
 - [x] 🔵 OBSERVATION · dropped · `impl-review` (F6) · `plan.md § Whole-tree Gate` · `pnpm lint` jest czerwony na stałe (`test.js` w korzeniu + trzy migracje), więc bramka nie daje sygnału. Poza tym slice'em; sprzątanie lintu to osobna zmiana.
 - [x] dropped · `simplify` · 5 plików spec · `divergentPriceRowIds: new Set<number>()` powtórzone w siedmiu literałach ctx. Wspólna fabryka ctx zaoszczędziłaby jeden edit przy następnym polu, ale ukryłaby, na jakich faktach stoi dany spec — literał jest tu dokumentacją. Nie warte churnu.
 - [x] dismissed · `comment-noise` · `price-divergence.ts:7`, `row-conditions.ts:17`, `use-kosztorys-editor.ts:388` · to samo uzasadnienie („grupa, nie wiersz") w trzech plikach. Każde stoi w innym miejscu łańcucha i tylko wersja w hooku niesie skalę ~1000 pozycji; czytelnik trafia na jedno, nie na trzy.
+
+_Przycięte przy archiwizacji 2026-09-02: usunięto findingi `fixed` — ich trwałym zapisem jest commit i sam kod. Stan przed przycięciem: 7 fixed, 2 dismissed, 2 dropped · 0 otwartych._
 
 ## Simplify pass
 
