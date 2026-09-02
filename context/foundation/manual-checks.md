@@ -3734,31 +3734,69 @@ Faza 4 — wsad lokalny (755 pozycji dołożonych; katalog ~940 po przeglądzie 
 
 ## Kolumny stawek wykonawcy obu planów w widoku Inwestora (2026-09-01, `kosztorys-contractor-price-columns-in-client-view`)
 
-- [ ] Świeża przeglądarka (wyczyszczony localStorage): w żadnym widoku nie widać kolumn stawek,
+- [x] Świeża przeglądarka (wyczyszczony localStorage): w żadnym widoku nie widać kolumn stawek,
       dopóki nie odznaczy się ich w pikerze
-- [ ] Widok Inwestora → picker → dwie nowe pozycje z nazwą planu w etykiecie; wpisana stawka
+- [x] Widok Inwestora → picker → dwie nowe pozycje z nazwą planu w etykiecie; wpisana stawka
       w planie „bez narzędzi" pokazuje się identycznie po przełączeniu na widok „Bez narzędzi"
-- [ ] Kliknięcie nagłówka „Cena j.m. netto — z narzędziami" przestawia kolejność wierszy, drugie
+- [x] Kliknięcie nagłówka „Cena j.m. netto — z narzędziami" przestawia kolejność wierszy, drugie
       kliknięcie ją odwraca, a sortowanie po kolumnie drugiego planu daje inną kolejność na tych
       samych danych
-- [ ] Tryb „Brutto" w widoku Inwestora: „Cena j.m. netto — z narzędziami" zostaje na ekranie
-- [ ] Filtr „Problemy" ze stawką zawyżoną w planie „bez narzędzi" odsłania kolumny tego planu,
+- [x] Tryb „Brutto" w widoku Inwestora: „Cena j.m. netto — z narzędziami" zostaje na ekranie
+- [x] Filtr „Problemy" ze stawką zawyżoną w planie „bez narzędzi" odsłania kolumny tego planu,
       a nie planu „z narzędziami"
-- [ ] Podgląd inwestora (owner odznaczył obie): żadna się nie pokazuje, slim header nie ma pickera
+- [x] Podgląd inwestora (owner odznaczył obie): żadna się nie pokazuje, slim header nie ma pickera
 
 > Lista przycięta 2026-09-01 wraz z cięciem trybu „własny mnożnik": kolumny „Mnożnik" już nie ma,
 > a źródło ceny wykonawcy nie składa się w widoku Inwestora.
 
+### Findings — 2026-09-01
+
+Wszystkie 6 pozycji zweryfikowane w przeglądarce (Playwright, port 3010 na `db-test`, inwestycja 106)
+i kodem (`assembleV2Columns`, `src/components/kosztorys/editor/grid/kosztorys-v2-columns.tsx`). Brak
+otwartych znalezisk.
+
 ## Dwie opcje źródła ceny wykonawcy (2026-09-01, `kosztorys-dwie-opcje-zrodla-ceny-wykonawcy`)
 
-- [ ] Lista „Źródło ceny wykonawcy" ma dokładnie dwie pozycje w obu widokach wykonawcy
-- [ ] Kolumny „Mnożnik" nie ma ani w siatce, ani na liście kolumn do pokazania/ukrycia
-- [ ] W widoku inwestora są tylko „Cena j.m. netto — z narzędziami" i „— bez narzędzi"; kolumny
+- [x] Lista „Źródło ceny wykonawcy" ma dokładnie dwie pozycje w obu widokach wykonawcy
+- [x] Kolumny „Mnożnik" nie ma ani w siatce, ani na liście kolumn do pokazania/ukrycia
+- [x] W widoku inwestora są tylko „Cena j.m. netto — z narzędziami" i „— bez narzędzi"; kolumny
       „Źródło ceny wykonawcy" nie ma tam ani w siatce, ani na liście kolumn
-- [ ] Wyczyszczenie „Cena j.m." wykonawcy wraca na auto, a cena renderuje się kursywą i wyszarzona
-- [ ] Diagnostyka „ze stawką wykonawcy wpisaną ręcznie" ujawnia „Źródło" i „Cena j.m.", i nic poza tym
-- [ ] Import wypełnionego arkusza testowego kończy się bez pozycji na własnym mnożniku, a stawki
+- [x] Wiersz z zawyżoną stawką wykonawcy: liczba jest czerwona i leży DOKŁADNIE na tej samej
+      wysokości co liczby w sąsiednich kolumnach; żadnej ikony w komórce nie ma, a najechanie myszą
+      (i wejście z klawiatury) pokazuje dymek z powodem
+- [x] Obie stawki wykonawcy są edytowalne w KAŻDYM widoku, także w cenniku klienta: wpisanie liczby
+      przestawia wiersz na kwotę stałą, Delete wraca na „auto" (cena kursywą, wyszarzona), a wartość
+      jest ta sama po przełączeniu na „Z narzędziami" / „Bez narzędzi"
+- [x] Wyczyszczenie „Cena j.m." wykonawcy wraca na auto, a cena renderuje się kursywą i wyszarzona
+- [x] Filtr „ze stawką wykonawcy z kwoty stałej w widoku z narzędziami" (menu „Filtry") odsłania
+      „Cena j.m." inwestora oraz „Źródło" i „Cena j.m." TEGO planu — kolumn drugiego planu nie rusza;
+      to samo dla bliźniaczego filtra „ze stawką wykonawcy „auto""
+- [x] Import wypełnionego arkusza testowego kończy się bez pozycji na własnym mnożniku, a stawki
       wykonawcy zgadzają się co do grosza z arkuszem
-- [ ] Należność wykonawcy w podsumowaniu zgadza się z sumą kolumny „Cena j.m." wykonawcy razy ilości,
+- [x] Należność wykonawcy w podsumowaniu zgadza się z sumą kolumny „Cena j.m." wykonawcy razy ilości,
       na obu planach (dwie wyceny, TypeScript i SQL, muszą dawać tę samą liczbę)
-- [ ] Zapis pozycji do katalogu prac: pozycja na auto ląduje jako „auto", pozycja z kwotą jako kwota
+- [x] Zapis pozycji do katalogu prac: pozycja na auto ląduje jako „auto", pozycja z kwotą jako kwota
+
+### Findings — 2026-09-01
+
+- [x] **Box 8 przejechany na prawdziwym arkuszu klienta, nie na fixture'ze** — arkusz „wypełniony
+      kosztorys do testów" (`1qN68vcevWgq0fXckdh4cuyBJ4iGZNlivVuHDvLuzWy4`) ma kartę robocizny nazwaną
+      `"kosztorys_robocizny(dla inwestora) "`, więc ścisłe dopasowanie `fold()` w `LABOR_TAB`
+      (`src/lib/kosztorys/sheet-import/read-sheet.ts`) nie trafia i import kończy się
+      `MissingLaborTabError`. To pojedyncza wada TEGO fixture'a, nie kodu: 56/57 zrzuconych arkuszy
+      klientów (`context/reference/legacy-sheet-dumps.md`) ma kanoniczną nazwę karty, więc luzowanie
+      dopasowania nie ma uzasadnienia — **decyzja: nie zmieniamy `read-sheet.ts`.**
+      Box zamiast tego przejechano end-to-end przez prawdziwą ścieżkę importu (UI edytora kosztorysu,
+      `db-test` 5435, inwestycja 85 „Michał Dobrzański ul. Planetowa", jej WŁASNY arkusz
+      `1-0-ZZaXBBYjetDMjSL97LHnRYE6bSVZ3cs0QJSrxh08` z restored prod dump) — 12 sekcji, 398 prac,
+      5 etapów. Po imporcie: żadna pozycja nie ma `w_tools_override_type`/`own_tools_override_type`
+      poza `{NULL, 'amount'}` (SQL po imporcie) — potwierdzone też niezależnym re-derive tego samego
+      arkusza LIVE (`readImportGrids`/`buildImportPlan`, read-only) tuż po imporcie: te same typy
+      `{null, 'amount'}`, zero `'coeff'`. Grosz-parytet zweryfikowany na WSZYSTKICH 398 pozycjach
+      (nie tylko próbce) — re-derived plan vs zapisane w DB: **0 rozbieżności** w typie i wartości
+      nadpisania stawki wykonawcy na obu planach. Inwestycja 85 przywrócona do stanu pustego po
+      teście (usunięte sekcje/etapy/pozycje/snapshot „Przed importem"), zapis szedł wyłącznie do
+      `db-test`, arkusz czytany readonly.
+      **Test disposition:** no automated test — `deriveOverride`/`build-import-plan` mają już unit
+      coverage (`build-import-plan.test.ts`); to była weryfikacja end-to-end przeciw realnym danym
+      klienta, nie kandydat na trwały test (arkusze klientów nie są fixture'ami repo).

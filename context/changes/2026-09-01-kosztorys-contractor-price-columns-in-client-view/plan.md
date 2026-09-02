@@ -1,5 +1,11 @@
 # Kolumny ceny wykonawcy (oba plany) w widoku Inwestora — plan wdrożenia
 
+> **Superseded by `context/changes/2026-09-01-kosztorys-dwie-opcje-zrodla-ceny-wykonawcy/`.** Ten
+> dokument opisuje sześć kolumn i tryb „własny mnożnik". Późniejszy change ściął źródło ceny wykonawcy
+> do dwóch opcji („auto" / kwota stała), skasował kolumnę „Mnożnik" i zostawił w widoku Inwestora
+> tylko dwie kolumny „Cena j.m. netto" — po jednej na plan. Czytaj poniższe jako zapis stanu z dnia
+> wdrożenia, nie jako opis obecnego zachowania.
+
 ## Overview
 
 Sześć kolumn stawki wykonawcy — „Źródło ceny wykonawcy", „Mnożnik", „Cena j.m. netto", każda w planie

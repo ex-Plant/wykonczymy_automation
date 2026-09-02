@@ -3,6 +3,12 @@
 > Pełny plan: `context/changes/2026-09-01-kosztorys-contractor-price-columns-in-client-view/plan.md`
 > Research: `context/changes/2026-09-01-kosztorys-contractor-price-columns-in-client-view/research.md`
 
+> **Superseded by `context/changes/2026-09-01-kosztorys-dwie-opcje-zrodla-ceny-wykonawcy/`.** Ten
+> dokument opisuje sześć kolumn i tryb „własny mnożnik". Późniejszy change ściął źródło ceny wykonawcy
+> do dwóch opcji („auto" / kwota stała), skasował kolumnę „Mnożnik" i zostawił w widoku Inwestora
+> tylko dwie kolumny „Cena j.m. netto" — po jednej na plan. Czytaj poniższe jako zapis stanu z dnia
+> wdrożenia, nie jako opis obecnego zachowania.
+
 ## Co i po co
 
 Owner pracuje w widoku Inwestora, a żeby porównać stawki wykonawcy musi przełączać zakładki i trzymać

@@ -11,6 +11,12 @@ worktree: null
 
 ## Notes
 
+> **Superseded by `context/changes/2026-09-01-kosztorys-dwie-opcje-zrodla-ceny-wykonawcy/`.** Ten
+> dokument opisuje sześć kolumn i tryb „własny mnożnik". Późniejszy change ściął źródło ceny wykonawcy
+> do dwóch opcji („auto" / kwota stała), skasował kolumnę „Mnożnik" i zostawił w widoku Inwestora
+> tylko dwie kolumny „Cena j.m. netto" — po jednej na plan. Czytaj poniższe jako zapis stanu z dnia
+> wdrożenia, nie jako opis obecnego zachowania.
+
 Sześć kolumn ceny wykonawcy — „Źródło ceny wykonawcy" / „Mnożnik" / „Cena j.m. netto" × plan
 z narzędziami i bez narzędzi — dostępnych w widoku Inwestora edytora kosztorysu, żeby owner/manager
 porównał wartości bez przełączania planu. Edytowalne (piszą override tego planu). Domyślnie ukryte,
