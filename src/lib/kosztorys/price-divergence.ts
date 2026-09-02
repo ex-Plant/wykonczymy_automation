@@ -7,10 +7,8 @@ import { catalogueKey } from '@/lib/kosztorys/work-catalogue/catalogue-key'
  * A question about a GROUP, which no `matches(row, ctx)` can answer — so it is computed once, one
  * pass above the registry, and handed in as a fact the way `hasSettledMaterial` is.
  *
- * Grouped by `catalogueKey`, the katalog's own identity for a praca: it drops the sekcja (the
- * owner's rozjazd runs Łazienka ↔ Kuchnia, so grouping per sekcja would never see it) and folds the
- * j.m. spellings (`m²` = `m2`), while keeping the same opis at a different j.m. as a genuinely
- * different price.
+ * Grouped by `catalogueKey`, the katalog's own identity for a praca — chosen because it drops the
+ * sekcja, and the owner's rozjazd runs Łazienka ↔ Kuchnia, so grouping per sekcja would never see it.
  *
  * Two pozycje are left out of every group. One with no cena j.m. has two diagnostics of its own, and
  * the registry keeps its counts disjoint. One with no opis is not „the same praca" as another empty

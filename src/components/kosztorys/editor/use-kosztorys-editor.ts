@@ -385,6 +385,15 @@ export function useKosztorysEditor({
     [preview, rows],
   )
 
+  // Grouped once per `rows` change, never inside `matches`: a counter calls `matches` once per
+  // pozycja, so grouping there would rebuild every group ~1000 times on a large kosztorys. Empty
+  // under the preview like every other whole-dataset pass here — the only rule that reads the set is
+  // a diagnostic, and the client's document renders none of them.
+  const divergentPriceIds = useMemo(
+    () => (preview ? new Set<number>() : divergentPriceRowIds(rows)),
+    [preview, rows],
+  )
+
   // Counted over the whole dataset, not over `viewRows`: once a filter is on, a count of what
   // survives it is a count of itself, and the number stops being able to reach zero to say the
   // problem is gone. Zero under the preview, like the filters themselves — the client's document
@@ -394,15 +403,12 @@ export function useKosztorysEditor({
   // half is the expensive one: one pass over every pozycja per registry entry. Counted together,
   // switching the plane — which picking a problem now does on its own — re-ran all of them to reach
   // the same numbers.
-  // Grouped once per `rows` change, never inside `matches`: a counter calls `matches` once per
-  // pozycja, so grouping there would rebuild every group ~1000 times on a large kosztorys.
-  const divergingPriceIds = useMemo(() => divergentPriceRowIds(rows), [rows])
   const rowConditionCounts = useMemo(() => {
-    const ctx = { stages, hasSettledMaterial, divergentPriceRowIds: divergingPriceIds }
+    const ctx = { stages, hasSettledMaterial, divergentPriceRowIds: divergentPriceIds }
     return ROW_CONDITIONS.map(
       (condition) => [condition.id, preview ? 0 : countMatching(rows, condition.id, ctx)] as const,
     )
-  }, [preview, rows, stages, hasSettledMaterial, divergingPriceIds])
+  }, [preview, rows, stages, hasSettledMaterial, divergentPriceIds])
   // Stage counts run over the view's own etapy, not the raw list: a subcontractor view already drops
   // plane-less etapy, so counting them there would offer a filter that can only ever empty the stage
   // block. Deliberately asymmetric with the price conditions above — a price exists on both planes
@@ -505,10 +511,10 @@ export function useKosztorysEditor({
         ? applyRowConditions(rows, engagedConditionIds, {
             stages,
             hasSettledMaterial,
-            divergentPriceRowIds: divergingPriceIds,
+            divergentPriceRowIds: divergentPriceIds,
           })
         : rows,
-    [preview, rows, engagedConditionIds, stages, hasSettledMaterial, divergingPriceIds],
+    [preview, rows, engagedConditionIds, stages, hasSettledMaterial, divergentPriceIds],
   )
 
   // Per-section subtotals: the whole document (not viewRows) — a stable breakdown independent of the
@@ -528,7 +534,7 @@ export function useKosztorysEditor({
   // the owner's toolbar, so on a client's share there is nothing to tick.
   const foldableSectionIds = useMemo(() => {
     if (preview) return new Map<string, Set<number>>()
-    const ctx = { stages, hasSettledMaterial, divergentPriceRowIds: divergingPriceIds }
+    const ctx = { stages, hasSettledMaterial, divergentPriceRowIds: divergentPriceIds }
     return new Map(
       // Skipping a condition that does not lift saves a full pass over every row for a `Map` entry the
       // menu would never read — and this memo recomputes on `rows`, i.e. on every edit. The menu
@@ -538,7 +544,7 @@ export function useKosztorysEditor({
         sectionIdsWhereAllMatch(rows, condition.id, ctx),
       ]),
     )
-  }, [preview, rows, stages, hasSettledMaterial, divergingPriceIds])
+  }, [preview, rows, stages, hasSettledMaterial, divergentPriceIds])
 
   // Problems only, and never under the preview. The latch is half of a two-part gesture whose other
   // half — „Odśwież — ukryj poprawione" — lives in the „Problemy" menu and is rendered only while a
@@ -564,7 +570,7 @@ export function useKosztorysEditor({
       view,
       stages,
       hasSettledMaterial,
-      divergentPriceRowIds: divergingPriceIds,
+      divergentPriceRowIds: divergentPriceIds,
       latchedRowIds: latch?.ids,
     })
     if (latch) for (const row of next) latch.ids.add(row.id)
@@ -577,7 +583,7 @@ export function useKosztorysEditor({
     view,
     stages,
     hasSettledMaterial,
-    divergingPriceIds,
+    divergentPriceIds,
     latch,
   ])
   const ordinalByRowId = useMemo(() => baseOrdinals(documentRows), [documentRows])

@@ -43,9 +43,11 @@ w siedmiu miejscach w pięciu plikach.
 
 Trzy rzeczy wynikają z reguł już zapisanych w tym kodzie, więc rozstrzygam je tu, a nie pytaniem:
 
-1. **Pozycja bez ceny j.m. nie wchodzi do porównania.** Rejestr trzyma zasadę, że liczniki są
-   rozłączne i żadna pozycja nie jest zgłaszana dwa razy — a „bez ceny j.m." ma już dwie własne
-   diagnostyki. Do grupy wchodzą wyłącznie ceny dodatnie.
+1. **Pozycja bez ceny j.m. nie wchodzi do porównania.** Nie dlatego, że rejestr trzyma
+   rozłączność liczników — nie trzyma jej i nigdy nie trzymał (np. „bez ceny j.m. z wykonaną pracą"
+   i „z wykonaną pracą bez przedmiaru" potrafią zapalić się na tej samej pozycji). Powód jest
+   węższy: sam szew „Cena j.m." ma już dwie własne diagnostyki na brak ceny, więc trzecia
+   zgłaszałaby tę samą pozycję za to samo. Do grupy wchodzą wyłącznie ceny dodatnie.
 2. **Pozycja z pustym opisem nigdy nie grupuje.** Dwie puste pozycje to nie „ta sama praca";
    `foldDescription('')` zwraca `''` i skleiłoby je w jedną grupę.
 3. **Grupujemy po całym kosztorysie, nie w obrębie sekcji.** `catalogueKey` z założenia zdejmuje

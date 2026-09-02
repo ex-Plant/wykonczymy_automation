@@ -573,6 +573,14 @@ describe('columnsRevealedBy', () => {
     )
   })
 
+  // „Cena j.m." is built only on the „Inwestor" view, so a rozjazd cen that revealed it alone would
+  // reveal nothing on either subcontractor view — where the derived stawka is the only trace of it.
+  it('gives a price rozjazd both planes’ trace, not just the client column', () => {
+    expect(columnsRevealedBy(['divergent-client-price'])).toEqual(
+      new Set(priceCells('w_tools', 'own_tools')),
+    )
+  })
+
   // A problem that claims work was executed has to put that work on screen, or the claim cannot be
   // checked against the pozycja it narrowed to.
   it('adds the pomiar to the price cells when the problem is about executed work', () => {

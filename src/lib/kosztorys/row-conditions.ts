@@ -306,8 +306,10 @@ export const ROW_CONDITIONS: RowConditionT[] = [
     sectionLabel: null,
     kind: 'diagnostic',
     tone: 'worklist',
-    // „Cena j.m." alone: the stawki wykonawcy derive from it, so the disagreement is settled here.
-    revealsColumns: ['price'],
+    // Every price column, not „Cena j.m." alone: that column is built only on the „Inwestor" view
+    // (kosztorys-v2-columns), so naming it by itself would reveal nothing on the two subcontractor
+    // views — where the derived stawka is the only visible trace of the disagreement.
+    revealsColumns: ALL_PRICE_COLUMNS,
     matches: (row, ctx) => ctx.divergentPriceRowIds.has(row.id),
   },
   {
