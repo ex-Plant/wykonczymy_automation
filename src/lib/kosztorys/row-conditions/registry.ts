@@ -32,7 +32,7 @@ const ALL_PRICE_COLUMNS: readonly string[] = ['price', ...ALL_PLANE_PRICE_KEYS]
 export const MEASURE_DIVERGED_CONDITION_ID = 'measure-diverged'
 
 // The rabat pair, named because the menu drops it under a global rabat — the same call the grid makes
-// for the rabat COLUMNS (kosztorys-v2-columns' DISCOUNT_COLUMN_IDS). Kept beside the entries rather
+// for the rabat COLUMNS (column-config.ts' DISCOUNT_COLUMN_IDS). Kept beside the entries rather
 // than restated in the menu, so adding a third rabat condition cannot leave the two lists disagreeing.
 export const DISCOUNT_CONDITION_IDS: ReadonlySet<string> = new Set(['has-discount', 'no-discount'])
 
