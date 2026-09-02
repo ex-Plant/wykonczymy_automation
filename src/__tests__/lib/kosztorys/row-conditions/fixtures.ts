@@ -2,7 +2,7 @@ import { planePriceKey } from '@/lib/kosztorys/plane-price-keys'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
-export const STAGES: KosztorysStageT[] = [
+const STAGES: KosztorysStageT[] = [
   { id: 1, ordinal: 1, label: null, plane: null, workerId: null },
   { id: 2, ordinal: 2, label: null, plane: 'w_tools', workerId: 5 },
 ]

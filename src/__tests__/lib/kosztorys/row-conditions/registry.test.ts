@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CTX, STAGES, priceCells, row } from '@/__tests__/lib/kosztorys/row-conditions/fixtures'
+import { CTX, priceCells, row } from '@/__tests__/lib/kosztorys/row-conditions/fixtures'
 import {
   applyRowConditions,
   columnsRevealedBy,
@@ -7,11 +7,17 @@ import {
   engagedPlane,
 } from '@/lib/kosztorys/row-conditions/queries'
 import { ROW_CONDITIONS, clientConditionIds } from '@/lib/kosztorys/row-conditions/registry'
+import type { RowConditionCtxT } from '@/lib/kosztorys/row-conditions/types'
 import { stageKey } from '@/lib/kosztorys/stage-keys'
 import type { KosztorysStageT, KosztorysV2RowT } from '@/lib/kosztorys/types'
 
-const matches = (conditionId: string, subject: KosztorysV2RowT) =>
-  countMatching([subject], conditionId, CTX) === 1
+// Throws on an id nobody knows, unlike `countMatching`, which answers 0 — every `toBe(false)` below
+// would pass vacuously the day a condition is renamed.
+const matches = (conditionId: string, subject: KosztorysV2RowT, ctx: RowConditionCtxT = CTX) => {
+  const condition = ROW_CONDITIONS.find((c) => c.id === conditionId)
+  if (!condition) throw new Error(`Unknown condition id: ${conditionId}`)
+  return condition.matches(subject, ctx)
+}
 
 describe('the conditions, each on its boundary', () => {
   it('„bez przedmiaru" reads a cleared cell and a zero alike, but not a real quantity', () => {
@@ -293,31 +299,32 @@ describe('„ze stawką wykonawcy od ceny z materiałem" — the overpaid-crew g
     hasSettledMaterial: false,
     divergentPriceRowIds: new Set<number>(),
   }
-  const fires = (conditionId: string, subject: KosztorysV2RowT, ctx = settled) =>
-    countMatching([subject], conditionId, ctx) === 1
-
   // The derived stawka: no override at all, so it is globalWToolsCoeff × cena j.m.
   const executedWTools = row({ [stageKey(1)]: 4 })
 
   it('fires on a derived stawka once the investment has material in robocizna', () => {
-    expect(fires('material-percent-rate-w-tools', executedWTools)).toBe(true)
+    expect(matches('material-percent-rate-w-tools', executedWTools, settled)).toBe(true)
   })
 
   it('stays silent on an investment with no material folded into robocizna', () => {
-    expect(fires('material-percent-rate-w-tools', executedWTools, noSettled)).toBe(false)
+    expect(matches('material-percent-rate-w-tools', executedWTools, noSettled)).toBe(false)
   })
 
   // Nothing has been executed, so nothing is owed yet and there is no overpayment to catch. Without
   // this the whole kosztorys would light up the moment one wydatek is marked „wliczony w robociznę".
   it('stays silent on a pozycja with przedmiar but no executed work', () => {
-    expect(fires('material-percent-rate-w-tools', row({ plannedQty: 20 }))).toBe(false)
+    expect(matches('material-percent-rate-w-tools', row({ plannedQty: 20 }), settled)).toBe(false)
   })
 
   // The convention the owner confirmed: on such pozycje the stawka is typed as a fixed amount.
   it('accepts a stawka typed as a fixed amount', () => {
     const typed = row({ wToolsOverrideValue: 40 })
     expect(
-      fires('material-percent-rate-w-tools', { ...typed, [stageKey(1)]: 4 } as KosztorysV2RowT),
+      matches(
+        'material-percent-rate-w-tools',
+        { ...typed, [stageKey(1)]: 4 } as KosztorysV2RowT,
+        settled,
+      ),
     ).toBe(false)
   })
 
@@ -327,28 +334,30 @@ describe('„ze stawką wykonawcy od ceny z materiałem" — the overpaid-crew g
     const halfTyped = row({ wToolsOverrideValue: 40 })
 
     const doneWTools = { ...halfTyped, [stageKey(1)]: 4 } as KosztorysV2RowT
-    expect(fires('material-percent-rate-w-tools', doneWTools)).toBe(false)
-    expect(fires('material-percent-rate-own-tools', doneWTools)).toBe(false)
+    expect(matches('material-percent-rate-w-tools', doneWTools, settled)).toBe(false)
+    expect(matches('material-percent-rate-own-tools', doneWTools, settled)).toBe(false)
 
     const doneOwnTools = { ...halfTyped, [stageKey(2)]: 4 } as KosztorysV2RowT
-    expect(fires('material-percent-rate-own-tools', doneOwnTools)).toBe(true)
-    expect(fires('material-percent-rate-w-tools', doneOwnTools)).toBe(false)
+    expect(matches('material-percent-rate-own-tools', doneOwnTools, settled)).toBe(true)
+    expect(matches('material-percent-rate-w-tools', doneOwnTools, settled)).toBe(false)
   })
 
   // An etap with no rozliczenie is where most kosztorysy sit while the work is happening — the crew
   // is decided at settlement, long after the stawka was set. Whichever it turns out to be gets a cut
   // of the material, so the etap counts toward both planes rather than toward neither.
   it('judges work on an etap with no rozliczenie against both planes', () => {
-    expect(fires('material-percent-rate-w-tools', row({ [stageKey(3)]: 9 }))).toBe(true)
-    expect(fires('material-percent-rate-own-tools', row({ [stageKey(3)]: 9 }))).toBe(true)
+    expect(matches('material-percent-rate-w-tools', row({ [stageKey(3)]: 9 }), settled)).toBe(true)
+    expect(matches('material-percent-rate-own-tools', row({ [stageKey(3)]: 9 }), settled)).toBe(
+      true,
+    )
   })
 
   it('still lets a fixed amount clear the plane it was typed on', () => {
     const halfTyped = row({ wToolsOverrideValue: 40 })
     const undecided = { ...halfTyped, [stageKey(3)]: 9 } as KosztorysV2RowT
 
-    expect(fires('material-percent-rate-w-tools', undecided)).toBe(false)
-    expect(fires('material-percent-rate-own-tools', undecided)).toBe(true)
+    expect(matches('material-percent-rate-w-tools', undecided, settled)).toBe(false)
+    expect(matches('material-percent-rate-own-tools', undecided, settled)).toBe(true)
   })
 
   it('sends each half to the plane it judges, and reveals the cells that repair it', () => {

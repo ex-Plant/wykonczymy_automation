@@ -1608,3 +1608,19 @@ is the test of the test, and skipping it is how a decorative assertion gets comm
 - **Problem**: both numbers are right and neither says so. The import counts **prace** — one per `catalogueKey` group whose prices disagree; the registry counts **pozycje**, because every `ROW_CONDITIONS` entry counts rows and rows are what you get to look at when you press the problem. The owner read the gap as a defect in the new diagnostic, and the plan's „Open Risks" section had pre-registered exactly this mismatch — which changed nothing, because the person reading `(38)` is reading the UI, not the plan. A caveat parked in a planning doc is not a mitigation. The same slice carried a second unverified claim: it justified excluding rows with no cena j.m. by asserting the registry „keeps its counters disjoint". It does not and never did — `no-client-price-with-work` and `work-without-planned-qty` fire on the same pozycja. The narrower true reason (the „Cena j.m." seam already has two diagnostics for a missing price, so a third would report the same pozycja for the same thing) was sufficient on its own; the invented invariant added nothing but a wrong statement about the codebase.
 - **Rule**: (1) When two surfaces count one condition, make the units match or put the unit in the label — a bare `(38)` standing next to a remembered `9` reads as a bug, and the reader has no way to discover otherwise. (2) Never justify a design choice with a system-wide invariant you have not checked across every member of that system; if the narrow, local reason is already sufficient, write **that** and nothing more. (3) An „Open Risks" bullet discharges nothing — if the risk is that a user misreads a number, the fix has to live where the number is rendered.
 - **Applies to**: implement, plan, code-review
+
+## A spec helper routed through a TOLERANT lookup makes every negative assertion vacuous under a rename
+
+- **Context**: the `row-conditions` spec asked „czy ten warunek łapie ten wiersz?" through
+  `countMatching([row], id, ctx) === 1`. `countMatching` looks the id up in a `Map` and answers **0**
+  for an id nobody knows — deliberately, because a filter persisted in `localStorage` under a since
+  removed condition must not blank the kosztorys.
+- **Problem**: that production tolerance became test blindness. 58 helper calls, dozens of them
+  `expect(...).toBe(false)`, would pass vacuously the day someone rewrites an `id` in the registry —
+  the spec would stay green while describing conditions that no longer exist.
+- **Rule**: a spec helper that resolves a subject **by key** must fail loudly on an unknown key. Read
+  the registry directly and throw, rather than borrowing the production lookup whose whole job is to
+  survive a bad key. The forgiving path is for the app, not for the guard that watches it.
+- **Applies to**: every `BY_ID.get(...)`, `?? fallback`, `find(...) ?? default` reached from a spec —
+  and every id that lives in persisted user state, where tolerance is the correct production
+  behaviour. Sibling of „A fixture in a degenerate state makes every absence assertion vacuous".
