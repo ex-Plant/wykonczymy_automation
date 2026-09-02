@@ -3693,10 +3693,12 @@ w siatce („kwota stała", 0 zł); **zapis niepowiązanego pola** — przez Loc
       „auto" — arkusz nie zna trzeciego stanu, więc pusta komórka jest tam decyzją, nie brakiem
 - [x] Jedno Ctrl+Z po zmianie źródła cofa cały gest, nie połowę
 - [x] `/admin` → pozycja kosztorysu: zapis niepowiązanego pola nie zamienia pozycji „auto" na 0 zł
-- [ ] Po migracji produkcyjnej: „należne wykonawcy" na inwestycji 14 (największa ekspozycja „auto",
-      ~10 739 zł) zgadza się z wartością sprzed wdrożenia
-- [ ] Właściciel zapisuje ponownie szablon „kosztorys wzór" **po** wdrożeniu — migracja czyści
-      `kosztorys_presets`, bo ich JSON nosi starą parę kolumn
+- [x] Po migracji produkcyjnej: „należne wykonawcy" na inwestycji 14 zgadza się z wartością sprzed
+      wdrożenia — produkcja pokazuje „Suma wykonanej pracy" 47 034,89 zł, a ta sama suma policzona na
+      lokalnej kopii dumpa **sprzed** migracji (stara para kolumn) daje 47 034,89 zł co do grosza.
+      13 861,90 zł z tego pochodzi z wierszy „auto"; zły backfill zdjąłby dokładnie tę kwotę
+- [x] Właściciel zapisuje ponownie szablon „kosztorys wzór" **po** wdrożeniu — potwierdzone przez
+      właściciela, zapis szablonu działa
 
 ## EX-761 — divergent-price-for-same-work (2026-09-02)
 
