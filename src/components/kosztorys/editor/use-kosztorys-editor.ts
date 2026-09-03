@@ -375,10 +375,8 @@ export function useKosztorysEditor({
   // is no control left that could fire them. Column resize (onGuide/onCommitColumn) is the exception:
   // it only moves a localStorage width, never touches the server, so a client keeps it for readability.
   // Sort is dropped (headers render as plain labels) — the client sees a fixed, non-interactive order.
-  // Wired only where writing is possible at all — dropped in the read-only client view AND on a
-  // zakończona inwestycja, whose actions the server refuses. The gate is the render mode plus the
-  // investment's state, NOT a role: OWNER/MANAGER/ADMIN all edit an open kosztorys, and none of them
-  // edits a closed one.
+  // The gate is the render mode plus the investment's state, NOT a role: OWNER/MANAGER/ADMIN all
+  // edit an open kosztorys, and none of them edits a closed one.
   const editorOnly = <T>(handler: T): T | undefined => (readOnly ? undefined : handler)
 
   // „Suma wykonanej pracy" (należne) for the subcontractor summary — view-INDEPENDENT: each etap
@@ -1145,8 +1143,9 @@ export function useKosztorysEditor({
   }
 
   function onChange(next: KosztorysV2RowT[]) {
-    // The load-bearing persistence kill-switch: a preview grid is read-only, but this guards the
-    // one path that could still POST — so no save, undo capture, or refresh ever fires on the public page.
+    // The public page's own guard, narrower than the lock: a zakończona inwestycja is stopped one
+    // layer out by `disabled: true` on every column, so nothing here can fire for it — but a preview
+    // grid is served to an anonymous visitor, and that one gets a belt as well as braces.
     if (preview) return
     const { fieldChanges, stageChanges, changedById } = planGridChanges(next, prevById.current)
     for (const c of fieldChanges) {
@@ -1274,7 +1273,6 @@ export function useKosztorysEditor({
     // Read by the toolbar and the summary through the editor context: on a locked investment they
     // drop their own write entries, which `editorOnly` (a grid-callback gate) never reaches.
     readOnly,
-    locked,
     // handlers
     onChange,
     handleAddItem,

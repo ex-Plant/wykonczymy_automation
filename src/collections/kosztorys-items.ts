@@ -30,7 +30,7 @@ export const KosztorysItems: CollectionConfig = {
   },
   access: {
     read: isAdminOrOwnerOrManager,
-    create: createUnlessInvestmentLocked({ field: 'investment' }),
+    create: createUnlessInvestmentLocked('investment'),
     update: unlessInvestmentLocked('investment.status'),
     delete: unlessInvestmentLocked('investment.status'),
   },

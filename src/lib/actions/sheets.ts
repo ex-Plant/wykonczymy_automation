@@ -1,5 +1,6 @@
 'use server'
 
+import type { Payload } from 'payload'
 import { applyMaterialSync } from '@/lib/actions/sheets-sync'
 import { ADMIN_OR_OWNER_ROLES } from '@/lib/auth/roles'
 import { extractSheetId, verifySheetAccess } from '@/lib/google/sheet-access'
@@ -11,7 +12,7 @@ import { isPointableColumn } from '@/lib/kosztorys/sheet-import/sheet-column-map
 import { investmentAction } from '@/lib/actions/investment-action'
 import { INVESTMENT_LOCKED_MESSAGE } from '@/lib/constants/investment-lock'
 import { getDb } from '@/lib/db/get-db'
-import { isInvestmentLocked } from '@/lib/db/investment-lock'
+import { isRelatedInvestmentLocked } from '@/lib/db/investment-lock'
 import { protectedAction } from './run-action'
 import { logError } from '@/lib/utils/log-error'
 
@@ -150,6 +151,27 @@ export async function linkSheetToInvestmentAction(sheetId: number, investmentId:
 }
 
 /**
+ * Both sheet mutations that can touch a linked investment gate by hand rather than through
+ * `investmentAction`: the target is the sheet's own investment, and that FK is nullable — an
+ * unlinked sheet has no target and must still pass, which the wrapper's resolver reads as
+ * „row missing".
+ */
+async function lockedSheetError(
+  payload: Payload,
+  sheetId: number,
+): Promise<{ success: false; error: string } | undefined> {
+  const sheet = await payload
+    .findByID({ collection: 'kosztoryses', id: sheetId, depth: 0, overrideAccess: true })
+    .catch(() => undefined)
+  if (!sheet) return { success: false, error: 'Kosztorys nie istnieje.' }
+
+  if (await isRelatedInvestmentLocked(await getDb(payload), sheet.investment)) {
+    return { success: false, error: INVESTMENT_LOCKED_MESSAGE }
+  }
+  return undefined
+}
+
+/**
  * Detach a sheet record from its investment, leaving the sheet untouched. The
  * row stays as an "unlinked sheet" — re-linkable later from the listing.
  */
@@ -157,22 +179,8 @@ export async function unlinkSheetFromInvestmentAction(sheetId: number) {
   return protectedAction(
     'unlinkSheetFromInvestmentAction',
     async ({ payload }) => {
-      const sheet = await payload.findByID({
-        collection: 'kosztoryses',
-        id: sheetId,
-        depth: 0,
-        overrideAccess: true,
-      })
-      if (!sheet) return { success: false, error: 'Kosztorys nie istnieje.' }
-
-      // Checked by hand rather than through `investmentAction`: the target is the sheet's own
-      // investment, and that FK is nullable — an unlinked sheet has no target and must still pass,
-      // which the wrapper's resolver reads as „row missing".
-      const linkedTo =
-        typeof sheet.investment === 'number' ? sheet.investment : sheet.investment?.id
-      if (linkedTo != null && (await isInvestmentLocked(await getDb(payload), linkedTo))) {
-        return { success: false, error: INVESTMENT_LOCKED_MESSAGE }
-      }
+      const locked = await lockedSheetError(payload, sheetId)
+      if (locked) return locked
 
       await payload.update({
         collection: 'kosztoryses',
@@ -272,6 +280,12 @@ export async function deleteSheetAction(sheetId: number) {
       if (!(ADMIN_OR_OWNER_ROLES as readonly string[]).includes(user.role)) {
         return { success: false, error: 'Brak uprawnień do usuwania kosztorysów.' }
       }
+
+      // Deleting the record unlinks the investment as a side effect, so it moves the same figure
+      // the unlink action does — the lock has to reach both or it reaches neither.
+      const locked = await lockedSheetError(payload, sheetId)
+      if (locked) return locked
+
       await payload.delete({
         collection: 'kosztoryses',
         id: sheetId,

@@ -6,7 +6,7 @@ import { investmentAction } from '@/lib/actions/investment-action'
 import { validateAction } from '@/lib/actions/run-action'
 import { KOSZTORYS_TREE_TAGS } from '@/lib/cache/tags'
 import { getDb } from '@/lib/db/get-db'
-import { investmentIdFor } from '@/lib/db/investment-lock'
+import { lockStatusFor } from '@/lib/db/investment-lock'
 import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import { captureAutoSnapshot } from '@/lib/kosztorys/capture-auto-snapshot'
 import { cleanDescription } from '@/lib/kosztorys/clean-description'
@@ -366,13 +366,12 @@ export async function removeSectionAction(sectionId: number) {
   return investmentAction(
     'removeSectionAction',
     { kind: 'section', id: sectionId },
-    async ({ payload, user }) => {
+    async ({ payload, user, investmentId }) => {
       const db = await getDb(payload)
       // Deleting a populated section is allowed (EX-477) — the UI gates it behind a confirm. A
       // section delete FK-cascades through its items into stage_progress, irrecoverable by in-session
       // undo (S-07), so capture the exact current state as a snapshot first, every time.
-      const investmentId = await investmentIdFor(db, 'section', sectionId)
-      if (investmentId != null) await captureAutoSnapshot(db, investmentId, user.id)
+      await captureAutoSnapshot(db, investmentId, user.id)
       await payload.delete({ collection: 'kosztorys-sections', id: sectionId })
       return { success: true }
     },
@@ -513,7 +512,7 @@ export async function insertItemAction(
           // Only the investment is needed here — the slot is already resolved, so the append-position
           // aggregate `sectionOwnerAndNextItemOrder` would compute is dead weight held under the
           // section-wide lock.
-          const owner = await investmentIdFor(txDb, 'section', slot.ownerId)
+          const owner = (await lockStatusFor(txDb, 'section', slot.ownerId))?.investmentId
           if (owner == null) return { success: false, error: SECTION_MISSING }
           await shiftDisplayOrderFrom(txDb, 'kosztorys-items', slot.ownerId, slot.at)
           const created = await createBlankItem(payload, {
@@ -535,13 +534,12 @@ export async function removeItemAction(itemId: number) {
   return investmentAction(
     'removeItemAction',
     { kind: 'item', id: itemId },
-    async ({ payload, user }) => {
+    async ({ payload, user, investmentId }) => {
       const db = await getDb(payload)
       // Deleting a populated item is allowed (EX-477) — the UI gates it behind a confirm. A delete
       // still drops the row's opis/przedmiar/cena/rabat (and cascades stage_progress), irrecoverable
       // by in-session undo (S-07), so capture a snapshot first, every time.
-      const investmentId = await investmentIdFor(db, 'item', itemId)
-      if (investmentId != null) await captureAutoSnapshot(db, investmentId, user.id)
+      await captureAutoSnapshot(db, investmentId, user.id)
       await payload.delete({ collection: 'kosztorys-items', id: itemId })
       return { success: true }
     },
@@ -713,15 +711,14 @@ export async function removeStageAction(stageId: number): Promise<ActionResultT>
   return investmentAction(
     'removeStageAction',
     { kind: 'stage', id: stageId },
-    async ({ payload, user }) => {
+    async ({ payload, user, investmentId }) => {
       const parsed = validateAction(stageIdSchema, { stageId })
       if (!parsed.success) return parsed
       const db = await getDb(payload)
       // Deleting a populated stage is allowed (EX-477) — the UI gates it behind a confirm. Dropping
       // the stage cascades its stage_progress, irrecoverable by in-session undo (S-07), so capture a
       // snapshot first, every time.
-      const investmentId = await investmentIdFor(db, 'stage', parsed.data.stageId)
-      if (investmentId != null) await captureAutoSnapshot(db, investmentId, user.id)
+      await captureAutoSnapshot(db, investmentId, user.id)
       await payload.delete({ collection: 'kosztorys-stages', id: parsed.data.stageId })
       return { success: true }
     },

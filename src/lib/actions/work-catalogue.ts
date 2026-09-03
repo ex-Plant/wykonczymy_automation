@@ -2,6 +2,7 @@
 
 import type { Payload } from 'payload'
 import { z } from 'zod'
+import { investmentAction } from '@/lib/actions/investment-action'
 import { getDb } from '@/lib/db/get-db'
 import { withPayloadTransaction } from '@/lib/db/with-payload-transaction'
 import {
@@ -133,8 +134,9 @@ export async function insertCatalogueItemsAction(
   sectionId: number,
   catalogueItemIds: number[],
 ): Promise<ActionResultT<AppendedCatalogueSliceT>> {
-  return protectedAction(
+  return investmentAction(
     'insertCatalogueItemsAction',
+    { kind: 'section', id: sectionId },
     async ({ payload }) => {
       const parsed = validateAction(insertCatalogueItemsSchema, { sectionId, catalogueItemIds })
       if (!parsed.success) return parsed

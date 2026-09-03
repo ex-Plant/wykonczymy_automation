@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { investmentIdFor, isInvestmentLocked } from '@/lib/db/investment-lock'
+import {
+  isInvestmentLocked,
+  isRelatedInvestmentLocked,
+  lockStatusFor,
+} from '@/lib/db/investment-lock'
 import { fakePayload, mockExecute, resetFakePayload } from '@/__tests__/helpers/fake-payload-sql'
 import { getDb } from '@/lib/db/get-db'
 
@@ -43,22 +47,46 @@ describe('investment lock', () => {
     })
   })
 
-  describe('investmentIdFor', () => {
+  describe('lockStatusFor', () => {
     it.each([
       ['item', 'kosztorys_items'],
       ['section', 'kosztorys_sections'],
       ['stage', 'kosztorys_stages'],
     ] as const)('reads %s from %s', async (kind, table) => {
       const db = await getDb(fakePayload)
-      mockExecute.mockResolvedValueOnce({ rows: [{ investment_id: 42 }] })
-      expect(await investmentIdFor(db, kind, 7)).toBe(42)
+      mockExecute.mockResolvedValueOnce({ rows: [{ id: 42, status: 'active' }] })
+      expect(await lockStatusFor(db, kind, 7)).toEqual({ investmentId: 42, locked: false })
       expect(lastSqlChunks()).toContain(table)
     })
 
+    // Both facts in one round trip: the delete handlers take the owner id straight off this answer
+    // rather than asking the same row a second time.
+    it('answers owner and lock together', async () => {
+      const db = await getDb(fakePayload)
+      mockExecute.mockResolvedValueOnce({ rows: [{ id: 42, status: 'completed' }] })
+      expect(await lockStatusFor(db, 'item', 7)).toEqual({ investmentId: 42, locked: true })
+    })
+
+    // Distinguishable from „locked" on purpose — the caller reports this one as NOT_FOUND.
     it('returns undefined for a row that does not exist', async () => {
       const db = await getDb(fakePayload)
       mockExecute.mockResolvedValueOnce({ rows: [] })
-      expect(await investmentIdFor(db, 'item', 999)).toBeUndefined()
+      expect(await lockStatusFor(db, 'item', 999)).toBeUndefined()
+    })
+  })
+
+  describe('isRelatedInvestmentLocked', () => {
+    it.each([42, '42', { id: 42 }])('resolves a relationship sent as %o', async (relation) => {
+      const db = await getDb(fakePayload)
+      mockExecute.mockResolvedValueOnce({ rows: [{ status: 'completed' }] })
+      expect(await isRelatedInvestmentLocked(db, relation)).toBe(true)
+    })
+
+    // A row naming no investment moves no investment's money — and it must not cost a query.
+    it('answers „not locked" for an absent relationship without asking the DB', async () => {
+      const db = await getDb(fakePayload)
+      expect(await isRelatedInvestmentLocked(db, null)).toBe(false)
+      expect(mockExecute).not.toHaveBeenCalled()
     })
   })
 })

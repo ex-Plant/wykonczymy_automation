@@ -3774,6 +3774,8 @@ interfejs nie da się jej minąć i że odczyt zakończonej inwestycji nadal jes
       w comboboxie formularza, a wejście z linku `?investment=<id>` nie zasiewa jej w polu
 - [ ] Podpięcie i odpięcie skanu faktury do transakcji zakończonej inwestycji **działa** (jedyny
       wyjątek od blokady)
+- [ ] Usunięcie transakcji zakończonej inwestycji z `/admin` kończy się odmową z czytelnym
+      komunikatem (nie „Something went wrong"), a bilans i arkusz zostają nietknięte
 
 ### Phase 4: Status jako zamek
 

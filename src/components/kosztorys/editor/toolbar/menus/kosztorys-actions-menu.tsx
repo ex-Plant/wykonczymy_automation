@@ -47,8 +47,10 @@ export function KosztorysActionsMenu() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-80">
           {/* On a zakończona inwestycja everything that writes is gone, „Zapisz wersję" included —
-              a snapshot is a write and the server refuses it. What survives is what only READS the
-              kosztorys: saving a szablon off it, and the two comparisons. */}
+              a snapshot is a write and the server refuses it. „Porównaj z arkuszem" goes with them:
+              it refreshes the stored Pomiar in the same pass, so it reads like a comparison and
+              writes like an import. What survives is what only READS: saving a szablon off the
+              kosztorys, and the katalog comparison. */}
           {!readOnly && (
             <>
               <DropdownMenuLabel>Edycja</DropdownMenuLabel>
@@ -81,20 +83,19 @@ export function KosztorysActionsMenu() {
           <DropdownMenuSeparator />
           <DropdownMenuLabel>Katalog prac</DropdownMenuLabel>
           <CatalogueCompareMenuItem />
-          {/* Both entries can only answer „Inwestycja nie ma kosztorysu." without a linked sheet. */}
-          {hasSheet && (
+          {/* Both entries can only answer „Inwestycja nie ma kosztorysu." without a linked sheet, and
+              both write, so the whole section goes under the lock. */}
+          {!readOnly && hasSheet && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuLabel>Arkusz Google</DropdownMenuLabel>
-              {!readOnly && (
-                <DropdownMenuItem onSelect={openImport}>
-                  <SheetIcon />
-                  <MenuItemBody
-                    label="Pobierz z arkusza Google…"
-                    description="Wczytaj sekcje, prace, stawki i etapy z arkusza podpiętego do tej inwestycji."
-                  />
-                </DropdownMenuItem>
-              )}
+              <DropdownMenuItem onSelect={openImport}>
+                <SheetIcon />
+                <MenuItemBody
+                  label="Pobierz z arkusza Google…"
+                  description="Wczytaj sekcje, prace, stawki i etapy z arkusza podpiętego do tej inwestycji."
+                />
+              </DropdownMenuItem>
               <SheetCompareMenuItem />
             </>
           )}

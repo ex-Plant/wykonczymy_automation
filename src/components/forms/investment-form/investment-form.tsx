@@ -11,6 +11,7 @@ import { useInvestmentFormStore } from '@/stores/form-stores'
 import type { InvestmentFormDataT } from './investment-schema'
 import type { PresetMetaT } from '@/lib/db/presets'
 import type { ActionResultT } from '@/types/action'
+import { isLockedStatus } from '@/lib/constants/investment-lock'
 
 type InvestmentFormPropsT = {
   formId: string
@@ -54,7 +55,7 @@ export function InvestmentForm({
       // but właściciel/admin, so the person closing the investment is told what they are giving up
       // before the write, not by a refusal afterwards.
       confirmBeforeSubmit: (value) =>
-        value.status === 'completed' && defaultValues.status !== 'completed'
+        isLockedStatus(value.status) && !isLockedStatus(defaultValues.status)
           ? {
               title: 'Zakończyć inwestycję?',
               description:

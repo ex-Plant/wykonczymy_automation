@@ -178,12 +178,16 @@ function emptyReport(): ImportReportT {
  * it shares `getInvestmentSheetId`, `readImportGrids` and `sheetFailureMessage` with the import pair
  * above — splitting them would duplicate the failure-message translation and give the two
  * sheet-reading dialogs two different error shapes.
+ *
+ * Gated like an import, not like a read: that refresh is an `UPDATE kosztorys_items`, so on a
+ * zakończona inwestycja this is a write wearing a comparison's name.
  */
 export async function compareWithSheet(
   investmentId: number,
 ): Promise<ActionResultT<SheetCompareResultT>> {
-  return protectedAction<SheetCompareResultT>(
+  return investmentAction<SheetCompareResultT>(
     'compareWithSheet',
+    { investmentId },
     async ({ payload }) => {
       const sheet = await getInvestmentSheet(payload, investmentId)
       if (!sheet) return { success: false, error: MISSING_SHEET }

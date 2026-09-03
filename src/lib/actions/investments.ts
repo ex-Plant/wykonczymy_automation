@@ -195,16 +195,20 @@ export async function linkSheetAction(investmentId: number, input: string) {
 export async function updateInvestmentAction(id: number, data: InvestmentFormDataT) {
   return protectedAction(
     'updateInvestmentAction',
-    async ({ payload }) => {
+    async ({ payload, user }) => {
       const parsed = validateAction(investmentSchema, data)
       if (!parsed.success) return parsed
 
       // presetId is a create-only seed field; the edit form always sends '' — never write it.
       const { presetId: _presetId, ...investmentData } = parsed.data
+      // `user` is load-bearing, not decoration: without it `createLocalReq` sets `req.user = null`
+      // and `guardInvestmentStatusUnlock` refuses to reopen a zakończona inwestycja for EVERY role,
+      // właściciel included — the lock becomes a door with no key.
       await payload.update({
         collection: 'investments',
         id,
         data: investmentData,
+        user,
       })
 
       return { success: true }

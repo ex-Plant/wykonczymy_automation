@@ -49,6 +49,8 @@ const {
 const { listSnapshotsAction, saveSnapshotAction, snapshotAction } =
   await import('@/lib/actions/kosztorys-snapshots')
 const { savePresetAction } = await import('@/lib/actions/kosztorys-presets')
+const { compareWithSheet } = await import('@/lib/actions/kosztorys-import')
+const { insertCatalogueItemsAction } = await import('@/lib/actions/work-catalogue')
 const { INVESTMENT_LOCKED_MESSAGE } = await import('@/lib/constants/investment-lock')
 
 // Gated like the sibling specs: skips with no DB env, FAILS if env is set but the DB is unreachable.
@@ -153,6 +155,10 @@ describe.skipIf(!ENV_READY)('a completed investment refuses every kosztorys writ
     ['setStageProgressAction', () => setStageProgressAction(itemId, stageId, 5)],
     ['snapshotAction', () => snapshotAction(investmentId)],
     ['saveSnapshotAction', () => saveSnapshotAction(investmentId, 'v1')],
+    ['insertCatalogueItemsAction', () => insertCatalogueItemsAction(sectionId, [1])],
+    // Reads like a comparison and writes like an import: it refreshes „Pomiar z natury" from the
+    // arkusz, which is an UPDATE on the pozycje.
+    ['compareWithSheet', () => compareWithSheet(investmentId)],
   ])('%s refuses', async (_name, call) => {
     expect(await call()).toEqual({ success: false, error: INVESTMENT_LOCKED_MESSAGE })
   })

@@ -1,5 +1,6 @@
-import type { CollectionBeforeChangeHook } from 'payload'
+import { APIError, type CollectionBeforeChangeHook } from 'payload'
 import { isAdminOrOwnerRole } from '@/lib/auth/roles'
+import { isLockedStatus } from '@/lib/constants/investment-lock'
 
 export const INVESTMENT_UNLOCK_FORBIDDEN_MESSAGE =
   'Zakończoną inwestycję może odblokować tylko właściciel lub administrator.'
@@ -18,13 +19,16 @@ export const guardInvestmentStatusUnlock: CollectionBeforeChangeHook = ({
   req,
   originalDoc,
 }) => {
-  const wasCompleted = (originalDoc as { status?: string } | undefined)?.status === 'completed'
+  const wasCompleted = isLockedStatus((originalDoc as { status?: string } | undefined)?.status)
   const nextStatus = (data as { status?: string }).status
-  if (!wasCompleted || nextStatus === undefined || nextStatus === 'completed') return data
+  if (!wasCompleted || nextStatus === undefined || isLockedStatus(nextStatus)) return data
 
   const role = req.user?.role
   if (!role || !isAdminOrOwnerRole(role)) {
-    throw new Error(INVESTMENT_UNLOCK_FORBIDDEN_MESSAGE)
+    // APIError, not Error: routeError rewrites the message of anything it can't prove public, so a
+    // bare throw reaches `/admin` and REST as „Something went wrong" with a 500 instead of the
+    // sentence naming who may reopen the job.
+    throw new APIError(INVESTMENT_UNLOCK_FORBIDDEN_MESSAGE, 403)
   }
   return data
 }

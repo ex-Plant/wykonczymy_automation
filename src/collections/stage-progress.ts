@@ -22,7 +22,7 @@ export const StageProgress: CollectionConfig = {
   },
   access: {
     read: isAdminOrOwnerOrManager,
-    create: createUnlessInvestmentLocked({ field: 'item', via: 'kosztorys-items' }),
+    create: createUnlessInvestmentLocked('item'),
     update: unlessInvestmentLocked('item.investment.status'),
     delete: unlessInvestmentLocked('item.investment.status'),
   },

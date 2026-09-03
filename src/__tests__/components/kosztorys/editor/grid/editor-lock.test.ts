@@ -29,7 +29,6 @@ const ids = (opts: Partial<BuildV2ColumnsOptsT>): string[] =>
     .filter((id): id is string => id != null)
 
 describe('a locked kosztorys', () => {
-  // What „lock" costs the owner: writing. Nothing else.
   it('renders the same columns as the open editor', () => {
     expect(ids({ readOnly: true })).toEqual(ids({}).filter((id) => id !== 'actions'))
   })
