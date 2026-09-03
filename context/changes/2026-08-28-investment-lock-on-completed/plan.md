@@ -608,15 +608,15 @@ lista inwestycji zamkniętych przedwcześnie, nie usterka.
 
 #### Automated
 
-- [x] 3.1 Nowy spec bramki transakcyjnej (create / update / cancel / przeniesienie / wyjątek fakturowy)
-- [x] 3.2 Specy akcji transakcyjnych przechodzą
-- [x] 3.3 Istniejący spec hooka bez regresji
+- [x] 3.1 Nowy spec bramki transakcyjnej (create / update / cancel / przeniesienie / wyjątek fakturowy) — 28fc91f7
+- [x] 3.2 Specy akcji transakcyjnych przechodzą — 28fc91f7
+- [x] 3.3 Istniejący spec hooka bez regresji — 28fc91f7
 
 ### Phase 4: Status jako zamek
 
 #### Automated
 
-- [ ] 4.1 Nowy spec bramki statusu (role × kierunek przejścia × pola kartoteki)
+- [x] 4.1 Nowy spec bramki statusu (role × kierunek przejścia × pola kartoteki)
 
 ### Phase 5: UI read-only
 
