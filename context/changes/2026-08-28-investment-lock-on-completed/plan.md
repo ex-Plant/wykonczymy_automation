@@ -616,10 +616,10 @@ lista inwestycji zamkniętych przedwcześnie, nie usterka.
 
 #### Automated
 
-- [x] 4.1 Nowy spec bramki statusu (role × kierunek przejścia × pola kartoteki)
+- [x] 4.1 Nowy spec bramki statusu (role × kierunek przejścia × pola kartoteki) — 9e8542d8
 
 ### Phase 5: UI read-only
 
 #### Automated
 
-- [ ] 5.1 Nowy spec rozszczepienia `readOnly` / `previewVisible`
+- [x] 5.1 Nowy spec rozszczepienia `readOnly` / `previewVisible`

@@ -107,6 +107,10 @@ type ArgsT = {
   // The investment's stored client-view settings, resolved server-side. Only consumed under
   // `preview` — on the owner's editor it is absent, and the settings dialog reads its own copy.
   clientView?: ClientViewSettingsT
+  // „Zakończona" — the server refuses every kosztorys write, so nothing here may offer one. Kept
+  // apart from `preview` on purpose: the two agree on interaction and disagree on disclosure, and a
+  // locked investment is still the owner's OWN full document.
+  locked?: boolean
   undoRedo: UndoRedoApiT
   // Roster for the etap header's worker picker. Absent on the client share path, which never renders
   // a menu at all.
@@ -136,11 +140,16 @@ export function useKosztorysEditor({
   tree,
   preview = false,
   clientView,
+  locked = false,
   undoRedo,
   workers,
   hasSettledMaterial = false,
   onStaleTree,
 }: ArgsT) {
+  // Interaction, split from disclosure. `preview` decides what a client is SHOWN (layout, allowlisted
+  // columns, dimmed forecasts); this decides whether anything may be written at all, and the two
+  // reasons for „no writing" are a client's document and a closed investment.
+  const readOnly = preview || locked
   const router = useRouter()
   const { recoverStaleTree, reportFailure } = useStaleTreeRecovery(onStaleTree)
   const { save, runNow } = useDebouncedSave(500, recoverStaleTree)
@@ -366,9 +375,11 @@ export function useKosztorysEditor({
   // is no control left that could fire them. Column resize (onGuide/onCommitColumn) is the exception:
   // it only moves a localStorage width, never touches the server, so a client keeps it for readability.
   // Sort is dropped (headers render as plain labels) — the client sees a fixed, non-interactive order.
-  // Wired only in the interactive editor render, dropped in the read-only client view. The gate is
-  // the render mode, NOT a role — OWNER/MANAGER/ADMIN all edit; the client (no login) does not.
-  const editorOnly = <T>(handler: T): T | undefined => (preview ? undefined : handler)
+  // Wired only where writing is possible at all — dropped in the read-only client view AND on a
+  // zakończona inwestycja, whose actions the server refuses. The gate is the render mode plus the
+  // investment's state, NOT a role: OWNER/MANAGER/ADMIN all edit an open kosztorys, and none of them
+  // edits a closed one.
+  const editorOnly = <T>(handler: T): T | undefined => (readOnly ? undefined : handler)
 
   // „Suma wykonanej pracy" (należne) for the subcontractor summary — view-INDEPENDENT: each etap
   // valued at its own plane's price, split + combined. Reactive to unsaved edits via [rows, stages];
@@ -496,7 +507,7 @@ export function useKosztorysEditor({
     divergenceFilterEngaged,
     engagedStageConditionIds,
     revealedColumnIds,
-    readOnly: preview,
+    readOnly,
     previewVisible: preview,
     previewHiddenColumns,
   }
@@ -1260,6 +1271,10 @@ export function useKosztorysEditor({
     foldableSectionIds,
     ordinalByRowId,
     sectionRows,
+    // Read by the toolbar and the summary through the editor context: on a locked investment they
+    // drop their own write entries, which `editorOnly` (a grid-callback gate) never reaches.
+    readOnly,
+    locked,
     // handlers
     onChange,
     handleAddItem,

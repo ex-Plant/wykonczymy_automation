@@ -32,7 +32,7 @@ import { KosztorysShareDialog } from '@/components/kosztorys/editor/dialogs/kosz
 
 // Item and dialog are siblings, never nested — see KosztorysActionsProvider for why.
 export function KosztorysActionsMenu() {
-  const { onOpenVersions, openImport, hasSheet, undo, redo, canUndo, canRedo } =
+  const { onOpenVersions, openImport, hasSheet, undo, redo, canUndo, canRedo, readOnly } =
     useKosztorysEditorContext()
 
   return (
@@ -46,31 +46,38 @@ export function KosztorysActionsMenu() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-80">
-          <DropdownMenuLabel>Edycja</DropdownMenuLabel>
-          <DropdownMenuItem onSelect={undo} disabled={!canUndo}>
-            <Undo2 />
-            <MenuItemBody label="Cofnij" description="Cmd/Ctrl+Z" />
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={redo} disabled={!canRedo}>
-            <Redo2 />
-            <MenuItemBody label="Ponów" description="Cmd/Ctrl+Shift+Z" />
-          </DropdownMenuItem>
-          <CleanDescriptionsMenuItem />
-          <DropdownMenuSeparator />
-          <DropdownMenuLabel>Wersje</DropdownMenuLabel>
-          <SaveVersionMenuItem />
-          <DropdownMenuItem onSelect={onOpenVersions}>
-            <History />
-            <MenuItemBody
-              label="Wczytaj"
-              description="Przywróć kosztorys do wcześniej zapisanego stanu."
-            />
-          </DropdownMenuItem>
-          <ClearKosztorysMenuItem />
-          <DropdownMenuSeparator />
+          {/* On a zakończona inwestycja everything that writes is gone, „Zapisz wersję" included —
+              a snapshot is a write and the server refuses it. What survives is what only READS the
+              kosztorys: saving a szablon off it, and the two comparisons. */}
+          {!readOnly && (
+            <>
+              <DropdownMenuLabel>Edycja</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={undo} disabled={!canUndo}>
+                <Undo2 />
+                <MenuItemBody label="Cofnij" description="Cmd/Ctrl+Z" />
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={redo} disabled={!canRedo}>
+                <Redo2 />
+                <MenuItemBody label="Ponów" description="Cmd/Ctrl+Shift+Z" />
+              </DropdownMenuItem>
+              <CleanDescriptionsMenuItem />
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Wersje</DropdownMenuLabel>
+              <SaveVersionMenuItem />
+              <DropdownMenuItem onSelect={onOpenVersions}>
+                <History />
+                <MenuItemBody
+                  label="Wczytaj"
+                  description="Przywróć kosztorys do wcześniej zapisanego stanu."
+                />
+              </DropdownMenuItem>
+              <ClearKosztorysMenuItem />
+              <DropdownMenuSeparator />
+            </>
+          )}
           <DropdownMenuLabel>Szablony</DropdownMenuLabel>
           <SavePresetMenuItem />
-          <ReloadPresetMenuItem />
+          {!readOnly && <ReloadPresetMenuItem />}
           <DropdownMenuSeparator />
           <DropdownMenuLabel>Katalog prac</DropdownMenuLabel>
           <CatalogueCompareMenuItem />
@@ -79,13 +86,15 @@ export function KosztorysActionsMenu() {
             <>
               <DropdownMenuSeparator />
               <DropdownMenuLabel>Arkusz Google</DropdownMenuLabel>
-              <DropdownMenuItem onSelect={openImport}>
-                <SheetIcon />
-                <MenuItemBody
-                  label="Pobierz z arkusza Google…"
-                  description="Wczytaj sekcje, prace, stawki i etapy z arkusza podpiętego do tej inwestycji."
-                />
-              </DropdownMenuItem>
+              {!readOnly && (
+                <DropdownMenuItem onSelect={openImport}>
+                  <SheetIcon />
+                  <MenuItemBody
+                    label="Pobierz z arkusza Google…"
+                    description="Wczytaj sekcje, prace, stawki i etapy z arkusza podpiętego do tej inwestycji."
+                  />
+                </DropdownMenuItem>
+              )}
               <SheetCompareMenuItem />
             </>
           )}

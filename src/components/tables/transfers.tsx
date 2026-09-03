@@ -18,6 +18,7 @@ import {
   billsNetAmount,
   type PaymentMethodT,
 } from '@/lib/constants/transfers'
+import { isBookableInvestment } from '@/lib/constants/investment-lock'
 import type { ReferenceDataBaseT } from '@/types/reference-data'
 import type { TransferRowT } from '@/types/transfers'
 
@@ -216,6 +217,14 @@ export function getTransferColumns(exclude: string[] = [], options: ColumnOption
       const row = info.row.original
       if (row.cancelled || isCancellationType(row.type)) return null
 
+      // Courtesy, not a gate — the collection hook refuses either write regardless. Read off
+      // reference data because the row carries the investment's name and id, never its status.
+      const lockedInvestment =
+        row.investmentId !== undefined &&
+        referenceData?.investments.some(
+          (investment) => investment.id === row.investmentId && !isBookableInvestment(investment),
+        ) === true
+
       const canEdit =
         !!currentUserRole &&
         currentUserId !== undefined &&
@@ -229,9 +238,18 @@ export function getTransferColumns(exclude: string[] = [], options: ColumnOption
       return (
         <div className="flex items-center gap-1">
           {referenceData && (
-            <EditTransferDialog row={row} referenceData={referenceData} canEdit={canEdit} />
+            <EditTransferDialog
+              row={row}
+              referenceData={referenceData}
+              canEdit={canEdit && !lockedInvestment}
+              disabledReason={
+                lockedInvestment
+                  ? 'Inwestycja jest zakończona — transakcje są zamknięte'
+                  : undefined
+              }
+            />
           )}
-          <CancelTransferButton transactionId={row.id} />
+          {!lockedInvestment && <CancelTransferButton transactionId={row.id} />}
         </div>
       )
     },
