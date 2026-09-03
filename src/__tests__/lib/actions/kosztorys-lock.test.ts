@@ -49,7 +49,7 @@ const {
 const { listSnapshotsAction, saveSnapshotAction, snapshotAction } =
   await import('@/lib/actions/kosztorys-snapshots')
 const { savePresetAction } = await import('@/lib/actions/kosztorys-presets')
-const { INVESTMENT_LOCKED_MESSAGE } = await import('@/lib/actions/investment-action')
+const { INVESTMENT_LOCKED_MESSAGE } = await import('@/lib/constants/investment-lock')
 
 // Gated like the sibling specs: skips with no DB env, FAILS if env is set but the DB is unreachable.
 const ENV_READY = Boolean(process.env.DB_POSTGRES_URL && process.env.PAYLOAD_SECRET)

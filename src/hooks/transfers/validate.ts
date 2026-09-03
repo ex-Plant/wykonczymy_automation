@@ -14,6 +14,10 @@ import {
   carriesPaymentMethod,
 } from '@/lib/constants/transfers'
 import { getAmountError, getNetAmountError } from '@/lib/utils/validation'
+import { getDb } from '@/lib/db/get-db'
+import { isInvestmentLocked } from '@/lib/db/investment-lock'
+import { INVESTMENT_LOCKED_MESSAGE } from '@/lib/constants/investment-lock'
+import { resolveId } from '@/lib/utils/resolve-id'
 
 type TransferData = Partial<Transaction>
 
@@ -22,7 +26,7 @@ const FROZEN_FIELD_LABELS = {
   netAmount: 'Kwoty netto',
 } as const
 
-export const validateTransfer: CollectionBeforeValidateHook = ({
+export const validateTransfer: CollectionBeforeValidateHook = async ({
   data,
   req,
   operation,
@@ -56,6 +60,27 @@ export const validateTransfer: CollectionBeforeValidateHook = ({
   const expenseCategory = resolved('expenseCategory')
   const vatPlane = resolved('vatPlane')
   const paymentMethod = resolved('paymentMethod')
+
+  // A settled investment moves no more money, so the gate sits here — above BOTH early returns, or
+  // anulowanie leaks through the second one. Transactions have no raw-SQL writer, so unlike the
+  // kosztorys this hook IS the complete gate, covering the admin panel and the API alike.
+  // Both sides of a move: booking ONTO a locked investment and lifting a row OFF one.
+  const touchedInvestments = [
+    ...new Set(
+      [resolved('investment'), original?.investment]
+        .map(resolveId)
+        .filter((id): id is number => id !== undefined),
+    ),
+  ]
+  // The one write that stays open: attaching or detaching a scan of the faktura. Keyed on the KEYS
+  // of the patch, not their values — an empty array is a legitimate removal of every page.
+  const invoiceOnly = Object.keys(d).every((key) => key === 'invoice')
+  if (touchedInvestments.length > 0 && !invoiceOnly) {
+    const db = await getDb(req.payload, req)
+    for (const id of touchedInvestments) {
+      if (await isInvestmentLocked(db, id)) throw new Error(INVESTMENT_LOCKED_MESSAGE)
+    }
+  }
 
   // CANCELLATION rows skip all normal validation — relational fields are null
   if (type === 'CANCELLATION') {

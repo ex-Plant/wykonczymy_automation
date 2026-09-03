@@ -600,17 +600,17 @@ lista inwestycji zamkniętych przedwcześnie, nie usterka.
 
 #### Automated
 
-- [x] 2.1 Testy integracyjne akcji kosztorysu na zablokowanej inwestycji odmawiają dla każdej roli — 3898fac6
-- [x] 2.2 Akcje czytające na zablokowanej inwestycji dalej zwracają dane — 3898fac6
-- [x] 2.3 Istniejące specy kosztorysu przechodzą bez regresji — 3898fac6
+- [x] 2.1 Testy integracyjne akcji kosztorysu na zablokowanej inwestycji odmawiają dla każdej roli — 39eaea4b
+- [x] 2.2 Akcje czytające na zablokowanej inwestycji dalej zwracają dane — 39eaea4b
+- [x] 2.3 Istniejące specy kosztorysu przechodzą bez regresji — 39eaea4b
 
 ### Phase 3: Transakcje
 
 #### Automated
 
-- [ ] 3.1 Nowy spec bramki transakcyjnej (create / update / cancel / przeniesienie / wyjątek fakturowy)
-- [ ] 3.2 Specy akcji transakcyjnych przechodzą
-- [ ] 3.3 Istniejący spec hooka bez regresji
+- [x] 3.1 Nowy spec bramki transakcyjnej (create / update / cancel / przeniesienie / wyjątek fakturowy)
+- [x] 3.2 Specy akcji transakcyjnych przechodzą
+- [x] 3.3 Istniejący spec hooka bez regresji
 
 ### Phase 4: Status jako zamek
 

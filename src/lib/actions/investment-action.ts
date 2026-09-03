@@ -6,6 +6,7 @@ import { investmentIdFor, isInvestmentLocked, type LockTargetKindT } from '@/lib
 import type { SessionUserT } from '@/types/auth'
 import type { ActionResultT } from '@/types/action'
 import type { CACHE_TAGS } from '@/lib/cache/tags'
+import { INVESTMENT_LOCKED_MESSAGE } from '@/lib/constants/investment-lock'
 
 /**
  * Refuse every write that moves money on a settled investment. The kosztorys writes raw SQL in a
@@ -16,9 +17,6 @@ import type { CACHE_TAGS } from '@/lib/cache/tags'
  * asking — no role edits a completed investment.
  */
 export type LockTargetT = { investmentId: number } | { kind: LockTargetKindT; id: number }
-
-export const INVESTMENT_LOCKED_MESSAGE =
-  'Inwestycja jest zakończona i tylko do odczytu. Aby ją zmienić, ustaw jej status na „Aktywna".'
 
 const TARGET_MISSING: Record<LockTargetKindT, string> = {
   item: 'Pozycja nie istnieje.',

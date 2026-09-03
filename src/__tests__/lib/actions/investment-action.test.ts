@@ -31,8 +31,8 @@ vi.mock('@/lib/db/investment-lock', () => ({
   investmentIdFor: vi.fn(async () => lockState.investmentIdFor),
 }))
 
-const { investmentAction, INVESTMENT_LOCKED_MESSAGE } =
-  await import('@/lib/actions/investment-action')
+const { investmentAction } = await import('@/lib/actions/investment-action')
+const { INVESTMENT_LOCKED_MESSAGE } = await import('@/lib/constants/investment-lock')
 const { isInvestmentLocked } = await import('@/lib/db/investment-lock')
 
 describe('investmentAction', () => {
