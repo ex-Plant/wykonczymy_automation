@@ -18,6 +18,7 @@ import { getDb } from '@/lib/db/get-db'
 import { isInvestmentLocked } from '@/lib/db/investment-lock'
 import { INVESTMENT_LOCKED_MESSAGE } from '@/lib/constants/investment-lock'
 import { resolveId } from '@/lib/utils/resolve-id'
+import { isInvoiceOnlyPatch } from '@/hooks/transfers/invoice-only-patch'
 
 type TransferData = Partial<Transaction>
 
@@ -67,9 +68,9 @@ export const validateTransfer: CollectionBeforeValidateHook = async ({
   // Both sides of a move: booking ONTO a locked investment and lifting a row OFF one.
   const target = resolveId(resolved('investment'))
   const previous = resolveId(original?.investment)
-  // The one write that stays open: attaching or detaching a scan of the faktura. Keyed on the KEYS
-  // of the patch, not their values — an empty array is a legitimate removal of every page.
-  const invoiceOnly = Object.keys(d).every((key) => key === 'invoice')
+  // The one write that stays open: attaching or detaching a scan of the faktura. Keyed on the
+  // VALUES that differ from the stored row — an empty array is a legitimate removal of every page.
+  const invoiceOnly = isInvoiceOnlyPatch(d, original)
   if (!invoiceOnly) {
     const db = await getDb(req.payload, req)
     for (const id of previous === target ? [target] : [target, previous]) {

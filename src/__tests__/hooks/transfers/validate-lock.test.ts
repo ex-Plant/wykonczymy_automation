@@ -123,25 +123,24 @@ describe('validateTransfer — the completed-investment lock', () => {
 
   // The one exception to the total lock: a faktura still has to be attachable to a settled
   // investment's transaction, because the scan arrives after the money stopped moving.
+  // Every case below sends the WHOLE stored row with the patch merged over it, because that is what
+  // Payload hands `beforeValidate` — a hand-built `{ invoice: … }` passes on any build, including the
+  // one that refused every faktura in production.
+  const locked = { ...expense, investment: LOCKED_ID, invoice: [3] }
+
   it('lets an invoice-only write through', async () => {
     await expect(
       validateTransfer(
-        hookArgs(
-          { invoice: [3] },
-          { operation: 'update', originalDoc: { ...expense, investment: LOCKED_ID } },
-        ),
+        hookArgs({ ...locked, invoice: [3, 4] }, { operation: 'update', originalDoc: locked }),
       ),
     ).resolves.not.toThrow()
   })
 
-  // Keyed on the KEYS of the patch, not their values — clearing every page is still invoice-only.
+  // Keyed on the VALUES that differ from the stored row — clearing every page is still invoice-only.
   it('lets an invoice removal through', async () => {
     await expect(
       validateTransfer(
-        hookArgs(
-          { invoice: [] },
-          { operation: 'update', originalDoc: { ...expense, investment: LOCKED_ID } },
-        ),
+        hookArgs({ ...locked, invoice: [] }, { operation: 'update', originalDoc: locked }),
       ),
     ).resolves.not.toThrow()
   })
@@ -150,8 +149,8 @@ describe('validateTransfer — the completed-investment lock', () => {
     await expect(
       validateTransfer(
         hookArgs(
-          { invoice: [3], amount: 999 },
-          { operation: 'update', originalDoc: { ...expense, investment: LOCKED_ID } },
+          { ...locked, invoice: [3, 4], amount: 999 },
+          { operation: 'update', originalDoc: locked },
         ),
       ),
     ).rejects.toThrow(INVESTMENT_LOCKED_MESSAGE)

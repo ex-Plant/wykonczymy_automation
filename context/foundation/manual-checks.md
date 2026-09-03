@@ -3768,35 +3768,51 @@ podobnych przenosinach.
 Blokada jest serwerowa i pokryta testami; poniższe sprawdza to, czego test nie widzi — że przez
 interfejs nie da się jej minąć i że odczyt zakończonej inwestycji nadal jest pełnowartościowy.
 
+Zweryfikowane 2026-09-03 na stagingu (preview DB), inwestycja 66 „Altowa 12" jako zakończona,
+76 „Stanisławów Drugi Kwiatowa 5" jako aktywna kontrola.
+
 ### Phase 2-3: Bramka kosztorysu i transakcji
 
-- [ ] Na zakończonej inwestycji dodanie wydatku / wpłaty jest niemożliwe: inwestycji nie ma na liście
-      w comboboxie formularza, a wejście z linku `?investment=<id>` nie zasiewa jej w polu
+- [x] Na zakończonej inwestycji dodanie wydatku / wpłaty jest niemożliwe: inwestycji nie ma na liście
+      w comboboxie formularza, a wejście z `/inwestycje/<id>` nie zasiewa jej w polu
 - [ ] Podpięcie i odpięcie skanu faktury do transakcji zakończonej inwestycji **działa** (jedyny
-      wyjątek od blokady)
-- [ ] Usunięcie transakcji zakończonej inwestycji z `/admin` kończy się odmową z czytelnym
+      wyjątek od blokady) — poprawione w kodzie, do przeklikania po najbliższym deployu na staging
+- [x] Usunięcie transakcji zakończonej inwestycji z `/admin` kończy się odmową z czytelnym
       komunikatem (nie „Something went wrong"), a bilans i arkusz zostają nietknięte
 
 ### Phase 4: Status jako zamek
 
-- [ ] Zmiana statusu na „Zakończona" pokazuje dialog potwierdzenia mówiący o blokadzie; „Anuluj"
+- [x] Zmiana statusu na „Zakończona" pokazuje dialog potwierdzenia mówiący o blokadzie; „Anuluj"
       zostawia status bez zmian
-- [ ] MANAGER nie odblokuje zakończonej inwestycji — próba zmiany statusu na „Aktywna" kończy się
+- [x] MANAGER nie odblokuje zakończonej inwestycji — próba zmiany statusu na „Aktywna" kończy się
       komunikatem o braku uprawnień; ten sam MANAGER **zamyka** aktywną inwestycję bez przeszkód
-- [ ] MANAGER edytuje na zakończonej inwestycji pola kartoteki (notatki, telefon, opinia) i zapis
+- [x] MANAGER edytuje na zakończonej inwestycji pola kartoteki (notatki, telefon, opinia) i zapis
       przechodzi
-- [ ] OWNER odblokowuje zakończoną inwestycję i po odblokowaniu edytor wraca do pełnej edycji
+- [x] OWNER odblokowuje zakończoną inwestycję i po odblokowaniu edytor wraca do pełnej edycji
 
 ### Phase 5: UI read-only
 
-- [ ] Edytor zakończonej inwestycji ma **pełny** zestaw kolumn, prognozy, Podsumowanie i zakładkę
+- [x] Edytor zakończonej inwestycji ma **pełny** zestaw kolumn, prognozy, Podsumowanie i zakładkę
       „Marża"; żadna komórka nie wchodzi w edycję, kolumna akcji nie renderuje się
-- [ ] Baner blokady widoczny pod toolbarem i mówi, jak odblokować
-- [ ] Toolbar: brak menu „Dodaj"; w „Opcje" nie ma sekcji „Edycja"/„Wersje" ani „Pobierz z arkusza
-      Google…", zostają „Zapisz szablon" i oba porównania
-- [ ] „Opcje rozliczenia" nie renderuje się (tryb rozliczenia, materiały netto, VAT, rabat globalny),
+- [x] Baner blokady widoczny pod toolbarem i mówi, jak odblokować
+- [x] Toolbar: brak menu „Dodaj"; w „Opcje" nie ma sekcji „Edycja"/„Wersje" ani „Pobierz z arkusza
+      Google…", zostaje „Zapisz szablon" i porównanie z katalogiem — porównanie z arkuszem znika
+      razem z resztą, bo odświeża zapisany Pomiar, czyli zapisuje
+- [x] „Opcje rozliczenia" nie renderuje się (tryb rozliczenia, materiały netto, VAT, rabat globalny),
       a w zakładce podwykonawców nie ma współczynników
-- [ ] Widok klienta (link `/k/<token>`) zakończonej inwestycji wygląda jak dotąd — bez banera, ze
+- [x] Widok klienta (link `/k/<token>`) zakończonej inwestycji wygląda jak dotąd — bez banera, ze
       zwężonymi kolumnami
-- [ ] Tabela transakcji: „Edytuj" wyszarzone z podpowiedzią o zakończonej inwestycji, „Anuluj"
+- [x] Tabela transakcji: „Edytuj" wyszarzone z podpowiedzią o zakończonej inwestycji, „Anuluj"
       zdjęte, kolumna „Faktura" działa
+
+### Findings 2026-09-03
+
+- **Faktury zablokowane razem z resztą.** Podpięcie skanu do transakcji zakończonej inwestycji
+  kończyło się odmową („Inwestycja jest zakończona i tylko do odczytu…"), mimo że to jedyny
+  zamierzony wyjątek. Wyjątek `invoiceOnly` czytał **klucze** `data`, a Payload podaje hookowi
+  `beforeValidate` cały zapisany dokument z nałożoną łatką — kluczy jest zawsze komplet, więc
+  warunek nie był prawdziwy nigdy poza testem jednostkowym, który karmił go ręcznie sklejoną łatką.
+  Naprawione porównaniem **wartości** względem zapisanego wiersza
+  (`src/hooks/transfers/invoice-only-patch.ts`); pokryte specem DB-owym
+  `src/__tests__/hooks/transfers/invoice-on-locked-investment.db.test.ts`, a spec jednostkowy wysyła
+  teraz kształt, który faktycznie przychodzi z produkcji.
