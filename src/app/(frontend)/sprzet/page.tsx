@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import { fetchEquipmentOverview } from '@/lib/queries/equipment'
+import { fetchReferenceData } from '@/lib/queries/reference-data'
 import { EquipmentDataTable } from '@/components/equipment/equipment-data-table'
 import { Description } from '@/components/ui/description'
 import { PageWrapper } from '@/components/ui/page-wrapper'
@@ -15,7 +16,10 @@ export default async function EquipmentPage() {
   const session = await requireAuth(MANAGEMENT_ROLES)
   if (!session.success) redirect('/')
 
-  const { equipment } = await fetchEquipmentOverview()
+  const [{ equipment, warehouses }, { workers }] = await Promise.all([
+    fetchEquipmentOverview(),
+    fetchReferenceData(),
+  ])
   const inUse = equipment.filter((item) => isLiveStatus(item.status)).length
 
   return (
@@ -23,7 +27,12 @@ export default async function EquipmentPage() {
       <Description>
         {inUse} {pluralize(inUse, ['sztuka', 'sztuki', 'sztuk'])} w użyciu
       </Description>
-      <EquipmentDataTable data={equipment} today={warsawToday()} />
+      <EquipmentDataTable
+        data={equipment}
+        today={warsawToday()}
+        workers={workers}
+        warehouses={warehouses}
+      />
     </PageWrapper>
   )
 }

@@ -1,7 +1,10 @@
 import { notFound, redirect } from 'next/navigation'
 import { requireAuth } from '@/lib/auth/require-auth'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
-import { fetchEquipmentDetail } from '@/lib/queries/equipment'
+import { fetchEquipmentDetail, fetchEquipmentOverview } from '@/lib/queries/equipment'
+import { fetchReferenceData } from '@/lib/queries/reference-data'
+import { EditEquipmentDialog } from '@/components/dialogs/edit-equipment-dialog'
+import { TransferEquipmentDialog } from '@/components/dialogs/transfer-equipment-dialog'
 import { EquipmentHistory } from '@/components/equipment/equipment-history'
 import { EquipmentStatusBadge } from '@/components/equipment/equipment-status-badge'
 import { LocationCell } from '@/components/equipment/location-cell'
@@ -20,7 +23,11 @@ export default async function EquipmentDetailPage({ params }: DynamicPagePropsT)
   if (!session.success) redirect('/')
 
   const { id } = await params
-  const detail = await fetchEquipmentDetail(Number(id))
+  const [detail, { warehouses }, { workers, investments }] = await Promise.all([
+    fetchEquipmentDetail(Number(id)),
+    fetchEquipmentOverview(),
+    fetchReferenceData(),
+  ])
   if (!detail) notFound()
 
   const { equipment, history } = detail
@@ -65,6 +72,16 @@ export default async function EquipmentDetailPage({ params }: DynamicPagePropsT)
           { label: 'Uwagi', value: equipment.note },
         ]}
       />
+
+      <div className="flex flex-wrap gap-2">
+        <TransferEquipmentDialog
+          equipment={equipment}
+          workers={workers}
+          warehouses={warehouses}
+          investments={investments}
+        />
+        <EditEquipmentDialog equipment={equipment} />
+      </div>
 
       <EquipmentHistory history={history} />
     </PageWrapper>

@@ -1,6 +1,11 @@
 import { APIError, type CollectionBeforeValidateHook } from 'payload'
 import type { EquipmentEvent } from '@/payload-types'
 import { resolveId } from '@/lib/utils/resolve-id'
+import {
+  MULTIPLE_TARGETS_MESSAGE,
+  NO_TARGET_MESSAGE,
+  namedTargets,
+} from '@/lib/equipment/target-invariant'
 
 type EventDataT = Partial<EquipmentEvent>
 
@@ -28,17 +33,14 @@ export const validateEquipmentEvent: CollectionBeforeValidateHook = ({ data, ori
   const warehouse = resolveId(resolved('warehouse'))
   const serviceProvider = resolved('serviceProvider')?.toString().trim() || undefined
 
-  const targets = [holder, warehouse, serviceProvider].filter((value) => value !== undefined)
+  const targets = namedTargets(holder, warehouse, serviceProvider)
 
   if (targets.length === 0) {
-    throw new APIError('Wskaż, gdzie sprzęt trafia: pracownik, magazyn albo serwis.', 400)
+    throw new APIError(NO_TARGET_MESSAGE, 400)
   }
 
   if (targets.length > 1) {
-    throw new APIError(
-      'Sprzęt może trafić tylko w jedno miejsce naraz — wybierz pracownika, magazyn albo serwis.',
-      400,
-    )
+    throw new APIError(MULTIPLE_TARGETS_MESSAGE, 400)
   }
 
   // Normalised here rather than trusted from the caller, so the „gdzie jest" query can read the

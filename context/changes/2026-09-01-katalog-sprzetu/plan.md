@@ -654,14 +654,14 @@ przeniesienia — rejestr startuje pusty; magazyny wchodzą seedem, resztę wpis
 
 #### Automated
 
-- [x] 3.1 Spec grupowania opcji filtra przechodzi
+- [x] 3.1 Spec grupowania opcji filtra przechodzi — 180b820c
 
 ### Phase 4: Akcje i dialogi
 
 #### Automated
 
-- [ ] 4.1 Spec schematu odrzuca dwa cele naraz i brak celu
-- [ ] 4.2 Spec DB potwierdza transakcyjność dodania sprzętu
+- [x] 4.1 Spec schematu odrzuca dwa cele naraz i brak celu
+- [x] 4.2 Spec DB potwierdza transakcyjność dodania sprzętu
 
 ### Phase 5: „Na stanie" na stronie pracownika
 

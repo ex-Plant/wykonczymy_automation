@@ -8,17 +8,32 @@ import {
   SEARCH_FILTER_TOOLBAR_WIDTH,
   SearchFilterInput,
 } from '@/components/filters/search-filter-input'
+import { AddEquipmentDialog } from '@/components/dialogs/add-equipment-dialog'
 import { getEquipmentColumns } from '@/components/tables/equipment'
 import { whereFilterOptions, whereFilterValue } from '@/components/equipment/where-filter-options'
 import { useClientMultiFilter } from '@/hooks/use-client-multi-filter'
 import { useSearchFilter } from '@/hooks/use-search-filter'
 import { isLiveStatus } from '@/lib/equipment/equipment-status'
 import type { EquipmentRowT } from '@/lib/equipment/types'
+import type { WarehouseOptionT } from '@/lib/queries/equipment'
 import type { DayT } from '@/lib/fleet/days'
+import type { WorkerRefT } from '@/types/reference-data'
+
+type EquipmentDataTablePropsT = {
+  data: EquipmentRowT[]
+  today: DayT
+  workers: WorkerRefT[]
+  warehouses: WarehouseOptionT[]
+}
 
 const INITIAL_SORTING = [{ id: 'name', desc: false }]
 
-export function EquipmentDataTable({ data, today }: { data: EquipmentRowT[]; today: DayT }) {
+export function EquipmentDataTable({
+  data,
+  today,
+  workers,
+  warehouses,
+}: EquipmentDataTablePropsT) {
   // Serial numbers are what someone reads off the nameplate while standing next to the tool, so they
   // search alongside the words. `useSearchFilter` folds diacritics, so „szlifierka" finds „Szlifierka".
   const getSearchableText = useCallback(
@@ -65,6 +80,7 @@ export function EquipmentDataTable({ data, today }: { data: EquipmentRowT[]; tod
             icon={MapPin}
             searchable
           />
+          <AddEquipmentDialog workers={workers} warehouses={warehouses} />
         </>
       )}
     />

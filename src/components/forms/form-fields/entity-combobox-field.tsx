@@ -40,6 +40,15 @@ const VARIANT_CONFIG = {
     noItemsMessage: 'Brak pracowników',
     noActiveItemsMessage: 'Brak aktywnych pracowników',
   },
+  holder: {
+    name: 'holder',
+    label: 'Pracownik',
+    placeholder: 'Wybierz pracownika',
+    searchPlaceholder: 'Szukaj pracownika...',
+    emptySearchMessage: 'Nie znaleziono pracownika.',
+    noItemsMessage: 'Brak pracowników',
+    noActiveItemsMessage: 'Brak aktywnych pracowników',
+  },
   owner: {
     name: 'owner',
     label: 'Właściciel',
