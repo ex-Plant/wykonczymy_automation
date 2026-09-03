@@ -647,14 +647,14 @@ przeniesienia — rejestr startuje pusty; magazyny wchodzą seedem, resztę wpis
 
 #### Automated
 
-- [x] 2.1 Spec mapowania wierszy przechodzi
-- [x] 2.2 Spec DB potwierdza sortowanie po `occurredAt`, nie `createdAt`
+- [x] 2.1 Spec mapowania wierszy przechodzi — 5056fb8a
+- [x] 2.2 Spec DB potwierdza sortowanie po `occurredAt`, nie `createdAt` — 5056fb8a
 
 ### Phase 3: Lista i detal
 
 #### Automated
 
-- [ ] 3.1 Spec grupowania opcji filtra przechodzi
+- [x] 3.1 Spec grupowania opcji filtra przechodzi
 
 ### Phase 4: Akcje i dialogi
 

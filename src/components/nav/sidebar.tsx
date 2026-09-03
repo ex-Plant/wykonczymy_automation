@@ -21,6 +21,7 @@ import {
   LogOut,
   RefreshCw,
   Users,
+  Wrench,
   type LucideIcon,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -40,6 +41,7 @@ const MANAGEMENT_LINKS: {
   { href: '/kosztorysy', label: 'Kosztorysy v1', icon: FileSpreadsheet },
   { href: '/katalog-prac', label: 'Katalog prac', icon: ListChecks },
   { href: '/flota', label: 'Flota', icon: Car, badge: UnreadFleetBadge },
+  { href: '/sprzet', label: 'Sprzęt', icon: Wrench },
   { href: '/pracownicy', label: 'Pracownicy', icon: Users },
 ]
 
