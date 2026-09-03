@@ -622,4 +622,4 @@ lista inwestycji zamkniętych przedwcześnie, nie usterka.
 
 #### Automated
 
-- [x] 5.1 Nowy spec rozszczepienia `readOnly` / `previewVisible`
+- [x] 5.1 Nowy spec rozszczepienia `readOnly` / `previewVisible` — 678e7192

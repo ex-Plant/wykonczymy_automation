@@ -3762,3 +3762,39 @@ podobnych przenosinach.
 - [ ] Podgląd klienta z zaznaczonym „ukryj puste wiersze" nadal chudnie dokument (to jest dokładnie ta
       ścieżka, którą poprzedni refaktor zgubił po cichu — commit `6a7c8f17`)
 - [ ] Zwinięte sekcje nadal stają się nieaktywne przy wyszukiwaniu i przy zaangażowanym filtrze
+
+## EX-748 — zakończona inwestycja jest zablokowana (2026-09-03, `investment-lock-on-completed`)
+
+Blokada jest serwerowa i pokryta testami; poniższe sprawdza to, czego test nie widzi — że przez
+interfejs nie da się jej minąć i że odczyt zakończonej inwestycji nadal jest pełnowartościowy.
+
+### Phase 2-3: Bramka kosztorysu i transakcji
+
+- [ ] Na zakończonej inwestycji dodanie wydatku / wpłaty jest niemożliwe: inwestycji nie ma na liście
+      w comboboxie formularza, a wejście z linku `?investment=<id>` nie zasiewa jej w polu
+- [ ] Podpięcie i odpięcie skanu faktury do transakcji zakończonej inwestycji **działa** (jedyny
+      wyjątek od blokady)
+
+### Phase 4: Status jako zamek
+
+- [ ] Zmiana statusu na „Zakończona" pokazuje dialog potwierdzenia mówiący o blokadzie; „Anuluj"
+      zostawia status bez zmian
+- [ ] MANAGER nie odblokuje zakończonej inwestycji — próba zmiany statusu na „Aktywna" kończy się
+      komunikatem o braku uprawnień; ten sam MANAGER **zamyka** aktywną inwestycję bez przeszkód
+- [ ] MANAGER edytuje na zakończonej inwestycji pola kartoteki (notatki, telefon, opinia) i zapis
+      przechodzi
+- [ ] OWNER odblokowuje zakończoną inwestycję i po odblokowaniu edytor wraca do pełnej edycji
+
+### Phase 5: UI read-only
+
+- [ ] Edytor zakończonej inwestycji ma **pełny** zestaw kolumn, prognozy, Podsumowanie i zakładkę
+      „Marża"; żadna komórka nie wchodzi w edycję, kolumna akcji nie renderuje się
+- [ ] Baner blokady widoczny pod toolbarem i mówi, jak odblokować
+- [ ] Toolbar: brak menu „Dodaj"; w „Opcje" nie ma sekcji „Edycja"/„Wersje" ani „Pobierz z arkusza
+      Google…", zostają „Zapisz szablon" i oba porównania
+- [ ] „Opcje rozliczenia" nie renderuje się (tryb rozliczenia, materiały netto, VAT, rabat globalny),
+      a w zakładce podwykonawców nie ma współczynników
+- [ ] Widok klienta (link `/k/<token>`) zakończonej inwestycji wygląda jak dotąd — bez banera, ze
+      zwężonymi kolumnami
+- [ ] Tabela transakcji: „Edytuj" wyszarzone z podpowiedzią o zakończonej inwestycji, „Anuluj"
+      zdjęte, kolumna „Faktura" działa

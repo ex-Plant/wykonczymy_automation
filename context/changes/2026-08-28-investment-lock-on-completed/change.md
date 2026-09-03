@@ -2,7 +2,7 @@
 change_id: investment-lock-on-completed
 title: Zakończona inwestycja jest zablokowana — read-only dla wszystkich ról
 linear: EX-748
-status: implementing
+status: implemented
 created: 2026-08-28
 updated: 2026-09-03
 archived_at: null
