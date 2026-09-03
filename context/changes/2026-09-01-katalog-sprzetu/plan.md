@@ -660,14 +660,14 @@ przeniesienia — rejestr startuje pusty; magazyny wchodzą seedem, resztę wpis
 
 #### Automated
 
-- [x] 4.1 Spec schematu odrzuca dwa cele naraz i brak celu
-- [x] 4.2 Spec DB potwierdza transakcyjność dodania sprzętu
+- [x] 4.1 Spec schematu odrzuca dwa cele naraz i brak celu — 394e425c
+- [x] 4.2 Spec DB potwierdza transakcyjność dodania sprzętu — 394e425c
 
 ### Phase 5: „Na stanie" na stronie pracownika
 
 #### Automated
 
-- [ ] 5.1 Brak sprawdzenia automatycznego — weryfikacja ręczna (uzasadnienie w etapie)
+- [x] 5.1 Brak sprawdzenia automatycznego — weryfikacja ręczna (uzasadnienie w etapie) — 394e425c
 
 ### Phase 6: Przypomnienia o gwarancji
 
