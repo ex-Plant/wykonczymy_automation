@@ -60,6 +60,11 @@ export default buildConfig({
     pool: {
       connectionString: process.env.DB_POSTGRES_URL,
     },
+    // Load-bearing, and not merely "we don't want dev push". `pushDevSchema` calls drizzle-kit's
+    // `pushSchema`, which INTROSPECTS the live database and drops everything absent from this
+    // config — and this database deliberately holds tables, unique indexes and NOT NULL columns
+    // this config has never heard of. Why, and how to re-measure the gap:
+    // context/foundation/lessons.md, "Part of this schema is invisible to Payload".
     push: false,
     migrationDir: path.resolve(dirname, 'migrations'),
   }),
