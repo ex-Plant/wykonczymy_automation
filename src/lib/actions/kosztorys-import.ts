@@ -1,5 +1,6 @@
 'use server'
 
+import { investmentAction } from '@/lib/actions/investment-action'
 import { protectedAction } from '@/lib/actions/run-action'
 import { KOSZTORYS_TREE_TAGS } from '@/lib/cache/tags'
 import { getDb } from '@/lib/db/get-db'
@@ -277,8 +278,9 @@ export async function applyKosztorysImport(
   // nonsense here asks for undecided etapy, which is what an import without a pick produces anyway.
   plane?: ToolPlaneT | null,
 ): Promise<ActionResultT<ApplyImportResultT>> {
-  return protectedAction<ApplyImportResultT>(
+  return investmentAction<ApplyImportResultT>(
     'applyKosztorysImport',
+    { investmentId },
     async ({ payload, user }) => {
       const sheet = await getInvestmentSheet(payload, investmentId)
       if (!sheet) return { success: false, error: MISSING_SHEET }

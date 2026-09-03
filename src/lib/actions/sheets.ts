@@ -8,6 +8,9 @@ import { stampAllTabs } from '@/lib/google/app-managed-tabs'
 import { getInvestmentSheet, MISSING_SHEET } from '@/lib/google/sheet-lookup'
 import { isColumnField } from '@/lib/kosztorys/sheet-import/columns'
 import { isPointableColumn } from '@/lib/kosztorys/sheet-import/sheet-column-mapping'
+import { investmentAction, INVESTMENT_LOCKED_MESSAGE } from '@/lib/actions/investment-action'
+import { getDb } from '@/lib/db/get-db'
+import { isInvestmentLocked } from '@/lib/db/investment-lock'
 import { protectedAction } from './run-action'
 import { logError } from '@/lib/utils/log-error'
 
@@ -87,8 +90,9 @@ export async function addUnlinkedSheetAction(input: string, name?: string) {
  * normal sync run, fire-and-forget so the action returns fast).
  */
 export async function linkSheetToInvestmentAction(sheetId: number, investmentId: number) {
-  return protectedAction(
+  return investmentAction(
     'linkSheetToInvestmentAction',
+    { investmentId },
     async ({ payload }) => {
       // The three lookups are independent — fetch them in parallel. The partial
       // unique index on investment_id WHERE NOT NULL would also catch a double-
@@ -160,6 +164,15 @@ export async function unlinkSheetFromInvestmentAction(sheetId: number) {
       })
       if (!sheet) return { success: false, error: 'Kosztorys nie istnieje.' }
 
+      // Checked by hand rather than through `investmentAction`: the target is the sheet's own
+      // investment, and that FK is nullable — an unlinked sheet has no target and must still pass,
+      // which the wrapper's resolver reads as „row missing".
+      const linkedTo =
+        typeof sheet.investment === 'number' ? sheet.investment : sheet.investment?.id
+      if (linkedTo != null && (await isInvestmentLocked(await getDb(payload), linkedTo))) {
+        return { success: false, error: INVESTMENT_LOCKED_MESSAGE }
+      }
+
       await payload.update({
         collection: 'kosztoryses',
         id: sheetId,
@@ -187,8 +200,9 @@ export async function saveSheetColumnMappingAction(
   field: string,
   column: number,
 ) {
-  return protectedAction(
+  return investmentAction(
     'saveSheetColumnMappingAction',
+    { investmentId },
     async ({ payload }) => {
       // The browser sends both halves, so both are re-checked here — a bad pair would otherwise sit
       // in jsonb until an import silently read the wrong column.
@@ -213,8 +227,9 @@ export async function saveSheetColumnMappingAction(
 }
 
 export async function clearSheetColumnMappingAction(investmentId: number, field: string) {
-  return protectedAction(
+  return investmentAction(
     'clearSheetColumnMappingAction',
+    { investmentId },
     async ({ payload }) => {
       if (!isColumnField(field)) {
         return { success: false, error: 'Nieprawidłowe wskazanie kolumny.' }

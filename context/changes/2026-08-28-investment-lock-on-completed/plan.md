@@ -593,16 +593,16 @@ lista inwestycji zamkniętych przedwcześnie, nie usterka.
 
 #### Automated
 
-- [x] 1.1 Nowy spec przechodzi: `src/__tests__/lib/db/investment-lock.test.ts`
-- [x] 1.2 Nowy spec wrappera przechodzi: `src/__tests__/lib/actions/investment-action.test.ts`
+- [x] 1.1 Nowy spec przechodzi: `src/__tests__/lib/db/investment-lock.test.ts` — 2f3bbfdb
+- [x] 1.2 Nowy spec wrappera przechodzi: `src/__tests__/lib/actions/investment-action.test.ts` — 2f3bbfdb
 
 ### Phase 2: Kosztorys
 
 #### Automated
 
-- [ ] 2.1 Testy integracyjne akcji kosztorysu na zablokowanej inwestycji odmawiają dla każdej roli
-- [ ] 2.2 Akcje czytające na zablokowanej inwestycji dalej zwracają dane
-- [ ] 2.3 Istniejące specy kosztorysu przechodzą bez regresji
+- [x] 2.1 Testy integracyjne akcji kosztorysu na zablokowanej inwestycji odmawiają dla każdej roli — 3898fac6
+- [x] 2.2 Akcje czytające na zablokowanej inwestycji dalej zwracają dane — 3898fac6
+- [x] 2.3 Istniejące specy kosztorysu przechodzą bez regresji — 3898fac6
 
 ### Phase 3: Transakcje
 
