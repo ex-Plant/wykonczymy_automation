@@ -638,17 +638,17 @@ przeniesienia — rejestr startuje pusty; magazyny wchodzą seedem, resztę wpis
 
 #### Automated
 
-- [x] 1.1 Migracja wchodzi na czysto na lokalnej bazie
-- [x] 1.2 `down()` cofa się i ponowne `up()` przechodzi
-- [x] 1.3 `pnpm generate:types` zna trzy nowe kolekcje
-- [x] 1.4 Spec niezmiennika celu przechodzi
+- [x] 1.1 Migracja wchodzi na czysto na lokalnej bazie — a15f661f
+- [x] 1.2 `down()` cofa się i ponowne `up()` przechodzi — a15f661f
+- [x] 1.3 `pnpm generate:types` zna trzy nowe kolekcje — a15f661f
+- [x] 1.4 Spec niezmiennika celu przechodzi — a15f661f
 
 ### Phase 2: Odczyt „gdzie jest"
 
 #### Automated
 
-- [ ] 2.1 Spec mapowania wierszy przechodzi
-- [ ] 2.2 Spec DB potwierdza sortowanie po `occurredAt`, nie `createdAt`
+- [x] 2.1 Spec mapowania wierszy przechodzi
+- [x] 2.2 Spec DB potwierdza sortowanie po `occurredAt`, nie `createdAt`
 
 ### Phase 3: Lista i detal
 

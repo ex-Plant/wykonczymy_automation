@@ -86,7 +86,10 @@ describe.skipIf(!ENV_READY)('an equipment event lands on exactly one target (DB)
 
     const equipment = await payload.create({
       collection: 'equipment',
-      data: { name: MARKER },
+      // `status` spelled out although the collection defaults it: Payload's generated create type
+      // models neither `defaultValue` nor the draft split, so omitting it makes the literal
+      // unassignable (same reason as `helpers/investment.ts`).
+      data: { name: MARKER, status: 'IN_USE' },
       overrideAccess: true,
       context: { skipRevalidation: true },
     })
