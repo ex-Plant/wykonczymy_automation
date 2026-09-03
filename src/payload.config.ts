@@ -32,6 +32,9 @@ import { Users } from '@/collections/users'
 import { VehicleInspections } from '@/collections/vehicle-inspections'
 import { Vehicles } from '@/collections/vehicles'
 import { WorkCatalogueItems } from '@/collections/work-catalogue-items'
+import { Equipment } from '@/collections/equipment'
+import { EquipmentEvents } from '@/collections/equipment-events'
+import { Warehouses } from '@/collections/warehouses'
 import { KosztorysClientViewDefaults } from '@/globals/kosztorys-client-view-defaults'
 import { NotificationRecipients } from '@/globals/notification-recipients'
 
@@ -100,6 +103,9 @@ export default buildConfig({
     Vehicles,
     VehicleInspections,
     WorkCatalogueItems,
+    Equipment,
+    EquipmentEvents,
+    Warehouses,
     Media,
   ],
   globals: [KosztorysClientViewDefaults, NotificationRecipients],

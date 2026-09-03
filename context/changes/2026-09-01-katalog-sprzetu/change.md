@@ -1,11 +1,11 @@
 ---
 change_id: katalog-sprzetu
 title: Katalog narzędzi i urządzeń — rejestr sprzętu z przypisaniem do pracownika/magazynu, serwisem i gwarancją
-status: planned
+status: implementing
 created: 2026-09-01
 updated: 2026-09-03
 archived_at: null
-branch: null
+branch: staging
 worktree: null
 ---
 

@@ -638,10 +638,10 @@ przeniesienia — rejestr startuje pusty; magazyny wchodzą seedem, resztę wpis
 
 #### Automated
 
-- [ ] 1.1 Migracja wchodzi na czysto na lokalnej bazie
-- [ ] 1.2 `down()` cofa się i ponowne `up()` przechodzi
-- [ ] 1.3 `pnpm generate:types` zna trzy nowe kolekcje
-- [ ] 1.4 Spec niezmiennika celu przechodzi
+- [x] 1.1 Migracja wchodzi na czysto na lokalnej bazie
+- [x] 1.2 `down()` cofa się i ponowne `up()` przechodzi
+- [x] 1.3 `pnpm generate:types` zna trzy nowe kolekcje
+- [x] 1.4 Spec niezmiennika celu przechodzi
 
 ### Phase 2: Odczyt „gdzie jest"
 
