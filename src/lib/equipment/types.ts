@@ -46,3 +46,19 @@ export type EquipmentDetailT = {
   equipment: EquipmentRowT
   history: EquipmentEventRowT[]
 }
+
+/**
+ * What the warranty sweep reads. A slice of the item rather than `EquipmentRowT`, because the sweep
+ * needs the bookkeeping columns the listing must never show and none of the location joins.
+ */
+export type EquipmentWarrantyRowT = {
+  id: number
+  name: string
+  make: string
+  model: string
+  serialNumber: string
+  status: EquipmentStatusT
+  warrantyUntil: string | null
+  /** The bucket already announced, or `null` when this warranty has never mailed. */
+  warrantyNotifiedBucket: number | null
+}

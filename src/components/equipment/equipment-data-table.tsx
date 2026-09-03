@@ -16,7 +16,7 @@ import { useSearchFilter } from '@/hooks/use-search-filter'
 import { isLiveStatus } from '@/lib/equipment/equipment-status'
 import type { EquipmentRowT } from '@/lib/equipment/types'
 import type { WarehouseOptionT } from '@/lib/queries/equipment'
-import type { DayT } from '@/lib/fleet/days'
+import type { DayT } from '@/lib/dates/days'
 import type { WorkerRefT } from '@/types/reference-data'
 
 type EquipmentDataTablePropsT = {

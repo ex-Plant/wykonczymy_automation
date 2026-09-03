@@ -1,4 +1,4 @@
-import { daysLabel } from '@/lib/fleet/deadline-label'
+import { daysLabel } from '@/lib/dates/deadline-label'
 import { EXPIRED, type WarrantyBucketT } from '@/lib/equipment/warranty-thresholds'
 import { formatPLDate } from '@/lib/utils/format-date'
 import { cn } from '@/lib/utils/cn'

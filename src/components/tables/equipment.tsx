@@ -7,7 +7,7 @@ import { WarrantyCell } from '@/components/equipment/warranty-cell'
 import { isLiveStatus } from '@/lib/equipment/equipment-status'
 import { classifyWarranty, warrantyDaysLeft } from '@/lib/equipment/warranty-thresholds'
 import type { EquipmentRowT } from '@/lib/equipment/types'
-import type { DayT } from '@/lib/fleet/days'
+import type { DayT } from '@/lib/dates/days'
 
 const col = createColumnHelper<EquipmentRowT>()
 

@@ -1,17 +1,18 @@
 import type { Payload } from 'payload'
 
 /**
- * The three notification streams, each an independently edited address list.
+ * The four notification streams, each an independently edited address list.
  *
  * Not to be confused with `STREAMS` in `src/lib/db/notifications.ts` — that one tracks per-user
  * unread cursors for the in-app badge, which is a different question about a different table.
  */
-export const RECIPIENT_LISTS = ['fleetDigest', 'newLead', 'opsAlerts'] as const
+export const RECIPIENT_LISTS = ['fleetDigest', 'equipmentDigest', 'newLead', 'opsAlerts'] as const
 
 export type RecipientListT = (typeof RECIPIENT_LISTS)[number]
 
 const LIST_LABELS: Record<RecipientListT, string> = {
   fleetDigest: 'powiadomienia o terminach floty',
+  equipmentDigest: 'powiadomienia o gwarancjach sprzętu',
   newLead: 'powiadomienia o nowych zgłoszeniach',
   opsAlerts: 'alerty techniczne',
 }

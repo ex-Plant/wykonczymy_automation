@@ -667,11 +667,11 @@ przeniesienia — rejestr startuje pusty; magazyny wchodzą seedem, resztę wpis
 
 #### Automated
 
-- [x] 5.1 Brak sprawdzenia automatycznego — weryfikacja ręczna (uzasadnienie w etapie) — 394e425c
+- [x] 5.1 Brak sprawdzenia automatycznego — weryfikacja ręczna (uzasadnienie w etapie) — 50f7903a — 394e425c
 
 ### Phase 6: Przypomnienia o gwarancji
 
 #### Automated
 
-- [ ] 6.1 Specy progów i digestu przechodzą, z granicami 31/30/8/7/0
-- [ ] 6.2 Specy Floty przechodzą po przeniesieniu `days.ts` i `deadline-label.ts`
+- [x] 6.1 Specy progów i digestu przechodzą, z granicami 31/30/8/7/0
+- [x] 6.2 Specy Floty przechodzą po przeniesieniu `days.ts` i `deadline-label.ts`
