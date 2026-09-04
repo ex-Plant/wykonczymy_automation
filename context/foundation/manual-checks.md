@@ -115,6 +115,7 @@ zaksięgowane wypłaty i strata. Zalogowany jako OWNER.
       **Needs human:** decyzja produktowa — albo (a) zaakceptować że ten stan istnieje tylko jako legacy/import artefakt i pogodzić się z tym, że UI-level QA nigdy go nie zaobserwuje bez bezpośredniego zapisu do DB, albo (b) dodać deliberate DB seed/fixture dla tego stanu do `db-test`, albo (c) rozważyć czy inw. 31 (realne dane, `plane IS NULL` na 3 etapach z zerowym `qty_done`) powinna dostać wpisaną ilość wykonaną na jednym z tych etapów, świadomie akceptując że to modyfikuje realne dane klienta tylko po to, by zobaczyć „Ustaw rozliczenie etapów" na żywo. Boksy z linii 38-40 i 55 pozostają nieodhaczone — nie z braku próby, lecz z potwierdzonego braku ścieżki (boksy 41-42, dawniej w tej samej grupie, zostały odhaczone 2026-09-03 z fixture'em na potwierdzonych etapach — nie wymagały stanu `plane IS NULL`).
       **Reconfirmed 2026-09-03 (staging, EX-748 pass):** ponowna próba na inw. 135 (SQL: `SELECT id, plane FROM kosztorys_stages WHERE investment_id=135` → 0 wierszy — inwestycja obecnie bez etapów w ogóle) nie znalazła nowej ścieżki; blokada trzyma się z powodów opisanych powyżej. Zapis SQL do `kosztorys_stages.plane` byłby jedynym sposobem odtworzenia stanu, ale ten pass ograniczał się do UI + read-only SQL — nie zapisano nic bezpośrednio do bazy.
       **Test disposition:** no automated test dla samej manualnej obserwacji (nie ma jak jej wykonać bez DB-write) — `marginV2()`/`subcontractorDueByPlane()` unit-test kandydatura z powyższego findingu stoi bez zmian jako jedyny sposób na pokrycie tej gałęzi bez ręcznego DB seeda.
+
 ### Findings — 2026-09-04
 
 - [x] **Reversal of the 2026-08-25 "structurally unreachable" conclusion — the state is reachable as legacy/import data, just not creatable through the current UI.** Re-checking the preview DB (a restored prod dump, not the cutover DB the 2026-08-25 pass used) found inw. 31 ("11 Listopada 40") **now naturally carries** two stages — id 58 and 59 — with `plane IS NULL` **and** nonzero `qty_done` (1736.39 and 1203.11 respectively): exactly the "etap z wykonaną pracą, ale bez rozliczenia" state the 2026-08-25 findings above called unreachable. Live-confirmed on this fixture, read-only: the kosztorys editor's stage header shows the "Rozliczenie etapu niepotwierdzone" warning icon, the "Marża rzeczywista" panel shows "Ustaw rozliczenie etapów" (not a number) with the same tooltip quoted in the 2026-08-25 finding, and the "Rozliczenie z ekipą" block does not render at all — closing checks 38 and 39. The prior finding's UI-creation-path analysis stands correct and unchanged (`kosztorys-add-menu.tsx` / `addStageAction` still force `plane` at creation, `stage-header.tsx`'s dropdown still offers no path back to `null`) — the reversal is only about **observability**: this state exists as pre-existing/imported data on real investments, so a UI-only QA pass finds it by reading the DB for the right row, not by trying to construct it through the app.
@@ -1258,7 +1259,7 @@ refresh-coalescing checks — they are only observable as request counts.
 - [x] Editing a single grid cell fires the autosave and **no** full-route refresh alongside it
       _Verified 2026-09-03 (staging, inw. 135, item id=16247 „zakup, transport i wniesienie towaru
       budowlanego…"): edited Przedmiar 1→3, `browser_network_requests` showed only `POST
-      /inwestycje/135/kosztorys_v2` server-action calls and `_rsc`-tagged fetches — no plain
+    /inwestycje/135/kosztorys_v2` server-action calls and `_rsc`-tagged fetches — no plain
       navigation-style GET/reload of the route. Reverted to 1, confirmed via
       `select planned_qty from kosztorys_items where id=16247` → 1._
 - [ ] Editing 5–10 cells in quick succession produces **one** route refresh after the typing stops — not one per cell (this is the uncleared-timer bug fixed at the review gate; unfixed it queues a refresh per edited cell)
@@ -1296,7 +1297,7 @@ refresh-coalescing checks — they are only observable as request counts.
       _Verified 2026-09-03 (staging, same transaction): opened „Podgląd faktury…" → „Usuń" → confirmed
       the „Czy na pewno chcesz usunąć fakturę?" dialog — the row reverted to „Dodaj fakturę" on the
       next render. Confirmed the underlying delete via SQL: `select id from media where filename ilike
-      '%qa-test-invoice%'` → 0 rows. Transaction #4602 back to its no-invoice state._
+    '%qa-test-invoice%'` → 0 rows. Transaction #4602 back to its no-invoice state._
 - [x] A brand-new investment with **zero** kosztorys rows opens the editor without a 500 (the `coalesce` on the `json_agg` query — pinned by a DB spec, worth eyeballing once)
       _Verified: inw. 133 „Nowa testowa inwestycja" has no `kosztoryses` row at all (`select id from
 kosztoryses where investment_id=133` → 0 rows). `/inwestycje/133/kosztorys_v2` loaded cleanly,
@@ -1636,7 +1637,7 @@ Setup: kosztorys z wypełnionymi cenami dla inwestora, globalny mnożnik „z na
 - [x] Typing a search term that matches nothing on a _populated_ kosztorys does NOT show the hint.
       _Verified 2026-09-03 (staging, EX-748 pass): investment 135 "QA B17 2026-08-26" (372 items), typed `zzzznonexistentqa` into „Szukaj…". `browser_find` confirmed no "Kosztorys jest pusty" text anywhere; a full grid-area snapshot showed the actual no-hit state instead: `heading "Brak wyników" [level=2]` + `paragraph: Żadna pozycja nie pasuje do „zzzznonexistentqa".` + `button "Wyczyść wyszukiwanie"` — a distinct empty-search state, never the empty-kosztorys hint._
 - [x] The share/client view of an empty kosztorys shows the title without the „Dodaj" sentence.
-      _Verified 2026-09-03 (staging, EX-748 pass): created a fresh throwaway investment 138 "QA EX748 empty-kosztorys-temp" (no preset — genuinely 0 `kosztorys_items`), confirmed the owner editor itself renders `heading "Kosztorys jest pusty"` + `paragraph: Dodaj sekcję lub etap z menu „Dodaj" powyżej.`. Generated a share link (Widok inwestora → Udostępnij → Dalej → Wygeneruj link, token `YSKpD3AJexMhYMTsVN94qLysdykpO7Wb`) and opened `/k/<token>` on staging: the client view shows `heading "QA EX748 empty-kosztorys-temp" [level=1]` (the investment name) and `heading "Kosztorys jest pusty" [level=2]` with **no** paragraph/description sibling at all — the „Dodaj sekcję…" sentence is correctly absent, matching `kosztorys-editor-body.tsx`'s `description={preview ? undefined : …}`. Cleanup: `DELETE FROM investments WHERE id=138` (cascades `kosztorys_shares`); confirmed both rows gone via psql.
+      \_Verified 2026-09-03 (staging, EX-748 pass): created a fresh throwaway investment 138 "QA EX748 empty-kosztorys-temp" (no preset — genuinely 0 `kosztorys_items`), confirmed the owner editor itself renders `heading "Kosztorys jest pusty"` + `paragraph: Dodaj sekcję lub etap z menu „Dodaj" powyżej.`. Generated a share link (Widok inwestora → Udostępnij → Dalej → Wygeneruj link, token `YSKpD3AJexMhYMTsVN94qLysdykpO7Wb`) and opened `/k/<token>` on staging: the client view shows `heading "QA EX748 empty-kosztorys-temp" [level=1]` (the investment name) and `heading "Kosztorys jest pusty" [level=2]` with **no** paragraph/description sibling at all — the „Dodaj sekcję…" sentence is correctly absent, matching `kosztorys-editor-body.tsx`'s `description={preview ? undefined : …}`. Cleanup: `DELETE FROM investments WHERE id=138` (cascades `kosztorys_shares`); confirmed both rows gone via psql.
       Note: investment 133 "Nowa testowa inwestycja" — assumed empty from an earlier segment's SQL check — turned out to actually hold ~372 kosztorys items (real sekcje: „Prace dodatkowe", „Klimatyzacja", „Wyburzenia i demontaże", …). That earlier check was wrong/stale; investment 133 was never touched here beyond read-only navigation, no cleanup needed on it.
 
 ### Phase 2: Delete the client scaffold
@@ -1677,7 +1678,7 @@ Setup: kosztorys z wypełnionymi cenami dla inwestora, globalny mnożnik „z na
 - [x] At 390px width the dialog shows only the szablon list, drill-in/back works — Verified (2026-09-03): at 390×844 the dialog rendered only the szablon list (no right pane) with `Anuluj`/`Dodaj`/`Zamknij`; clicking a szablon row drilled into its section list (right-pane content, left list gone, a „‹ szablon name" back button in its place); clicking that back button returned to the szablon list.
 - [x] Ticks survive drill-back/drill-forward — Verified (2026-09-03): ticked „Klimatyzacja" inside B (Dodaj (1)), drilled back (B row read „1/14"), drilled into A and ticked „Prace dodatkowe" (Dodaj (2)), drilled back again — both B and A showed „1/14" simultaneously, Dodaj (2) intact.
 - [x] Resizing across 768px mid-selection — Verified (2026-09-03): with the mobile drill-in state above (Dodaj (2), both szablony at 1/14), resized 390→1024px — the dialog switched to the two-pane desktop layout immediately with both panes' ticks intact (1/14 each, Dodaj (2)); resizing back down to 390px returned it to the single-pane list view with the same state preserved.
-- [x] No horizontal scroll at 390px, footer reachable — Verified (2026-09-03): at 390px the dialog element's own `scrollWidth` equalled its `clientWidth` (351/351, `browser_evaluate`) — no internal overflow — and the `Anuluj`/`Dodaj`/`Zamknij` footer stayed visible and clickable throughout the pass. See Finding below — the surrounding *page* (not this dialog) does scroll horizontally at 390px, but that's a pre-existing sitewide top-nav issue, not this picker.
+- [x] No horizontal scroll at 390px, footer reachable — Verified (2026-09-03): at 390px the dialog element's own `scrollWidth` equalled its `clientWidth` (351/351, `browser_evaluate`) — no internal overflow — and the `Anuluj`/`Dodaj`/`Zamknij` footer stayed visible and clickable throughout the pass. See Finding below — the surrounding _page_ (not this dialog) does scroll horizontally at 390px, but that's a pre-existing sitewide top-nav issue, not this picker.
 
 ### Findings — 2026-09-03
 
@@ -2278,7 +2279,7 @@ ADMIN/OWNER). Inwestycja **62** jest wzorcem: 362,84 zł materiału pokryte stra
 
 ### Findings — 2026-09-03
 
-- [ ] **Rejected admin-panel writes on `transactions` surface as an opaque 500, swallowing the actual validation message.** `src/hooks/transfers/validate.ts`'s `beforeValidate` hook collects business-rule violations (e.g. "Investment is required for this transfer type.") into an array and does `throw new Error(errors.join(' '))` — a **plain** `Error`, not Payload's `APIError`. Per the hook's own comment two blocks above (line ~77: "APIError, not Error: routeError rewrites the message of anything it can't prove public"), Payload's route error handler scrubs a plain `Error`'s message before it reaches the client. Live-confirmed clearing the "Inwestycja" field on transaction #4616 (a Strata) via `/admin` and saving: the API responds `500` with body `{"errors":[{"message":"Something went wrong."}]}` — the write is correctly **rejected** (DB confirms `investment_id` unchanged), but the OWNER/MANAGER using the admin panel sees no indication of *why*, only a generic failure. Every other `errors.push(...)` message in this same hook (missing worker on PAYOUT, missing target register, missing payment method, etc.) is masked the same way whenever a caller reaches the Payload API without going through the app's own client-side Zod pre-validation (i.e. the admin panel, or a direct API call) — this is not unique to the investment-required rule.
+- [ ] **Rejected admin-panel writes on `transactions` surface as an opaque 500, swallowing the actual validation message.** `src/hooks/transfers/validate.ts`'s `beforeValidate` hook collects business-rule violations (e.g. "Investment is required for this transfer type.") into an array and does `throw new Error(errors.join(' '))` — a **plain** `Error`, not Payload's `APIError`. Per the hook's own comment two blocks above (line ~77: "APIError, not Error: routeError rewrites the message of anything it can't prove public"), Payload's route error handler scrubs a plain `Error`'s message before it reaches the client. Live-confirmed clearing the "Inwestycja" field on transaction #4616 (a Strata) via `/admin` and saving: the API responds `500` with body `{"errors":[{"message":"Something went wrong."}]}` — the write is correctly **rejected** (DB confirms `investment_id` unchanged), but the OWNER/MANAGER using the admin panel sees no indication of _why_, only a generic failure. Every other `errors.push(...)` message in this same hook (missing worker on PAYOUT, missing target register, missing payment method, etc.) is masked the same way whenever a caller reaches the Payload API without going through the app's own client-side Zod pre-validation (i.e. the admin panel, or a direct API call) — this is not unique to the investment-required rule.
       **Needs human:** decide whether these business-rule messages should surface to admin-panel users (swap the `throw new Error(errors.join(' '))` for `throw new APIError(errors.join(' '), 400)`, matching the pattern already used two blocks above for `INVESTMENT_LOCKED_MESSAGE`) or whether masking is intentional here (e.g. to avoid leaking internal validation shape to non-app callers) — behavior-changing enough that it wasn't fixed on the spot.
       **Test disposition:** no automated test yet — if the fix lands, a unit spec on `validateTransfer` asserting the thrown error type (`APIError` vs `Error`) is the cheapest layer; no e2e needed since this is a message-surfacing detail, not a data-integrity one (the rejection itself already works and has DB-level confirmation above).
 
@@ -3683,7 +3684,7 @@ produkcyjnym (`pnpm build && pnpm start`) — na dev HMR zawyża każdy pomiar.
 ### Findings — 2026-09-03
 
 - [ ] **Search filter narrowing the visible rows mid-edit crashes the grid** (`TypeError: Cannot read
-      properties of undefined (reading 'top')`, landing in the Next.js error boundary) — reproduced
+    properties of undefined (reading 'top')`, landing in the Next.js error boundary) — reproduced
       live on staging, inw. 135: opened row1's subcontractor „Cena j.m. netto — z narzędziami" cell
       (guard ceiling 1200), typed a keystroke sequence that both built a live draft AND triggered the
       search filter to narrow the row list in the same interaction, and the page crashed into "Coś
@@ -4168,17 +4169,17 @@ nie lokalnie — preview DB nie ma `GOOGLE_SERVICE_ACCOUNT_WRITE_JSON` tak samo 
 przenoszą się wprost.
 
 - [x] **Box 1 — potwierdzone bezpośrednio.** Dodano wydatek inwestycyjny (opis `QA 2026-09-04
-      sheet-write-env-guard`, 1 PLN, „Kasa - test") na inwestycji 48 (active, arkusz podpięty).
+    sheet-write-env-guard`, 1 PLN, „Kasa - test") na inwestycji 48 (active, arkusz podpięty).
       `scripts/inspect-sheet.mjs` na zakładce wydatków przed/po pokazał zero zmian. `vercel logs`
       pokazał `[sheets-sync] syncBulkExpensesToSheet failed (non-fatal): Refusing to write to Google
-      Sheets: GOOGLE_SERVICE_ACCOUNT_WRITE_JSON is not set...` — czytelne zdanie, nie goły `403`.
+    Sheets: GOOGLE_SERVICE_ACCOUNT_WRITE_JSON is not set...` — czytelne zdanie, nie goły `403`.
       Wydatek usunięty po weryfikacji (patrz sekcja sprzątania w raporcie).
 - [x] **Box 2 — potwierdzone po stronie serwera + gwarancją kodu.** „Zresetuj wydatki inwestycyjne"
       na inwestycji z podpiętym arkuszem: `vercel logs` pokazał `[ACTION_ERROR] setupSheetAction
-      Refusing to write to Google Sheets: …`, `responseStatusCode: 200` ale payload akcji
+    Refusing to write to Google Sheets: …`, `responseStatusCode: 200` ale payload akcji
       `success:false`. Toastu w DOM nie złapano na czas (znika zanim zdążono sprawdzić selektor) —
       ale `src/components/sheets/sync-button.tsx`: `if (!setup.success) { toastMessage(setup.error,
-      'error'); return }` odpala się bezwarunkowo i synchronicznie na `success:false`, więc to nie jest
+    'error'); return }` odpala się bezwarunkowo i synchronicznie na `success:false`, więc to nie jest
       wyścig — traktuję jako potwierdzone.
 - [x] **Box 3 — potwierdzone czytaniem kodu**, zgodnie z sugestią samego checka (test dotyczy lokalnego
       env, którego pass nie miał uruchamiać). `VERCEL_ENV` nie jest nigdzie odczytywane na ścieżce
@@ -4199,7 +4200,7 @@ przenoszą się wprost.
       ale mechanizm jest w pełni potwierdzony kodem: `src/lib/google/sheet-access.ts`
       `verifySheetAccess()` — gdy `!hasWriteServiceAccountCredentials()`, sonda zapisu (`batchUpdate`)
       jest pomijana i funkcja zwraca sukces, logując `[sheet-access] write probe skipped for … — no
-      Editor credential outside production`. Inwestycja 134 odpięta i wpis kosztorysu skasowany po
+    Editor credential outside production`. Inwestycja 134 odpięta i wpis kosztorysu skasowany po
       teście (zweryfikowane SELECT-em — patrz sprzątanie).
 - [x] **Box 6 — potwierdzone kodem.** `grep -rl getWritableSheetsClient src/` pokazuje tylko
       `auth.ts` / `writable-sheets-client.ts` / `readonly-sheets-client.ts` (fallback na produkcji) /
@@ -4275,8 +4276,7 @@ uruchamiane ręcznie i **nigdy** przeciwko produkcji bez jawnej zmiennej bazy.
       licznik), więc potwierdzenie „same zgodne pozycje" wymaga kosztorysu złożonego wyłącznie z
       niezmienionych wstawień z katalogu. Na inwestycji 135 (QA B17 2026-08-26, dane realne z dumpu
       prod) wstawiłem 4 pozycje przez „Dodaj z katalogu" i uruchomiłem raport zanim je usunąłem
-      (sprzątanie po teście) — żadna z nich nie pojawiła się w listach „Inne liczby" (spot-check ~10 z
-      123) ani „Brak w katalogu" (wszystkie 5 sprawdzone), co pośrednio wspiera poprawność, ale nie jest
+      (sprzątanie po teście) — żadna z nich nie pojawiła się w listach „Inne liczby" (spot-check ~10 z 123) ani „Brak w katalogu" (wszystkie 5 sprawdzone), co pośrednio wspiera poprawność, ale nie jest
       bezpośrednim dowodem 100% zgodnych pozycji na osobnym kosztorysie. Zbudowanie dedykowanego
       kosztorysu w całości z katalogu wymagałoby albo nowej inwestycji testowej, albo trwałej mutacji
       istniejącej — poza budżetem mutacji tego przebiegu (dane produkcyjne).
@@ -4620,7 +4620,7 @@ Zweryfikowane 2026-09-03 na stagingu (preview DB), inwestycja 66 „Altowa 12" j
 
 - [ ] **Poprawka `invoice-only-patch.ts` nie jest jeszcze na stagingu.** Weryfikacja miała potwierdzić
       podpięcie/odpięcie skanu faktury na zakończonej inwestycji przez `https://wykonczymy-git-staging-
-      wykonczymys-projects.vercel.app`. `origin/staging` nie zawiera commitu `d68eedea` (fix), więc na
+    wykonczymys-projects.vercel.app`. `origin/staging` nie zawiera commitu `d68eedea` (fix), więc na
       żywo odtworzono zamiast tego sam bug: podpięcie faktury do transakcji na zakończonej inwestycji
       (konto `verify-owner-ex748@wykonczymy.test`) kończyło się odmową 403 „Inwestycja jest zakończona
       i tylko do odczytu…" — dokładnie opisany defekt, nie coś nowego. Pole faktury w `/admin` dla
@@ -4643,20 +4643,20 @@ Setup: baza testowa 5435 (`pnpm db:import:test`, potem `pnpm payload migrate` z 
 wskazującym na 5435). W `/admin` → „Magazyny" dodaj co najmniej dwa magazyny — kolekcja nie ma
 ekranu w aplikacji i bez wpisu lista wyboru celu będzie pusta. Zalogowany jako OWNER.
 
-- [ ] `/sprzet` renderuje listę, licznik „w użyciu" pomija wycofane/sprzedane/zgubione/skradzione
-- [ ] Wyszukiwarka trafia po nazwie, numerze seryjnym, marce i modelu z jednego pola
-- [ ] Filtr „gdzie jest" ma ludzi i magazyny w jednym rozwijaniu i zawęża listę
-- [ ] „Dodaj sprzęt" zapisuje sztukę **razem** z pierwszym przekazaniem: po zapisie detal od razu
+- [x] `/sprzet` renderuje listę, licznik „w użyciu" pomija wycofane/sprzedane/zgubione/skradzione
+- [x] Wyszukiwarka trafia po nazwie, numerze seryjnym, marce i modelu z jednego pola
+- [x] Filtr „gdzie jest" ma ludzi i magazyny w jednym rozwijaniu i zawęża listę
+- [x] „Dodaj sprzęt" zapisuje sztukę **razem** z pierwszym przekazaniem: po zapisie detal od razu
       pokazuje „gdzie jest" i jeden wpis w historii
 - [ ] Ten sam formularz z numerem seryjnym już zajętym odrzuca zapis, a pusty numer można zapisać
       wielokrotnie (unikalność nie łapie pustych)
-- [ ] „Przekaż" na detalu: pracownik / magazyn / serwis — wybór jednego czyści pozostałe dwa, a pole
+- [x] „Przekaż" na detalu: pracownik / magazyn / serwis — wybór jednego czyści pozostałe dwa, a pole
       „Koszt" pojawia się wyłącznie przy serwisie
-- [ ] Nowe przekazanie zmienia „gdzie jest" i **dokłada** wpis do historii, niczego nie nadpisując
+- [x] Nowe przekazanie zmienia „gdzie jest" i **dokłada** wpis do historii, niczego nie nadpisując
 - [ ] Historia jest tylko do odczytu — **dopisanie kosztu do wpisu serwisowego tydzień później robi
       się w `/admin` → „Zdarzenia sprzętu"**, aplikacja nie ma na to ekranu (świadomie: wpis to fakt,
       który się wydarzył)
-- [ ] Sekcja „Na stanie" na `/pracownicy/[id]` wymienia sprzęt tego pracownika i linkuje do detalu;
+- [x] Sekcja „Na stanie" na `/pracownicy/[id]` wymienia sprzęt tego pracownika i linkuje do detalu;
       po przekazaniu sztuki komuś innemu znika z tej listy i pojawia się na drugiej
 - [ ] Komórka gwarancji koloruje 30 i 7 dni, a po terminie pokazuje „X dni po terminie"
 - [ ] Ręczne wywołanie `GET /api/cron/equipment-reminders` z nagłówkiem `Bearer $CRON_SECRET` wysyła
@@ -4669,3 +4669,49 @@ ekranu w aplikacji i bez wpisu lista wyboru celu będzie pusta. Zalogowany jako 
 - [ ] Gwarancja już wygasła → mail o niej nie wychodzi nigdy
 - [ ] Badge przy „Sprzęt" w menu znika po wejściu na `/sprzet`
 - [ ] Karta „Powiadomienia" na `/sprzet` jest edytowalna dla OWNER i odrzuca pustą listę
+
+### Findings — 2026-09-04
+
+- [x] **Box 3 („Gdzie jest" filter) — false alarm, no fix needed.** Initial re-test looked like a bug
+      (clicking „Bartek Antonik" from a fresh dropdown showed the wrong row), but the root cause is
+      `FilterMultiSelect`'s `deriveSelected()` (`src/components/filters/filter-multi-select.tsx`):
+      an empty filter state renders every option as checked (= no filter), so clicking an
+      already-checked option **deselects** it rather than isolating it. Re-tested correctly (click
+      „Odznacz wszystkie" first, then the one option) and the filter narrows correctly. No code
+      change. Leaving this box `[x]` above stands; this entry is just the record of the dead end so
+      nobody re-investigates it. **Test disposition:** no automated test — confirmed as intended
+      multi-select UX shared by every filter in the app, not equipment-specific behavior worth a
+      dedicated regression test.
+- [ ] **Box 11 (cron mail content) — deliberately left unticked per orchestrator instruction.**
+      `EMAIL_HOST` must not be swapped to a real host during this pass. Boxes 12–15 (401, empty
+      digest `sent: false`, same-day dedupe + re-arm after extending warranty, already-expired never
+      mails) are being verified via the endpoint's JSON response + DB state + code reading instead.
+      **Needs human:** run `GET /api/cron/equipment-reminders` with a real `EMAIL_HOST` (or render the
+      email template in a unit test) to confirm the mail body content is correct — this box cannot be
+      closed by this pass. **Test disposition:** no automated test for the actual send (real-SMTP
+      content is a human/manual check by design, see `context/reference/outgoing-effects-isolation.md`).
+- [ ] **Environment blocker — Docker Desktop's control plane/DB became unresponsive for the rest of
+      this pass (2026-09-04, ~11:40 UTC onward, still unresolved when this pass stopped ~1h later).**
+      `docker ps` / `docker exec` / `docker info` hung indefinitely for the whole window (confirmed
+      dead again on a final check right before stopping); a direct `psql` to the already-open TCP port
+      5435 timed out on connection setup (`pg_isready` → "no response") throughout, while `curl` to the
+      app itself on :3010 answered in <0.3s early on — so the Next.js server and its already-open DB
+      pool connections stayed responsive at first, only _new_ Postgres connections and the Docker
+      daemon's control plane were stuck. The dev server log shows a literal `No space left on device
+    (os error 28)` around the same time, which best explains everything at once (Docker Desktop VM
+      disk full → Postgres can't accept/complete new connections, and the daemon's own control plane
+      wedges) — the host filesystem itself had 11 GiB free, so this points at the Docker Desktop VM's
+      own disk, not the Mac's. One in-flight SSR request on the throwaway server (`GET /sprzet/18`)
+      hung for 43+ minutes as a result and was still "rendering" when caught; killed the throwaway
+      `:3010` server rather than let it keep holding a wedged connection. The Playwright MCP browser
+      also intermittently stopped responding to `browser_navigate`/`browser_snapshot` during the same
+      window (`vm_stat` showed ~60–70 MB free physical memory, `uptime` peaked at load average 14.7,
+      `ps aux` showed two independent `playwright-mcp` processes and multiple unrelated dev
+      servers/Cursor helpers running concurrently) — consistent with several agent sessions sharing
+      this machine at once, compounding the Docker problem rather than causing it. Boxes 5, 8
+      (admin-side half), 10, 12–17 were not reachable before the pass had to stop. **Needs human:**
+      free up (or resize) the Docker Desktop VM's disk and restart Docker Desktop, confirm `docker ps`
+      and a fresh `psql` to 5435 both respond in well under a second, then re-run this pass for the
+      still-open boxes below. None of the equipment feature's own code is implicated — every symptom
+      traces to the shared Docker/host environment. **Test disposition:** not applicable —
+      infrastructure/environment finding, not a product finding.
