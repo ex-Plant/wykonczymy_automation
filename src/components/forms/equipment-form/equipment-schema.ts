@@ -1,11 +1,12 @@
 import { z } from 'zod'
 import { EQUIPMENT_STATUSES } from '@/lib/equipment/equipment-status'
+import { optionalDay, optionalNonNegativeAmount } from '@/lib/utils/validation'
 import {
   equipmentTargetDataShape,
   equipmentTargetFormShape,
   refineExactlyOneTarget,
   refineTargetChoice,
-} from '@/components/forms/equipment-transfer-form/equipment-target-schema'
+} from '@/lib/schemas/equipment-target'
 
 // Form-input layer: every field is a string, as the HTML controls produce them.
 const equipmentFormShape = z.object({
@@ -13,11 +14,9 @@ const equipmentFormShape = z.object({
   serialNumber: z.string(),
   make: z.string(),
   model: z.string(),
-  purchaseDate: z.string(),
-  warrantyUntil: z.string(),
-  purchasePrice: z
-    .string()
-    .refine((value) => value === '' || Number(value) >= 0, 'Cena nie może być ujemna'),
+  purchaseDate: optionalDay(),
+  warrantyUntil: optionalDay(),
+  purchasePrice: optionalNonNegativeAmount('Cena nie może być ujemna'),
   note: z.string(),
   status: z.enum(EQUIPMENT_STATUSES),
 })
@@ -49,7 +48,12 @@ export type EquipmentFormDataT = z.infer<typeof equipmentSchema>
  * Adding an item and saying where it went are ONE form: an item with no event reads as „nie wiadomo
  * gdzie", which is the register's alarm state — a fresh purchase must never start there.
  */
-const addEquipmentFormShape = equipmentFormShape.extend(equipmentTargetFormShape)
+const addEquipmentFormShape = equipmentFormShape.extend({
+  ...equipmentTargetFormShape,
+  // Optional, and it belongs to the first EVENT rather than to the item: „kupione na Kwiatową" is a
+  // fact about that delivery, not a permanent property of the drill.
+  investment: z.string(),
+})
 
 export const addEquipmentFormSchema = addEquipmentFormShape.superRefine(refineTargetChoice)
 
@@ -57,7 +61,7 @@ export type AddEquipmentFormValuesT = z.infer<typeof addEquipmentFormShape>
 
 export const addEquipmentSchema = addEquipmentFormShape
   .omit({ targetKind: true })
-  .extend({ ...equipmentDataShape, ...equipmentTargetDataShape })
+  .extend({ ...equipmentDataShape, ...equipmentTargetDataShape, investment: z.number().nullable() })
   .superRefine(refineExactlyOneTarget)
 
 export type AddEquipmentDataT = z.infer<typeof addEquipmentSchema>

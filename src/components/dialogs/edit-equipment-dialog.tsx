@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { FormDialog } from '@/components/ui/form-dialog'
 import { EquipmentForm } from '@/components/forms/equipment-form/equipment-form'
 import { updateEquipmentAction } from '@/lib/actions/equipment'
+import { makeModel } from '@/lib/equipment/rows'
 import type { EquipmentRowT } from '@/lib/equipment/types'
 
 export function EditEquipmentDialog({ equipment }: { equipment: EquipmentRowT }) {
@@ -21,7 +22,7 @@ export function EditEquipmentDialog({ equipment }: { equipment: EquipmentRowT })
         </Button>
       }
       title="Edytuj sprzęt"
-      description={[equipment.make, equipment.model].filter(Boolean).join(' ')}
+      description={makeModel(equipment)}
     >
       {(onSubmitSuccess, keepOpen) => (
         <EquipmentForm

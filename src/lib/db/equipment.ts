@@ -1,5 +1,6 @@
 import { sql } from '@payloadcms/db-vercel-postgres'
 import type { Payload } from 'payload'
+import { LIVE_EQUIPMENT_STATUSES } from '@/lib/equipment/equipment-status'
 import { toEquipmentEventRow, toEquipmentRow } from '@/lib/equipment/rows'
 import type { EquipmentEventRowT, EquipmentRowT } from '@/lib/equipment/types'
 import { getDb } from './get-db'
@@ -19,7 +20,8 @@ const CURRENT_STATE = sql`
     e.occurred_at,
     e.holder_id,
     e.warehouse_id,
-    e.service_provider
+    e.service_provider,
+    e.investment_id
   FROM equipment_events e
   ORDER BY e.equipment_id, e.occurred_at DESC, e.id DESC
 `
@@ -29,8 +31,8 @@ const CURRENT_STATE = sql`
 const OVERVIEW_COLUMNS = sql`
   q.id, q.name, q.serial_number, q.make, q.model, q.status,
   q.purchase_date, q.warranty_until, q.purchase_price, q.note,
-  c.occurred_at, c.holder_id, c.warehouse_id, c.service_provider,
-  u.name AS holder_name, w.name AS warehouse_name
+  c.occurred_at, c.holder_id, c.warehouse_id, c.service_provider, c.investment_id,
+  u.name AS holder_name, w.name AS warehouse_name, i.name AS investment_name
 `
 
 const OVERVIEW_JOINS = sql`
@@ -38,9 +40,9 @@ const OVERVIEW_JOINS = sql`
   LEFT JOIN current_state c ON c.equipment_id = q.id
   LEFT JOIN users u ON u.id = c.holder_id
   LEFT JOIN warehouses w ON w.id = c.warehouse_id
+  LEFT JOIN investments i ON i.id = c.investment_id
 `
 
-/** Every item with its current location — the listing's whole dataset in one round trip. */
 export const loadEquipmentOverview = async (payload: Payload): Promise<EquipmentRowT[]> => {
   const db = await getDb(payload)
 
@@ -54,31 +56,61 @@ export const loadEquipmentOverview = async (payload: Payload): Promise<Equipment
   return result.rows.map(toEquipmentRow)
 }
 
-/**
- * What one person or one warehouse is holding right now.
- *
- * One parameterised statement rather than two near-identical ones: the pair would be the place where
- * a later fix to the „current" rule lands on one side only, and the employee card and the warehouse
- * filter would then answer differently.
- */
-export const loadEquipmentAtLocation = async (
+export const loadEquipmentById = async (
   payload: Payload,
-  target: { kind: 'holder' | 'warehouse'; id: number },
-): Promise<EquipmentRowT[]> => {
+  id: number,
+): Promise<EquipmentRowT | null> => {
   const db = await getDb(payload)
 
   const result = await db.execute(sql`
     WITH current_state AS (${CURRENT_STATE})
     SELECT ${OVERVIEW_COLUMNS}
     ${OVERVIEW_JOINS}
-    WHERE CASE WHEN ${target.kind} = 'holder' THEN c.holder_id ELSE c.warehouse_id END = ${target.id}
+    WHERE q.id = ${id}
+  `)
+
+  return result.rows.length === 0 ? null : toEquipmentRow(result.rows[0])
+}
+
+/**
+ * The predicate is branched here rather than written as a `CASE` over both columns: a `CASE` is not
+ * sargable, so neither `equipment_events_holder_idx` nor `..._warehouse_idx` could ever be used, and
+ * this read runs uncached on every employee card. The „current" rule itself still lives in one place
+ * (`CURRENT_STATE`), which is what the single-statement version was protecting.
+ *
+ * Retired statuses are excluded: a sold drill whose last event still names Marek is history, not
+ * something he is holding — and this is the figure someone reads at a termination settlement.
+ */
+// A list literal rather than a bound array: the driver flattens a JS array into one parameter per
+// element, which `= ANY($n)` then reads as a malformed array literal.
+const LIVE_STATUSES = sql`(${sql.join(
+  LIVE_EQUIPMENT_STATUSES.map((status) => sql`${status}`),
+  sql.raw(', '),
+)})`
+
+export const loadEquipmentAtLocation = async (
+  payload: Payload,
+  target: { kind: 'holder' | 'warehouse'; id: number },
+): Promise<EquipmentRowT[]> => {
+  const db = await getDb(payload)
+
+  const location =
+    target.kind === 'holder'
+      ? sql`c.holder_id = ${target.id}`
+      : sql`c.warehouse_id = ${target.id}`
+
+  const result = await db.execute(sql`
+    WITH current_state AS (${CURRENT_STATE})
+    SELECT ${OVERVIEW_COLUMNS}
+    ${OVERVIEW_JOINS}
+    WHERE ${location}
+      AND q.status::text IN ${LIVE_STATUSES}
     ORDER BY q.name ASC, q.id ASC
   `)
 
   return result.rows.map(toEquipmentRow)
 }
 
-/** The full log of one item, newest first — what the detail page renders under the summary. */
 export const loadEquipmentHistory = async (
   payload: Payload,
   equipmentId: number,
@@ -88,18 +120,14 @@ export const loadEquipmentHistory = async (
   const result = await db.execute(sql`
     SELECT
       e.id, e.occurred_at, e.holder_id, e.warehouse_id, e.service_provider,
-      e.investment_id, e.cost, e.note,
+      e.investment_id, e.cost, e.note, e.created_by_id,
       u.name AS holder_name,
       w.name AS warehouse_name,
       i.name AS investment_name,
-      COALESCE(
-        (SELECT array_agg(r.media_id ORDER BY r."order", r.id)
-         FROM equipment_events_rels r
-         WHERE r.parent_id = e.id AND r.media_id IS NOT NULL),
-        '{}'
-      ) AS attachment_ids
+      a.name AS created_by_name
     FROM equipment_events e
     LEFT JOIN users u ON u.id = e.holder_id
+    LEFT JOIN users a ON a.id = e.created_by_id
     LEFT JOIN warehouses w ON w.id = e.warehouse_id
     LEFT JOIN investments i ON i.id = e.investment_id
     WHERE e.equipment_id = ${equipmentId}

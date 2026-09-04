@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button'
 import { FormDialog } from '@/components/ui/form-dialog'
 import { EquipmentTransferForm } from '@/components/forms/equipment-transfer-form/equipment-transfer-form'
 import { transferEquipmentAction } from '@/lib/actions/equipment'
-import { warsawToday } from '@/lib/dates/days'
+import { warsawToday } from '@/lib/utils/days'
 import type { EquipmentTransferFormValuesT } from '@/components/forms/equipment-transfer-form/equipment-transfer-schema'
 import type { EquipmentRowT } from '@/lib/equipment/types'
-import type { WarehouseOptionT } from '@/lib/queries/equipment'
+import type { WarehouseOptionT } from '@/lib/equipment/types'
 import type { InvestmentRefT, WorkerRefT } from '@/types/reference-data'
 
 type TransferEquipmentDialogPropsT = {

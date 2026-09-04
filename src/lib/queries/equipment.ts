@@ -7,13 +7,16 @@ import { requireAuth } from '@/lib/auth/require-auth'
 import { MANAGEMENT_ROLES } from '@/lib/auth/roles'
 import {
   loadEquipmentAtLocation,
+  loadEquipmentById,
   loadEquipmentHistory,
   loadEquipmentOverview,
 } from '@/lib/db/equipment'
 import { assertCompletePage } from '@/lib/queries/assert-complete-page'
-import type { EquipmentDetailT, EquipmentRowT } from '@/lib/equipment/types'
-
-export type WarehouseOptionT = { id: number; name: string }
+import type {
+  EquipmentDetailT,
+  EquipmentRowT,
+  WarehouseOptionT,
+} from '@/lib/equipment/types'
 
 export type EquipmentDatasetT = {
   equipment: EquipmentRowT[]
@@ -56,7 +59,7 @@ const getEquipmentDataset = unstable_cache(
   },
   // Bump the suffix whenever the row SHAPE widens: an entry written under the old shape is still
   // valid JSON, so the tags alone would keep serving it once per revalidation.
-  ['equipment-dataset-v1'],
+  ['equipment-dataset-v2'],
   { tags: [CACHE_TAGS.equipment, CACHE_TAGS.equipmentEvents, CACHE_TAGS.warehouses] },
 )
 
@@ -67,21 +70,26 @@ export async function fetchEquipmentOverview(): Promise<EquipmentDatasetT> {
   return getEquipmentDataset()
 }
 
-/** One item with its whole log. The history is uncached — it is read on one page, on demand. */
+/**
+ * The item is read by id rather than looked up in the cached dataset: an item created from /admin,
+ * or one whose revalidation has not propagated yet, would otherwise 404 on a row that exists. The
+ * history read below already goes to the database, so the round trip was not being saved anyway.
+ *
+ * Both reads are uncached — this page is opened on demand, for one item.
+ */
 export async function fetchEquipmentDetail(id: number): Promise<EquipmentDetailT | null> {
   const session = await requireAuth(MANAGEMENT_ROLES)
   if (!session.success) throw new Error('Nie jesteś zalogowany')
 
-  const { equipment } = await getEquipmentDataset()
-  const item = equipment.find((candidate) => candidate.id === id)
-  if (!item) return null
+  const payload = await getPayload({ config })
+  const [item, history] = await Promise.all([
+    loadEquipmentById(payload, id),
+    loadEquipmentHistory(payload, id),
+  ])
 
-  const history = await loadEquipmentHistory(await getPayload({ config }), id)
-
-  return { equipment: item, history }
+  return item === null ? null : { equipment: item, history }
 }
 
-/** „Na stanie" for one person or one warehouse. */
 export async function fetchEquipmentAtLocation(target: {
   kind: 'holder' | 'warehouse'
   id: number

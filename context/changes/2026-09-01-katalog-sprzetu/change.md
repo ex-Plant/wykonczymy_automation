@@ -1,9 +1,9 @@
 ---
 change_id: katalog-sprzetu
 title: Katalog narzędzi i urządzeń — rejestr sprzętu z przypisaniem do pracownika/magazynu, serwisem i gwarancją
-status: implementing
+status: implemented
 created: 2026-09-01
-updated: 2026-09-03
+updated: 2026-09-04
 archived_at: null
 branch: staging
 worktree: null
@@ -34,13 +34,16 @@ Część II mówi co innego.
   wpis serwisowy dodatkowo niesie koszt i opis.
 - **Serwis to wolny tekst z nazwą warsztatu, nie słownik** (2026-09-03). Magazyny są bytem, bo jest
   ich kilka i wracają; warsztat pojawia się raz i nie ma czego utrzymywać.
-- **Wpis niesie załączniki od pierwszej wersji** (2026-09-03) — faktura z serwisu, dowód zakupu,
-  karta gwarancyjna. Relacja `hasMany` do `media`, czyli w migracji ręczna tabela `_rels`
-  (wzór `20260818_1_add_fleet.ts:73-90`). Dokładane później kosztowałoby drugą migrację.
+- **Schemat pod załączniki wpisu stoi od pierwszej wersji, ale UI ich nie pokazuje** (2026-09-03,
+  skorygowane po review) — pole `attachments` (`hasMany` → `media`) i tabela `equipment_events_rels`
+  są w kolekcji i w migracji (wzór `20260818_1_add_fleet.ts:73-90`), bo dołożenie ich później
+  kosztowałoby drugą migrację. Formularze i historia ich nie dotykają: faktura z serwisu czy karta
+  gwarancyjna wchodzi na razie przez `/admin`. Wypuszczenie tego na froncie to osobny kawałek.
 - **Jedna akcja „Przekaż"** — nie ma pary wydanie/zwrot ani stanu „w drodze". Oddanie do magazynu
   to przekazanie, którego celem jest magazyn. Nowy wpis unieważnia poprzedni z definicji.
 - **Inwestycja jest atrybutem wpisu, nie osią.** Pracownik odpowiada za sprzęt; inwestycja opisuje,
-  na co go wziął, i wygasa razem z wpisem. Brak walidacji „pracownik tu, sprzęt tam".
+  na co go wziął, i wygasa razem z wpisem. Nie ma walidacji „pracownik tu, sprzęt tam"; jedyna reguła
+  to „inwestycję niesie tylko zdarzenie pod pracownikiem" (patrz korekty po drugiej turze bramki).
 - **Cykl życia osobnym polem na sprzęcie**: w użyciu / wycofany / sprzedany / zgubiony / skradziony.
   To koniec historii sztuki, nie miejsce. Oznaczenie „zgubiony" + log = wiadomo, kto miał ostatni.
 - **Brak przypisania (ani pracownik, ani magazyn) to alarm** — dziura w danych, nie stan sprzętu.
@@ -83,3 +86,33 @@ Potwierdzanie odbioru przez pracownika — jedyna pozycja wciągająca rolę `EM
 w całości jest kierownictwa (jak Flota); to osobna powierzchnia dostępu i ekran mobilny.
 Dalej: ilości i materiały eksploatacyjne, zdjęcia stanu przy wydaniu/zwrocie, inwentaryzacja,
 koszt sprzętu alokowany na inwestycję, terminy UDT / pomiarów elektrycznych, QR na nalepce.
+
+### Korekty po drugiej turze bramki (2026-09-04)
+
+Praca po pierwszym przejściu bramki cofnęła dwie decyzje zapisane wyżej i dołożyła zakres, którego
+plan nie przewidywał. Zapis, żeby kod i dokument nie mówiły dwóch różnych rzeczy:
+
+- **Kolumna „u kogo" rozpadła się na „Kto ma" + „Miejsce".** Zapis wyżej mówi, że człowiek i magazyn
+  to ta sama informacja i wyglądają tak samo — na liście już nie. Powód: przy sortowaniu po opiekunie
+  jedna kolumna miesza ludzi z magazynami i sortuje po nazwach z dwóch różnych słowników. Filtr
+  „gdzie jest" ZOSTAJE jednoosiowy — jedno rozwijanie z ludźmi i magazynami — więc filtr i kolumny
+  modelują ten sam fakt inaczej. To świadome: filtruje się „gdzie to jest", a czyta się „kto" osobno
+  od „gdzie".
+- **Magazyn zakłada się z formularza** („+ Nowy magazyn" przy polu, `createWarehouseAction`), wbrew
+  „zero ekranów w aplikacji". Powód: „nie ma go na liście" w trakcie wpisywania sprzętu wyrzucało
+  z formularza do `/admin` i kasowało wpisane dane. Słownik nadal nie ma własnego ekranu — jest tylko
+  przycisk w miejscu, w którym brak pozycji boli.
+- **Inwestycja tylko pod pracownikiem** — pole pokazuje się wyłącznie dla celu „pracownik", a hook
+  kolekcji (`src/hooks/equipment/validate.ts`) zeruje `investment` na każdym innym celu. To zawężenie
+  wobec „brak walidacji «pracownik tu, sprzęt tam»": reguła stoi na wierszu, nie tylko w formularzu,
+  bo lista czyta `investment_id` z najnowszego zdarzenia bezwarunkowo — wpis z `/admin` renderowałby
+  „leży w magazynie, na inwestycji X" jako fakt.
+- **Zakres dołożony ponad plan**: filtr statusu na liście (plan przewidywał jeden filtr — „gdzie jest"),
+  kolumna „Inwestycja" na liście i wiersz na karcie, inwestycja na pierwszym zdarzeniu w „Dodaj sprzęt",
+  akcje w wierszu („Przekaż" / „Edytuj"), historia sztuki przepisana z `SummaryTable` na `DataTable`
+  z kolumnami Data / Gdzie trafił / Inwestycja / Notatka / Wpisał / Koszt i stopką „Koszty serwisu",
+  oraz `createdBy` na zdarzeniu (kto wpisał — „kogo ścigać").
+- **Migracje: są DWIE, nie jedna.** `20260903_0_add_equipment` i `20260904_0_equipment_event_author`
+  (`equipment_events.created_by_id`, `ON DELETE set null`). Obie addytywne, więc na produkcji idą
+  PRZED pushem kodu. `20260903_1_equipment_digest_recipients` skasowana — była duplikatem DDL już
+  zawartego w `20260903_0`.

@@ -16,11 +16,11 @@ import { protectedAction, validateAction } from './run-action'
 export async function createEquipmentAction(data: AddEquipmentDataT) {
   return protectedAction(
     'createEquipmentAction',
-    async ({ payload }) => {
+    async ({ payload, user }) => {
       const parsed = validateAction(addEquipmentSchema, data)
       if (!parsed.success) return parsed
 
-      const { occurredAt, holder, warehouse, serviceProvider, ...item } = parsed.data
+      const { occurredAt, holder, warehouse, serviceProvider, investment, ...item } = parsed.data
 
       // One transaction, because half of this pair is worse than none of it: an item whose first
       // event failed reads as „nie wiadomo gdzie" forever, and nothing on screen distinguishes that
@@ -31,7 +31,15 @@ export async function createEquipmentAction(data: AddEquipmentDataT) {
           const created = await payload.create({ collection: 'equipment', data: item, req })
           await payload.create({
             collection: 'equipment-events',
-            data: { equipment: created.id, occurredAt, holder, warehouse, serviceProvider },
+            data: {
+              equipment: created.id,
+              occurredAt,
+              holder,
+              warehouse,
+              serviceProvider,
+              investment,
+              createdBy: user.id,
+            },
             req,
           })
         },
@@ -61,18 +69,17 @@ export async function updateEquipmentAction(id: number, data: EquipmentFormDataT
   )
 }
 
-/**
- * One operation for every move, whatever the destination — there is no issue/return pair, because
- * handing something back to a magazyn IS a handover whose target happens to be a magazyn.
- */
 export async function transferEquipmentAction(data: EquipmentTransferDataT) {
   return protectedAction(
     'transferEquipmentAction',
-    async ({ payload }) => {
+    async ({ payload, user }) => {
       const parsed = validateAction(equipmentTransferSchema, data)
       if (!parsed.success) return parsed
 
-      await payload.create({ collection: 'equipment-events', data: parsed.data })
+      await payload.create({
+        collection: 'equipment-events',
+        data: { ...parsed.data, createdBy: user.id },
+      })
 
       return { success: true }
     },

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { isAuthorizedCronRequest } from '@/lib/cron/verify-cron-request'
-import { warsawToday } from '@/lib/dates/days'
+import { CACHE_TAGS } from '@/lib/cache/tags'
+import { warsawToday } from '@/lib/utils/days'
 import { buildEquipmentDigest, isEmptyDigest } from '@/lib/equipment/digest'
 import { notifyEquipmentDigest } from '@/lib/equipment/notify'
 import { loadWarrantyRows, stampNotified } from '@/lib/equipment/sweep-io'
@@ -27,6 +29,8 @@ export async function GET(request: NextRequest) {
     await notifyEquipmentDigest(payload, digest)
     // Only after the send: see stampNotified.
     const stampFailures = await stampNotified(payload, digest.stamps)
+    // The stamps skip their own revalidation, so the register's cache is busted once for the run.
+    revalidateTag(CACHE_TAGS.equipment, 'default')
 
     if (stampFailures.length > 0) {
       // TODO(EX-449) SENTRY-REQUIRED: these rows will re-announce tomorrow.

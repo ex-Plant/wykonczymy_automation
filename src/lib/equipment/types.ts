@@ -28,6 +28,8 @@ export type EquipmentRowT = {
   location: EquipmentLocationT
   /** The day the item got where it is — the newest event's `occurredAt`, not its creation date. */
   locatedAt: string | null
+  /** What it was last taken for. Belongs to the newest event, so it expires with the next handover. */
+  investmentName: string
 }
 
 export type EquipmentEventRowT = {
@@ -35,12 +37,15 @@ export type EquipmentEventRowT = {
   occurredAt: string
   /** Never `unknown`: every event carries exactly one target (`hooks/equipment/validate.ts`). */
   target: EquipmentTargetT
-  investmentId: number | null
   investmentName: string
   cost: number | null
   note: string
-  attachmentIds: number[]
+  /** Who recorded the event. Empty on rows written before the column existed — see 20260904_0. */
+  createdByName: string
 }
+
+/** People AND warehouses, despite the name — both halves of the „gdzie jest" dropdown. */
+export type WarehouseOptionT = { id: number; name: string }
 
 export type EquipmentDetailT = {
   equipment: EquipmentRowT

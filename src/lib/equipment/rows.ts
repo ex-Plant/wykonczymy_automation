@@ -1,4 +1,5 @@
-import { numOrNull } from '@/lib/db/row-coerce'
+import { isoOrNull, numOrNull, text } from '@/lib/db/row-coerce'
+import { toWarsawDay } from '@/lib/utils/days'
 import { EQUIPMENT_STATUSES, type EquipmentStatusT } from './equipment-status'
 import type {
   EquipmentEventRowT,
@@ -21,12 +22,13 @@ type LocationColumnsT = {
   service_provider: unknown
 }
 
-const text = (value: unknown): string => (value == null ? '' : String(value))
-
-const isoOrNull = (value: unknown): string | null => {
-  if (value == null) return null
-  return value instanceof Date ? value.toISOString() : String(value)
-}
+/**
+ * A day-only column, as the `YYYY-MM-DD` the pickers and the classifiers both speak. Postgres hands
+ * these back as a `Date` at midnight UTC, and a full ISO timestamp is exactly what `FormDatePicker`
+ * cannot parse — it would render „Edytuj sprzęt" with both dates blank.
+ */
+const dayOrNull = (value: unknown): string | null =>
+  value == null ? null : toWarsawDay(value as Date | string)
 
 /**
  * Precedence is not a policy choice — the write-side invariant guarantees at most one of the three
@@ -81,14 +83,22 @@ export const toEquipmentRow = (raw: Record<string, unknown>): EquipmentRowT => (
   make: text(raw.make),
   model: text(raw.model),
   status: toStatus(raw.status),
-  purchaseDate: isoOrNull(raw.purchase_date),
-  warrantyUntil: isoOrNull(raw.warranty_until),
+  purchaseDate: dayOrNull(raw.purchase_date),
+  warrantyUntil: dayOrNull(raw.warranty_until),
   // numOrNull, not `?? 0`: an unknown purchase price renders „—", and 0 zł is a price someone chose.
   purchasePrice: numOrNull(raw.purchase_price),
   note: text(raw.note),
   location: toLocation(raw as LocationColumnsT),
   locatedAt: isoOrNull(raw.occurred_at),
+  investmentName: text(raw.investment_name),
 })
+
+export const makeModel = (item: { make: string; model: string }): string =>
+  [item.make, item.model].filter(Boolean).join(' ')
+
+/** Only a workshop is prefixed — an item there is unavailable. */
+export const targetLabel = (target: EquipmentTargetT): string =>
+  target.kind === 'service' ? `Serwis: ${target.name}` : target.name
 
 export const toEquipmentEventRow = (raw: Record<string, unknown>): EquipmentEventRowT => ({
   id: Number(raw.id),
@@ -96,11 +106,8 @@ export const toEquipmentEventRow = (raw: Record<string, unknown>): EquipmentEven
   // The cast holds on the invariant, not on the data: a hypothetical targetless row would render as
   // „nieznane" rather than crash, which is what `toLocation` returns for it anyway.
   target: toLocation(raw as LocationColumnsT) as EquipmentTargetT,
-  investmentId: raw.investment_id == null ? null : Number(raw.investment_id),
   investmentName: text(raw.investment_name),
   cost: numOrNull(raw.cost),
   note: text(raw.note),
-  attachmentIds: Array.isArray(raw.attachment_ids)
-    ? raw.attachment_ids.filter((id) => id != null).map(Number)
-    : [],
+  createdByName: text(raw.created_by_name),
 })

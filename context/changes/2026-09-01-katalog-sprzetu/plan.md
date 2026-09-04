@@ -404,7 +404,8 @@ sprzęt u byłego pracownika nie gubi zaznaczenia przy kolejnym zapisie (EX-643)
 **Contract**: Wzór `FormDialog` / `FormDialogShell` / `useManagedForm`. „Przekaż" ma jeden wybór celu
 (pracownik | magazyn | serwis) — pary wydanie/zwrot nie ma, bo oddanie do magazynu **jest**
 przekazaniem, którego celem jest magazyn. Wybór „serwis" odsłania nazwę warsztatu i koszt (koszt
-opcjonalny — faktura przychodzi po fakcie i dopisuje się edycją wpisu). „Dodaj sprzęt" **wymaga**
+opcjonalny — faktura przychodzi po fakcie i dopisuje się w `/admin` → „Zdarzenia sprzętu", bo
+historia we froncie jest tylko do odczytu: wpisy są append-only). „Dodaj sprzęt" **wymaga**
 wskazania pierwszego celu. Edycja sztuki daje dostęp do **wszystkich pięciu** statusów.
 
 ### Success Criteria:
@@ -667,11 +668,11 @@ przeniesienia — rejestr startuje pusty; magazyny wchodzą seedem, resztę wpis
 
 #### Automated
 
-- [x] 5.1 Brak sprawdzenia automatycznego — weryfikacja ręczna (uzasadnienie w etapie) — 50f7903a — 394e425c
+- [x] 5.1 Brak sprawdzenia automatycznego — weryfikacja ręczna (uzasadnienie w etapie) — 50f7903a
 
 ### Phase 6: Przypomnienia o gwarancji
 
 #### Automated
 
-- [x] 6.1 Specy progów i digestu przechodzą, z granicami 31/30/8/7/0
-- [x] 6.2 Specy Floty przechodzą po przeniesieniu `days.ts` i `deadline-label.ts`
+- [x] 6.1 Specy progów i digestu przechodzą, z granicami 31/30/8/7/0 — bfeb15f5
+- [x] 6.2 Specy Floty przechodzą po przeniesieniu `days.ts` i `deadline-label.ts` — bfeb15f5

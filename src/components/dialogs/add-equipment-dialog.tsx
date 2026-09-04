@@ -5,17 +5,22 @@ import { Button } from '@/components/ui/button'
 import { FormDialog } from '@/components/ui/form-dialog'
 import { AddEquipmentForm } from '@/components/forms/equipment-form/add-equipment-form'
 import { createEquipmentAction } from '@/lib/actions/equipment'
-import { warsawToday } from '@/lib/dates/days'
+import { warsawToday } from '@/lib/utils/days'
 import type { AddEquipmentFormValuesT } from '@/components/forms/equipment-form/equipment-schema'
-import type { WarehouseOptionT } from '@/lib/queries/equipment'
-import type { WorkerRefT } from '@/types/reference-data'
+import type { WarehouseOptionT } from '@/lib/equipment/types'
+import type { InvestmentRefT, WorkerRefT } from '@/types/reference-data'
 
 type AddEquipmentDialogPropsT = {
   workers: WorkerRefT[]
   warehouses: WarehouseOptionT[]
+  investments: InvestmentRefT[]
 }
 
-export function AddEquipmentDialog({ workers, warehouses }: AddEquipmentDialogPropsT) {
+export function AddEquipmentDialog({
+  workers,
+  warehouses,
+  investments,
+}: AddEquipmentDialogPropsT) {
   const defaultValues: AddEquipmentFormValuesT = {
     name: '',
     serialNumber: '',
@@ -31,6 +36,7 @@ export function AddEquipmentDialog({ workers, warehouses }: AddEquipmentDialogPr
     holder: '',
     warehouse: '',
     serviceProvider: '',
+    investment: '',
   }
 
   return (
@@ -53,6 +59,7 @@ export function AddEquipmentDialog({ workers, warehouses }: AddEquipmentDialogPr
           keepOpen={keepOpen}
           workers={workers}
           warehouses={warehouses}
+          investments={investments}
         />
       )}
     </FormDialog>

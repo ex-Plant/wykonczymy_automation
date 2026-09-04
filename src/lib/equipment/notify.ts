@@ -1,7 +1,8 @@
 import type { Payload } from 'payload'
 import { FRONTEND_URL } from '@/lib/env'
-import { daysLabel } from '@/lib/dates/deadline-label'
+import { daysLabel } from '@/lib/utils/deadline-label'
 import { requireRecipients } from '@/lib/email/recipients'
+import { section } from '@/lib/email/digest-section'
 import { escapeHtml } from '@/lib/utils/escape-html'
 import type { EquipmentDigestT, WarrantyEntryT } from '@/lib/equipment/digest'
 
@@ -9,23 +10,17 @@ import type { EquipmentDigestT, WarrantyEntryT } from '@/lib/equipment/digest'
 const itemLabel = (entry: WarrantyEntryT): string =>
   [entry.name, entry.make, entry.model, entry.serialNumber].filter(Boolean).join(' ')
 
-/** Empty in, empty out — an absent section prints nothing rather than an empty heading. */
-const section = (title: string, entries: readonly WarrantyEntryT[]): string =>
-  entries.length === 0
-    ? ''
-    : `
-    <h3>${escapeHtml(title)}</h3>
-    <table>
-      ${entries
-        .map(
-          (entry) => `<tr>
+const warrantySection = (title: string, entries: readonly WarrantyEntryT[]): string =>
+  section(
+    title,
+    entries,
+    'table',
+    (entry) => `<tr>
         <td><strong>${escapeHtml(itemLabel(entry))}</strong></td>
         <td>${escapeHtml(entry.warrantyUntil)}</td>
         <td>${escapeHtml(daysLabel(entry.daysLeft))}</td>
       </tr>`,
-        )
-        .join('\n      ')}
-    </table>`
+  )
 
 /**
  * The daily digest, to the whole `equipmentDigest` list as ONE message with N addresses — not N
@@ -40,8 +35,8 @@ export async function notifyEquipmentDigest(
 ): Promise<void> {
   const html = `
     <h2>Kończące się gwarancje</h2>
-    ${section('W ciągu 7 dni', digest.within7)}
-    ${section('W ciągu 30 dni', digest.within30)}
+    ${warrantySection('W ciągu 7 dni', digest.within7)}
+    ${warrantySection('W ciągu 30 dni', digest.within30)}
     <p><a href="${FRONTEND_URL}/sprzet">Otwórz sprzęt</a></p>
   `
 

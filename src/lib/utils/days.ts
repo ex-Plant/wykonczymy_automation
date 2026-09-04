@@ -28,7 +28,6 @@ export const warsawToday = (now: Date = new Date()): DayT => toWarsawDay(now)
 export const daysBetween = (from: DayT, to: DayT): number =>
   Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000)
 
-/** Used to prefill the next due date from an interval. */
 export const addMonthsToDay = (day: DayT, months: number): DayT => {
   const [year, month, date] = day.split('-').map(Number)
   const shifted = new Date(Date.UTC(year, month - 1 + months, date))

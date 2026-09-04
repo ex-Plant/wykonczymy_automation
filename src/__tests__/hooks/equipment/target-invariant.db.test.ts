@@ -3,6 +3,7 @@ import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
 import { purgeFixtureUsers } from '@/__tests__/helpers/purge-fixture-users'
+import { createTestInvestment, deleteTestInvestment } from '@/__tests__/helpers/investment'
 
 // „Gdzie jest sprzęt" is read off the newest event, so an event with no target — or with two — is not
 // a cosmetic data problem: it makes the derived answer either missing or ambiguous for the whole
@@ -26,6 +27,7 @@ type EventRowT = {
   warehouse_id: number | null
   service_provider: string | null
   cost: string | number | null
+  investment_id: number | null
 }
 
 describe.skipIf(!ENV_READY)('an equipment event lands on exactly one target (DB)', () => {
@@ -34,6 +36,7 @@ describe.skipIf(!ENV_READY)('an equipment event lands on exactly one target (DB)
   let equipmentId: number
   let warehouseId: number
   let holderId: number
+  let investmentId: number
 
   const createEvent = (data: Record<string, unknown>) =>
     payload.create({
@@ -45,7 +48,7 @@ describe.skipIf(!ENV_READY)('an equipment event lands on exactly one target (DB)
 
   async function persistedRow(eventId: number): Promise<EventRowT> {
     const result = await db.execute(sql`
-      SELECT holder_id, warehouse_id, service_provider, cost
+      SELECT holder_id, warehouse_id, service_provider, cost, investment_id
       FROM equipment_events WHERE id = ${eventId}
     `)
     return result.rows[0] as unknown as EventRowT
@@ -94,6 +97,8 @@ describe.skipIf(!ENV_READY)('an equipment event lands on exactly one target (DB)
       context: { skipRevalidation: true },
     })
     equipmentId = Number(equipment.id)
+
+    investmentId = await createTestInvestment(payload, MARKER)
   })
 
   afterAll(async () => {
@@ -102,6 +107,7 @@ describe.skipIf(!ENV_READY)('an equipment event lands on exactly one target (DB)
     await db.execute(sql`DELETE FROM equipment_events WHERE note = ${MARKER}`)
     if (equipmentId) await db.execute(sql`DELETE FROM equipment WHERE id = ${equipmentId}`)
     if (warehouseId) await db.execute(sql`DELETE FROM warehouses WHERE id = ${warehouseId}`)
+    if (investmentId) await deleteTestInvestment(payload, investmentId)
     if (holderId)
       await payload.delete({
         collection: 'users',
@@ -148,6 +154,27 @@ describe.skipIf(!ENV_READY)('an equipment event lands on exactly one target (DB)
 
     expect(row.service_provider).toBe('Serwis Narzędziowy')
     expect(Number(row.cost)).toBe(250)
+  })
+
+  // „Na co to wziął" is a question about a person, so the link must not survive on a warehouse or a
+  // service row — the listing reads `investment_id` off the newest event with no condition, and such
+  // a row would render „leży w magazynie, na inwestycji X" as a fact.
+  it('drops an investment sent with a non-holder target', async () => {
+    const created = await createEvent({ warehouse: warehouseId, investment: investmentId })
+    const row = await persistedRow(Number(created.id))
+
+    expect(row.warehouse_id).toBe(warehouseId)
+    expect(row.investment_id).toBeNull()
+  })
+
+  // Positive control: without it the assertion above would also pass on a build that nulls the
+  // investment unconditionally.
+  it('keeps the investment on a handover to a person', async () => {
+    const created = await createEvent({ holder: holderId, investment: investmentId })
+    const row = await persistedRow(Number(created.id))
+
+    expect(row.holder_id).toBe(holderId)
+    expect(row.investment_id).toBe(investmentId)
   })
 
   // The one case a create-only spec would miss: a partial update carries only the NEW target, so the

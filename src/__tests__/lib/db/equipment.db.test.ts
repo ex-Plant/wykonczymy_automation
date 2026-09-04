@@ -2,7 +2,11 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import type { Payload } from 'payload'
 import { sql } from '@payloadcms/db-vercel-postgres'
 import { getDb } from '@/lib/db/get-db'
-import { loadEquipmentAtLocation, loadEquipmentOverview } from '@/lib/db/equipment'
+import {
+  loadEquipmentAtLocation,
+  loadEquipmentById,
+  loadEquipmentOverview,
+} from '@/lib/db/equipment'
 import { purgeFixtureUsers } from '@/__tests__/helpers/purge-fixture-users'
 
 // The one rule the whole module rests on: „gdzie jest" is the newest event by the DAY IT HAPPENED,
@@ -120,6 +124,61 @@ describe.skipIf(!ENV_READY)('current equipment location (DB)', () => {
     const stored = await loadEquipmentAtLocation(payload, { kind: 'warehouse', id: warehouseId })
 
     expect(stored.map((row) => row.id)).not.toContain(equipmentId)
+  })
+
+  it('reads one item by id through the same rule as the listing', async () => {
+    expect(await loadEquipmentById(payload, equipmentId)).toEqual(await ourRow())
+  })
+
+  it('has nothing to read for an id that is not in the register', async () => {
+    expect(await loadEquipmentById(payload, -1)).toBeNull()
+  })
+
+  // „Kto ma sprzęt" is a question about equipment somebody still has to hand back. A sold item stays
+  // in the register for its history, and the last person to hold it must not read as still holding it.
+  it('leaves a retired item off the list of who is holding equipment', async () => {
+    const sold = await payload.create({
+      collection: 'equipment',
+      data: { name: `${MARKER} sprzedany`, status: 'SOLD' },
+      overrideAccess: true,
+      context: { skipRevalidation: true },
+    })
+    await payload.create({
+      collection: 'equipment-events',
+      data: {
+        equipment: Number(sold.id),
+        note: MARKER,
+        occurredAt: '2026-08-20T00:00:00.000Z',
+        holder: holderId,
+      },
+      overrideAccess: true,
+      context: { skipRevalidation: true },
+    } as Parameters<Payload['create']>[0])
+
+    const held = await loadEquipmentAtLocation(payload, { kind: 'holder', id: holderId })
+    await db.execute(sql`DELETE FROM equipment WHERE id = ${Number(sold.id)}`)
+
+    expect(held.map((row) => row.id)).not.toContain(Number(sold.id))
+  })
+
+  // The column carries a unique index and Postgres treats two empty strings as a collision, so
+  // without the collection's normalisation the second nameplate-less item is refused outright.
+  it('lets two items be saved with the serial number left blank', async () => {
+    const blank = (suffix: string) =>
+      payload.create({
+        collection: 'equipment',
+        data: { name: `${MARKER} bez tabliczki ${suffix}`, status: 'IN_USE', serialNumber: '' },
+        overrideAccess: true,
+        context: { skipRevalidation: true },
+      })
+
+    const first = await blank('a')
+    const second = await blank('b')
+    await db.execute(
+      sql`DELETE FROM equipment WHERE id IN (${Number(first.id)}, ${Number(second.id)})`,
+    )
+
+    expect(second.serialNumber ?? null).toBeNull()
   })
 
   it('returns an item that has never moved with no location at all', async () => {

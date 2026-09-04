@@ -41,6 +41,7 @@ describe.skipIf(!ENV_READY)('createEquipmentAction writes the item and its first
     note: '',
     status: 'IN_USE' as const,
     occurredAt: '2026-09-01',
+    investment: null,
   }
 
   const countRows = async () => {

@@ -4,9 +4,17 @@ import type { EquipmentRowT } from '@/lib/equipment/types'
 
 export const WHERE_UNKNOWN = 'unknown'
 
-/** What one row answers to in the „gdzie jest" filter. `unknown` is a filterable answer of its own. */
+const WHERE_RETIRED = 'retired-nowhere'
+
+/**
+ * What one row answers to in the „gdzie jest" filter.
+ *
+ * A locationless row answers to „Nie wiadomo gdzie" only while it is LIVE — the same rule the option
+ * itself is built on. A sold or stolen item has nobody holding it by definition, so it answers to no
+ * option at all rather than padding the one filter whose whole job is finding gaps.
+ */
 export const whereFilterValue = (row: EquipmentRowT): string =>
-  locationKey(row.location) ?? WHERE_UNKNOWN
+  locationKey(row.location) ?? (isLiveStatus(row.status) ? WHERE_UNKNOWN : WHERE_RETIRED)
 
 /**
  * The options for the „gdzie jest" menu, built from the FULL dataset rather than from what is

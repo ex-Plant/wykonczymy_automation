@@ -23,6 +23,7 @@ const row = (overrides: Partial<EquipmentRowT>): EquipmentRowT => ({
   note: '',
   location: { kind: 'unknown' },
   locatedAt: null,
+  investmentName: '',
   ...overrides,
 })
 

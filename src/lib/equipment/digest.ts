@@ -1,4 +1,4 @@
-import { daysBetween, toWarsawDay, type DayT } from '@/lib/dates/days'
+import { daysBetween, toWarsawDay, type DayT } from '@/lib/utils/days'
 import { shouldNotifyWarranty } from '@/lib/equipment/should-notify'
 import type { EquipmentWarrantyRowT } from '@/lib/equipment/types'
 

@@ -12,7 +12,7 @@ import { RecipientListCard } from '@/components/notification-recipients/recipien
 import { Description } from '@/components/ui/description'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { isLiveStatus } from '@/lib/equipment/equipment-status'
-import { warsawToday } from '@/lib/dates/days'
+import { warsawToday } from '@/lib/utils/days'
 import { pluralize } from '@/lib/utils/polish-plural'
 
 export default async function EquipmentPage() {
@@ -22,7 +22,7 @@ export default async function EquipmentPage() {
   if (!session.success) redirect('/')
 
   const payload = await getPayload({ config })
-  const [, { equipment, warehouses }, { workers }, recipients] = await Promise.all([
+  const [, { equipment, warehouses }, { workers, investments }, recipients] = await Promise.all([
     markSeen(payload, session.user.id, STREAMS.equipment),
     fetchEquipmentOverview(),
     fetchReferenceData(),
@@ -40,11 +40,12 @@ export default async function EquipmentPage() {
         today={warsawToday()}
         workers={workers}
         warehouses={warehouses}
+        investments={investments}
       />
       <RecipientListCard
         list="equipmentDigest"
         title="Powiadomienia"
-        description="E-mail wysyłany na podane adresy na 30 i 7 dni przed końcem gwarancji. Po terminie cisza — gwarancji nie da się nadrobić."
+        description="E-mail wysyłany na podane adresy na 30 i 7 dni przed końcem gwarancji."
         emails={recipients.equipmentDigest}
         canEdit={isAdminOrOwnerRole(session.user.role)}
       />

@@ -5,9 +5,8 @@ import { useManagedForm } from '@/components/forms/hooks/use-managed-form'
 import { useFieldValue } from '@/components/forms/hooks/use-field-value'
 import { FormShell } from '@/components/forms/form-components/form-shell'
 import FormFooter from '@/components/forms/form-components/form-footer'
-import { EntityComboboxField } from '@/components/forms/form-fields/entity-combobox-field'
-import { EquipmentTargetFields } from './equipment-target-fields'
-import { toTargetData } from './equipment-target-schema'
+import { EquipmentTargetFields } from '@/components/forms/form-fields/equipment-target-field'
+import { toTargetData } from '@/lib/schemas/equipment-target'
 import { equipmentTransferFormSchema } from './equipment-transfer-schema'
 import type {
   EquipmentTransferDataT,
@@ -15,7 +14,7 @@ import type {
 } from './equipment-transfer-schema'
 import { useEquipmentTransferFormStore } from '@/stores/form-stores'
 import type { EquipmentTargetKindT } from '@/lib/equipment/target-kinds'
-import type { WarehouseOptionT } from '@/lib/queries/equipment'
+import type { WarehouseOptionT } from '@/lib/equipment/types'
 import type { ActionResultT } from '@/types/action'
 import type { InvestmentRefT, WorkerRefT } from '@/types/reference-data'
 
@@ -71,9 +70,12 @@ export function EquipmentTransferForm({
   return (
     <FormShell form={form} onReset={reset}>
       <FieldGroup>
-        <EquipmentTargetFields form={form} workers={workers} warehouses={warehouses} />
-
-        <EntityComboboxField form={form} variant="investment" items={investments} />
+        <EquipmentTargetFields
+          form={form}
+          workers={workers}
+          warehouses={warehouses}
+          investments={investments}
+        />
 
         {/* A cost belongs to a repair; on a handover there is nothing to pay for, and the collection
             hook nulls one that slips through anyway. */}
@@ -83,7 +85,9 @@ export function EquipmentTransferForm({
           </form.AppField>
         )}
 
-        <form.AppField name="note">{(field) => <field.Textarea label="Notatka" rows={2} />}</form.AppField>
+        <form.AppField name="note">
+          {(field) => <field.Textarea label="Notatka" rows={2} />}
+        </form.AppField>
       </FieldGroup>
 
       <FormFooter label="Zapisz" submittingLabel="Zapisywanie..." className="mt-6" />

@@ -7,7 +7,7 @@ import {
   countUnreadLeads,
   countUnreadWarranties,
 } from '@/lib/db/notifications'
-import { warsawToday } from '@/lib/dates/days'
+import { warsawToday } from '@/lib/utils/days'
 
 /**
  * Unread new-lead count for the nav badge. Wraps protectedAction (auth + payload +

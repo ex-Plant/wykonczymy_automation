@@ -4,7 +4,12 @@ import { FieldGroup } from '@/components/ui/field'
 import { useManagedForm } from '@/components/forms/hooks/use-managed-form'
 import { FormShell } from '@/components/forms/form-components/form-shell'
 import FormFooter from '@/components/forms/form-components/form-footer'
-import { EquipmentItemFields } from './equipment-item-fields'
+import {
+  EquipmentItemFields,
+  EquipmentNoteField,
+  EquipmentPriceField,
+  EquipmentStatusField,
+} from './equipment-item-fields'
 import { equipmentFormSchema, toEquipmentData } from './equipment-schema'
 import type { EquipmentFormDataT, EquipmentFormValuesT } from './equipment-schema'
 import { useEquipmentFormStore } from '@/stores/form-stores'
@@ -51,7 +56,10 @@ export function EquipmentForm({
   return (
     <FormShell form={form} onReset={reset}>
       <FieldGroup>
-        <EquipmentItemFields form={form} showStatus />
+        <EquipmentItemFields form={form} />
+        <EquipmentPriceField form={form} />
+        <EquipmentStatusField form={form} />
+        <EquipmentNoteField form={form} />
       </FieldGroup>
 
       <FormFooter label={submitLabel} submittingLabel={submittingLabel} className="mt-6" />

@@ -12,8 +12,9 @@ import { WarrantyCell } from '@/components/equipment/warranty-cell'
 import { InfoList } from '@/components/ui/info-list'
 import { PageWrapper } from '@/components/ui/page-wrapper'
 import { isLiveStatus } from '@/lib/equipment/equipment-status'
+import { makeModel } from '@/lib/equipment/rows'
 import { classifyWarranty, warrantyDaysLeft } from '@/lib/equipment/warranty-thresholds'
-import { warsawToday } from '@/lib/dates/days'
+import { warsawToday } from '@/lib/utils/days'
 import { formatPLNOrDash } from '@/lib/utils/format-currency'
 import { formatPLDate } from '@/lib/utils/format-date'
 import type { DynamicPagePropsT } from '@/types/page'
@@ -35,10 +36,7 @@ export default async function EquipmentDetailPage({ params }: DynamicPagePropsT)
   const live = isLiveStatus(equipment.status)
 
   return (
-    <PageWrapper
-      title={equipment.name}
-      description={[equipment.make, equipment.model].filter(Boolean).join(' ')}
-    >
+    <PageWrapper title={equipment.name} description={makeModel(equipment)}>
       <InfoList
         items={[
           { label: 'Status', value: <EquipmentStatusBadge status={equipment.status} /> },
@@ -52,6 +50,7 @@ export default async function EquipmentDetailPage({ params }: DynamicPagePropsT)
               />
             ),
           },
+          { label: 'Inwestycja', value: equipment.investmentName },
           { label: 'Nr seryjny', value: equipment.serialNumber },
           {
             label: 'Gwarancja',

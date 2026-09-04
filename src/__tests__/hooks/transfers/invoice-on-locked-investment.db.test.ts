@@ -114,8 +114,7 @@ describe.skipIf(!ENV_READY)('faktura on a locked investment (DB)', () => {
 
   afterAll(async () => {
     await db.execute(sql`DELETE FROM transactions WHERE description LIKE ${`${MARKER}%`}`)
-    if (registerId)
-      await payload.delete({ collection: 'cash-registers', id: registerId, ...ctx })
+    if (registerId) await payload.delete({ collection: 'cash-registers', id: registerId, ...ctx })
     if (investmentId) {
       // Raw SQL, because reopening a zakończona inwestycja through Payload needs an OWNER on the
       // request and this spec books no user session.

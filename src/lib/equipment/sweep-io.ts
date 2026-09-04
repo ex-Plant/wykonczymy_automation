@@ -1,15 +1,19 @@
 import type { Payload } from 'payload'
 import { assertCompletePage } from '@/lib/queries/assert-complete-page'
+import { stampSequentially } from '@/lib/db/stamp-sequentially'
 import type { StampT } from '@/lib/equipment/digest'
 import type { EquipmentWarrantyRowT } from '@/lib/equipment/types'
 
 /**
- * One read: the register is a few hundred items at most, and the sweep judges every one of them.
+ * One read, narrowed to the only rows the sweep can ever announce — a retired item and an item with
+ * no warranty date are both silent by construction. `assertCompletePage` fails the whole digest
+ * closed on a second page, so the narrower the query, the further away that ceiling is.
  * Takes `payload` rather than importing `@payload-config` so the cron can share it.
  */
 export async function loadWarrantyRows(payload: Payload): Promise<EquipmentWarrantyRowT[]> {
   const page = await payload.find({
     collection: 'equipment',
+    where: { status: { equals: 'IN_USE' }, warrantyUntil: { exists: true } },
     sort: 'name',
     limit: 2000,
     depth: 0,
@@ -33,14 +37,8 @@ export async function loadWarrantyRows(payload: Payload): Promise<EquipmentWarra
  * would silence a warranty for good on a delivery that never happened, and unlike a fleet deadline
  * there is no weekly re-nag to recover it.
  *
- * Returns the ids that failed to stamp instead of throwing: the mail is already out, so a rejection
- * here would make the run report a total failure and earn a cron retry that re-sends the whole
- * digest. An unstamped row simply re-announces tomorrow, which is the harmless direction.
- *
- * One stamp at a time, never in parallel: the deployed database keeps one of a set of concurrent
- * Payload writes, drops the rest and reports success for all of them — so a parallel sweep would
- * report every row stamped while only one of them was. Copied from `lib/fleet/sweep-io.ts` for
- * exactly these reasons, not by habit.
+ * `skipRevalidation` because forty stamps would otherwise bust the register's cache forty times for
+ * one digest; the caller revalidates once when the loop is done.
  */
 export async function stampNotified(
   payload: Payload,
@@ -48,20 +46,14 @@ export async function stampNotified(
   sentAt: Date = new Date(),
 ): Promise<number[]> {
   const at = sentAt.toISOString()
-  const failed: number[] = []
 
-  for (const stamp of stamps) {
-    try {
-      await payload.update({
-        collection: 'equipment',
-        id: stamp.equipmentId,
-        overrideAccess: true,
-        data: { warrantyNotifiedBucket: stamp.bucket, warrantyNotifiedAt: at },
-      })
-    } catch {
-      failed.push(stamp.equipmentId)
-    }
-  }
-
-  return failed
+  return stampSequentially(
+    payload,
+    'equipment',
+    stamps.map((stamp) => ({
+      id: stamp.equipmentId,
+      data: { warrantyNotifiedBucket: stamp.bucket, warrantyNotifiedAt: at },
+    })),
+    { skipRevalidation: true },
+  )
 }

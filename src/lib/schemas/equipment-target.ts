@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { requiredDay } from '@/lib/utils/validation'
 import { EQUIPMENT_TARGET_KINDS } from '@/lib/equipment/target-kinds'
 import {
   MULTIPLE_TARGETS_MESSAGE,
@@ -15,7 +16,7 @@ import {
  * three columns are derived from it. The row has no such column: the target IS the kind.
  */
 export const equipmentTargetFormShape = {
-  occurredAt: z.string().min(1, 'Data przekazania jest wymagana'),
+  occurredAt: requiredDay('Data przekazania jest wymagana'),
   targetKind: z.enum(EQUIPMENT_TARGET_KINDS),
   holder: z.string(),
   warehouse: z.string(),
@@ -40,7 +41,7 @@ export function refineTargetChoice(values: TargetFormValuesT, ctx: z.RefinementC
 
 /** Domain layer, as the row stores it — `null` for the two columns the choice did not fill. */
 export const equipmentTargetDataShape = {
-  occurredAt: z.string().min(1, 'Data przekazania jest wymagana'),
+  occurredAt: requiredDay('Data przekazania jest wymagana'),
   holder: z.number().nullable(),
   warehouse: z.number().nullable(),
   serviceProvider: z.string().nullable(),

@@ -25,7 +25,9 @@ export const validateEquipmentEvent: CollectionBeforeValidateHook = ({ data, ori
   // Keyed on PRESENCE, not truthiness: /admin saves the whole document, so a cleared relationship
   // arrives as an explicit `null` and must reach the checks below as the emptiness it is rather
   // than silently reading the old link off the stored row. A partial PATCH names neither key and
-  // legitimately falls back.
+  // legitimately falls back — but one that names a DIFFERENT target than the stored row now holds
+  // two and is refused. That is deliberate: the history is append-only, so moving an item is a new
+  // event, never an edit of the one that put it where it is.
   const resolved = <K extends keyof EventDataT>(field: K) =>
     field in d ? d[field] : original?.[field]
 
@@ -53,6 +55,12 @@ export const validateEquipmentEvent: CollectionBeforeValidateHook = ({ data, ori
   // A cost belongs to a repair. On a handover there is nothing to pay for, and a stray amount there
   // would be summed into what the company spent servicing the item.
   if (serviceProvider === undefined && 'cost' in d) d.cost = null
+
+  // „Na co to wziął" is a question about a person. A magazyn is where things wait BETWEEN jobs and a
+  // serwis belongs to the tool, so neither can carry one. Nulled on the row rather than merely hidden
+  // in the form, because the listing reads `investment_id` off the newest event unconditionally — a
+  // row written from /admin would render „leży w magazynie, na inwestycji X" as a fact.
+  if (holder === undefined && 'investment' in d) d.investment = null
 
   return d
 }

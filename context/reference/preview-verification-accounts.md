@@ -5,9 +5,9 @@ jednym kontem, a czego nie chcemy robić kontem prawdziwego pracownika (preview 
 dump produkcji, więc wszystkie konta w niej to realni ludzie). Stąd para kont technicznych, która
 zostaje w preview DB na stałe:
 
-| e-mail | rola | hasło |
-| --- | --- | --- |
-| `verify-owner-ex748@wykonczymy.test` | `OWNER` | `Ex748-verify-preview` |
+| e-mail                                 | rola      | hasło                  |
+| -------------------------------------- | --------- | ---------------------- |
+| `verify-owner-ex748@wykonczymy.test`   | `OWNER`   | `Ex748-verify-preview` |
 | `verify-manager-ex748@wykonczymy.test` | `MANAGER` | `Ex748-verify-preview` |
 
 Nazwa niesie EX-748, bo tam powstały; **nie są związane z tym slice'em** — to ogólna para do

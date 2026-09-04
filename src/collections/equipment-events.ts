@@ -91,6 +91,15 @@ export const EquipmentEvents: CollectionConfig = {
       label: { en: 'Note', pl: 'Notatka' },
     },
     {
+      // Provenance, filled by the server action — never by the form. The log says who had the tool;
+      // this says who claims so, which is the only lead left when the two disagree.
+      name: 'createdBy',
+      type: 'relationship',
+      relationTo: 'users',
+      label: { en: 'Created by', pl: 'Wpisał' },
+      admin: { readOnly: true, position: 'sidebar' },
+    },
+    {
       name: 'attachments',
       type: 'upload',
       relationTo: 'media',

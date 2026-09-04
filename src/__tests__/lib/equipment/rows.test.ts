@@ -108,6 +108,27 @@ describe('toEquipmentRow', () => {
     expect(row.location).toEqual({ kind: 'unknown' })
   })
 
+  // Postgres hands a day-only column back as a Date at midnight UTC, and a full ISO timestamp is
+  // exactly what the form's date picker cannot parse — „Edytuj sprzęt" opened with both dates blank.
+  it('maps day-only columns to the YYYY-MM-DD the pickers speak', () => {
+    const row = toEquipmentRow({
+      id: 1,
+      name: 'Wiertarka',
+      purchase_date: new Date('2025-03-01T00:00:00.000Z'),
+      warranty_until: new Date('2026-12-01T00:00:00.000Z'),
+      ...NO_TARGET,
+    })
+
+    expect(row.purchaseDate).toBe('2025-03-01')
+    expect(row.warrantyUntil).toBe('2026-12-01')
+  })
+
+  it('leaves an item with no warranty date null rather than dating it today', () => {
+    const row = toEquipmentRow({ id: 1, name: 'Wiertarka', warranty_until: null, ...NO_TARGET })
+
+    expect(row.warrantyUntil).toBeNull()
+  })
+
   // The enum widened without the constant would otherwise hide the item from every status filter.
   it('falls back to IN_USE for a status the constant does not know', () => {
     expect(toEquipmentRow({ id: 1, name: 'X', status: 'SCRAPPED', ...NO_TARGET }).status).toBe(
@@ -117,7 +138,7 @@ describe('toEquipmentRow', () => {
 })
 
 describe('toEquipmentEventRow', () => {
-  it('maps a service entry with its cost and attachments', () => {
+  it('maps a service entry with its cost', () => {
     const event = toEquipmentEventRow({
       id: 11,
       occurred_at: '2026-08-20T00:00:00.000Z',
@@ -127,32 +148,29 @@ describe('toEquipmentEventRow', () => {
       investment_name: null,
       cost: '349.00',
       note: 'wymiana szczotek',
-      attachment_ids: [5, 6],
+      created_by_name: 'Bartek Kowalczyk',
     })
 
     expect(event).toEqual({
       id: 11,
       occurredAt: '2026-08-20T00:00:00.000Z',
       target: { kind: 'service', name: 'Serwis Boscha' },
-      investmentId: null,
       investmentName: '',
       cost: 349,
       note: 'wymiana szczotek',
-      attachmentIds: [5, 6],
+      createdByName: 'Bartek Kowalczyk',
     })
   })
 
-  it('maps a handover with no attachments to an empty list', () => {
+  it('leaves a handover without a cost', () => {
     const event = toEquipmentEventRow({
       id: 12,
       occurred_at: '2026-08-21T00:00:00.000Z',
       ...NO_TARGET,
       holder_id: 3,
       holder_name: 'Anna Nowak',
-      attachment_ids: null,
     })
 
-    expect(event.attachmentIds).toEqual([])
     expect(event.cost).toBeNull()
   })
 })

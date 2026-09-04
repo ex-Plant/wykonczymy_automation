@@ -1,10 +1,11 @@
 import { z } from 'zod'
+import { optionalNonNegativeAmount } from '@/lib/utils/validation'
 import {
   equipmentTargetDataShape,
   equipmentTargetFormShape,
   refineExactlyOneTarget,
   refineTargetChoice,
-} from './equipment-target-schema'
+} from '@/lib/schemas/equipment-target'
 
 // Form-input layer: strings throughout, as the HTML controls produce them.
 const transferFormShape = z.object({
@@ -13,9 +14,7 @@ const transferFormShape = z.object({
   investment: z.string(),
   // Optional even on a service entry: the faktura arrives after the tool does, so the amount is
   // filled in later by editing the row rather than guessed now.
-  cost: z
-    .string()
-    .refine((value) => value === '' || Number(value) >= 0, 'Koszt nie może być ujemny'),
+  cost: optionalNonNegativeAmount('Koszt nie może być ujemny'),
   note: z.string(),
 })
 

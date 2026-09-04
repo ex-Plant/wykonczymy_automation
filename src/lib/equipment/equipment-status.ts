@@ -17,4 +17,7 @@ export const EQUIPMENT_STATUS_LABELS: Record<EquipmentStatusT, { en: string; pl:
  * alarm; only an `IN_USE` item with no current event is a hole in the data. The warranty digest
  * reads the same predicate — chasing the warranty of a sold drill is history, not a task.
  */
-export const isLiveStatus = (status: EquipmentStatusT): boolean => status === 'IN_USE'
+export const LIVE_EQUIPMENT_STATUSES = ['IN_USE'] as const
+
+export const isLiveStatus = (status: EquipmentStatusT): boolean =>
+  (LIVE_EQUIPMENT_STATUSES as readonly string[]).includes(status)

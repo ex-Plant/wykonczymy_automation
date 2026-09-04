@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 import { isAdminOrOwner, isAdminOrOwnerOrManager } from '@/access'
 import { makeRevalidateAfterChange, makeRevalidateAfterDelete } from '@/hooks/revalidate-collection'
+import { makeResetBookkeeping } from '@/hooks/reset-bookkeeping'
 import { EQUIPMENT_STATUS_LABELS, EQUIPMENT_STATUSES } from '@/lib/equipment/equipment-status'
 import { resetWarrantyBookkeeping } from '@/lib/equipment/reset-warranty-bookkeeping'
 
@@ -23,12 +24,13 @@ export const Equipment: CollectionConfig = {
     group: { en: 'Equipment', pl: 'Sprzęt' },
   },
   hooks: {
-    beforeChange: [
-      ({ data, originalDoc, operation }) =>
-        operation === 'update' && originalDoc
-          ? { ...data, ...resetWarrantyBookkeeping(originalDoc, data) }
-          : data,
+    // A unique index treats '' as a value, so two items saved from /admin with the serial left blank
+    // collide on `equipment_serial_number_idx`. The form sends null; only /admin sends ''.
+    beforeValidate: [
+      ({ data }) =>
+        data?.serialNumber === '' ? { ...data, serialNumber: null } : data,
     ],
+    beforeChange: [makeResetBookkeeping(resetWarrantyBookkeeping)],
     afterChange: [makeRevalidateAfterChange('equipment')],
     afterDelete: [makeRevalidateAfterDelete('equipment', 'equipmentEvents')],
   },
